@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+
+<html class="light" lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pikabuddy - 역할 선택</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-variant": "#e0e3e5",
+                    "on-surface": "#191c1e",
+                    "on-tertiary-fixed": "#23005c",
+                    "tertiary-fixed-dim": "#d0bcff",
+                    "surface-tint": "#0053db",
+                    "secondary": "#515f74",
+                    "on-secondary-fixed-variant": "#3a485b",
+                    "outline": "#737686",
+                    "on-background": "#191c1e",
+                    "background": "#f7f9fb",
+                    "surface-container-highest": "#e0e3e5",
+                    "primary": "#004ac6",
+                    "on-error-container": "#93000a",
+                    "on-tertiary-container": "#f6edff",
+                    "inverse-primary": "#b4c5ff",
+                    "on-secondary": "#ffffff",
+                    "inverse-surface": "#2d3133",
+                    "tertiary-fixed": "#e9ddff",
+                    "secondary-fixed": "#d5e3fc",
+                    "tertiary-container": "#7d4ce7",
+                    "surface-container-high": "#e6e8ea",
+                    "on-primary-container": "#eeefff",
+                    "surface-dim": "#d8dadc",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container-low": "#f2f4f6",
+                    "secondary-fixed-dim": "#b9c7df",
+                    "primary-fixed": "#dbe1ff",
+                    "on-secondary-fixed": "#0d1c2e",
+                    "inverse-on-surface": "#eff1f3",
+                    "surface-container": "#eceef0",
+                    "on-tertiary-fixed-variant": "#5516be",
+                    "primary-container": "#2563eb",
+                    "on-primary": "#ffffff",
+                    "on-error": "#ffffff",
+                    "on-surface-variant": "#434655",
+                    "primary-fixed-dim": "#b4c5ff",
+                    "outline-variant": "#c3c6d7",
+                    "error-container": "#ffdad6",
+                    "on-secondary-container": "#57657a",
+                    "on-primary-fixed-variant": "#003ea8",
+                    "secondary-container": "#d5e3fc",
+                    "surface": "#f7f9fb",
+                    "error": "#ba1a1a",
+                    "on-tertiary": "#ffffff",
+                    "tertiary": "#632ecd",
+                    "surface-bright": "#f7f9fb",
+                    "on-primary-fixed": "#00174b"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Plus Jakarta Sans"],
+                    "label": ["Plus Jakarta Sans"]
+            }
+          },
+        }
+      }
+    </script>
+<style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .ai-glow {
+            box-shadow: 0 0 40px 20px rgba(99, 46, 205, 0.06);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen flex flex-col items-center justify-center p-6 selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- Subtle Background Elements -->
+<div class="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none -z-10">
+<div class="absolute -top-[10%] -left-[5%] w-[40%] h-[40%] bg-primary/5 blur-[120px] rounded-full"></div>
+<div class="absolute -bottom-[10%] -right-[5%] w-[40%] h-[40%] bg-tertiary/5 blur-[120px] rounded-full"></div>
+</div>
+<!-- Header / Brand Section -->
+<header class="mb-16 text-center">
+<div class="flex items-center justify-center gap-2 mb-8">
+<span class="text-3xl font-black tracking-tighter text-primary">Pikabuddy</span>
+</div>
+<h1 class="text-4xl md:text-5xl font-extrabold tracking-tight text-on-surface mb-4">
+            당신의 역할을 선택해주세요
+        </h1>
+<p class="text-secondary text-lg max-w-md mx-auto">
+            인지적 아틀리에에 오신 것을 환영합니다. 귀하의 학습 또는 교육 목적에 맞는 인터페이스를 제공합니다.
+        </p>
+</header>
+<!-- Main Selection Cards -->
+<main class="w-full max-w-5xl">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
+<!-- Professor Card -->
+<button class="group relative flex flex-col items-start p-10 text-left bg-surface-container-low rounded-xl transition-all duration-300 hover:translate-y-[-4px] hover:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary/20">
+<div class="mb-8 p-4 bg-white rounded-xl shadow-sm group-hover:scale-110 transition-transform duration-300">
+<span class="material-symbols-outlined text-4xl text-primary" data-icon="switch_account">switch_account</span>
+</div>
+<h2 class="text-2xl font-bold mb-3 text-on-surface">교수(Professor)</h2>
+<p class="text-secondary leading-relaxed mb-6">
+                    교수님: 클래스를 개설하고 학생들의 학습 데이터를 분석하세요. 개인화된 교육 전략을 수립할 수 있는 인사이트를 제공합니다.
+                </p>
+<div class="mt-auto flex items-center text-primary font-semibold gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<span>이 역할로 시작하기</span>
+<span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</div>
+<!-- Subtle accent for Professor Role -->
+<div class="absolute top-4 right-4 opacity-10">
+<span class="material-symbols-outlined text-6xl" data-icon="school">school</span>
+</div>
+</button>
+<!-- Student Card (with AI Luminous Accent) -->
+<button class="group relative flex flex-col items-start p-10 text-left bg-surface-container-low rounded-xl transition-all duration-300 hover:translate-y-[-4px] hover:bg-surface-container-lowest ai-glow focus:outline-none focus:ring-2 focus:ring-tertiary/20">
+<div class="mb-8 p-4 bg-tertiary-container text-on-tertiary-container rounded-xl shadow-sm group-hover:scale-110 transition-transform duration-300">
+<span class="material-symbols-outlined text-4xl" data-icon="psychology" style="font-variation-settings: 'FILL' 1;">psychology</span>
+</div>
+<h2 class="text-2xl font-bold mb-3 text-on-surface">학생(Student)</h2>
+<p class="text-secondary leading-relaxed mb-6">
+                    학생: AI 튜터와 함께 코딩 실력을 키워보세요. 실시간 피드백과 함께 나만의 페이스로 학습하며 성장을 경험하세요.
+                </p>
+<div class="mt-auto flex items-center text-tertiary font-semibold gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<span>학습 시작하기</span>
+<span class="material-symbols-outlined text-sm" data-icon="auto_awesome">auto_awesome</span>
+</div>
+<!-- Subtle AI Bloom Effect -->
+<div class="absolute top-0 right-0 p-4 opacity-20 text-tertiary">
+<span class="material-symbols-outlined text-3xl" data-icon="sparkles">colors_spark</span>
+</div>
+</button>
+</div>
+<!-- Footer Actions -->
+<div class="flex flex-col items-center gap-6">
+<button class="px-12 py-4 bg-gradient-to-br from-primary to-primary-container text-on-primary font-bold text-lg rounded-lg shadow-lg hover:opacity-90 active:scale-[0.98] transition-all">
+                선택 완료
+            </button>
+<p class="text-sm text-secondary flex items-center gap-2">
+<span class="material-symbols-outlined text-base" data-icon="info">info</span>
+                선택한 역할은 추후 환경 설정에서 변경할 수 있습니다.
+            </p>
+</div>
+</main>
+<!-- Contextual Info (Editorial Style) -->
+<section class="mt-24 grid grid-cols-1 md:grid-cols-3 gap-12 w-full max-w-5xl">
+<div class="flex flex-col gap-4">
+<div class="h-1 w-12 bg-primary/20 rounded-full"></div>
+<h3 class="text-lg font-bold text-on-surface">강력한 분석 도구</h3>
+<p class="text-sm text-secondary leading-relaxed">학습자의 패턴을 시각화하여 더 나은 교육적 결정을 내릴 수 있도록 돕습니다.</p>
+</div>
+<div class="flex flex-col gap-4">
+<div class="h-1 w-12 bg-tertiary/20 rounded-full"></div>
+<h3 class="text-lg font-bold text-on-surface">지능형 튜터링</h3>
+<p class="text-sm text-secondary leading-relaxed">Pikabuddy의 AI는 학생의 코드를 이해하고 가장 적절한 힌트를 제공합니다.</p>
+</div>
+<div class="flex flex-col gap-4">
+<div class="h-1 w-12 bg-secondary/20 rounded-full"></div>
+<h3 class="text-lg font-bold text-on-surface">협업 커뮤니티</h3>
+<p class="text-sm text-secondary leading-relaxed">교수와 학생이 하나로 연결된 아틀리에에서 지식을 공유하고 토론하세요.</p>
+</div>
+</section>
+<!-- Logo and Visual Branding at the bottom -->
+<div class="mt-20 opacity-30 select-none grayscale">
+<img alt="Pikabuddy Platform Emblem" class="h-12 w-auto" data-alt="minimalist clean tech logo of a stylized abstract compass or neural network icon in slate grey" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCgRGaOBfnjXX6xKipSZ6xzKw1g8yQXr1sHpi3g8eoIrhSVJC-a84lRdAVoDDVvsiC_mviS8fdv4SUOGyvarKk6Fg8vfzj6fo82RjVQ5ljA3oMlqzZhRdE3xAVsawosBBHx8bSHwb5sd4S7sM9-LxTtE7TlCLtB1L1VkWaeXfHl1sg4F_FcQeWks6rGu9sY0yW7Y2pfbw_8xRVU8rbt6dhc_5hpC4lTilwxtA1pGfAIK53l_Hde5HuZN9RPW6grunH7XGVFixn_cy0"/>
+</div>
+</body></html>

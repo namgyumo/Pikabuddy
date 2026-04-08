@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+
+<html class="light" lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-variant": "#e0e3e5",
+                    "on-surface": "#191c1e",
+                    "on-tertiary-fixed": "#23005c",
+                    "tertiary-fixed-dim": "#d0bcff",
+                    "surface-tint": "#0053db",
+                    "secondary": "#515f74",
+                    "on-secondary-fixed-variant": "#3a485b",
+                    "outline": "#737686",
+                    "on-background": "#191c1e",
+                    "background": "#f7f9fb",
+                    "surface-container-highest": "#e0e3e5",
+                    "primary": "#004ac6",
+                    "on-error-container": "#93000a",
+                    "on-tertiary-container": "#f6edff",
+                    "inverse-primary": "#b4c5ff",
+                    "on-secondary": "#ffffff",
+                    "inverse-surface": "#2d3133",
+                    "tertiary-fixed": "#e9ddff",
+                    "secondary-fixed": "#d5e3fc",
+                    "tertiary-container": "#7d4ce7",
+                    "surface-container-high": "#e6e8ea",
+                    "on-primary-container": "#eeefff",
+                    "surface-dim": "#d8dadc",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container-low": "#f2f4f6",
+                    "secondary-fixed-dim": "#b9c7df",
+                    "primary-fixed": "#dbe1ff",
+                    "on-secondary-fixed": "#0d1c2e",
+                    "inverse-on-surface": "#eff1f3",
+                    "surface-container": "#eceef0",
+                    "on-tertiary-fixed-variant": "#5516be",
+                    "primary-container": "#2563eb",
+                    "on-primary": "#ffffff",
+                    "on-error": "#ffffff",
+                    "on-surface-variant": "#434655",
+                    "primary-fixed-dim": "#b4c5ff",
+                    "outline-variant": "#c3c6d7",
+                    "error-container": "#ffdad6",
+                    "on-secondary-container": "#57657a",
+                    "on-primary-fixed-variant": "#003ea8",
+                    "secondary-container": "#d5e3fc",
+                    "surface": "#f7f9fb",
+                    "error": "#ba1a1a",
+                    "on-tertiary": "#ffffff",
+                    "tertiary": "#632ecd",
+                    "surface-bright": "#f7f9fb",
+                    "on-primary-fixed": "#00174b"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Plus Jakarta Sans"],
+                    "label": ["Plus Jakarta Sans"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-ai {
+            background: rgba(125, 76, 231, 0.08);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(125, 76, 231, 0.1);
+        }
+        .gradient-primary {
+            background: linear-gradient(135deg, #004ac6 0%, #2563eb 100%);
+        }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface selection:bg-primary-fixed">
+<!-- SideNavBar (Authority: JSON) -->
+<aside class="h-screen w-72 flex flex-col fixed left-0 top-0 z-40 bg-slate-50 dark:bg-slate-900 flex flex-col gap-4 p-6 border-r border-slate-200/50 dark:border-slate-800/50">
+<div class="mb-8">
+<div class="flex items-center gap-3 mb-2">
+<div class="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center text-white shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined">psychology</span>
+</div>
+<div>
+<h1 class="font-manrope font-extrabold text-blue-700 text-xl">Cognitive Atelier</h1>
+<p class="text-[10px] uppercase tracking-widest text-secondary font-bold">AI-Powered Learning</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 flex flex-col gap-2">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-xl hover:translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">switch_account</span>
+<span class="font-plus-jakarta text-sm font-medium">Role Selection</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-xl hover:translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">menu_book</span>
+<span class="font-plus-jakarta text-sm font-medium">Course Management</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-xl hover:translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">query_stats</span>
+<span class="font-plus-jakarta text-sm font-medium">Student Analysis</span>
+</a>
+<!-- Active Navigation State: Growth Reports (matches semantic intent for "성장 리포트") -->
+<a class="flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-400 rounded-xl shadow-sm hover:translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">auto_graph</span>
+<span class="font-plus-jakarta text-sm font-medium">Growth Reports</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-xl hover:translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">psychology</span>
+<span class="font-plus-jakarta text-sm font-medium">AI Insights</span>
+</a>
+</nav>
+<div class="mt-auto flex flex-col gap-4">
+<button class="w-full py-3 rounded-xl gradient-primary text-white font-bold text-sm shadow-md hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm">auto_awesome</span>
+                Ask AI Mentor
+            </button>
+<div class="pt-4 border-t border-slate-200/50 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-4 py-2 text-slate-500 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-xl">help</span>
+<span class="text-xs font-semibold">Support</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2 text-slate-500 hover:text-error transition-colors" href="#">
+<span class="material-symbols-outlined text-xl">logout</span>
+<span class="text-xs font-semibold">Sign Out</span>
+</a>
+</div>
+</div>
+</aside>
+<main class="ml-72 min-h-screen pb-20">
+<!-- TopNavBar (Authority: JSON) -->
+<header class="bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl docked full-width top-0 z-30 sticky no-border bg-surface-container-low shadow-sm dark:shadow-none">
+<div class="flex justify-between items-center w-full px-8 py-4 max-w-[1920px] mx-auto">
+<div class="flex items-center gap-8">
+<span class="text-2xl font-black tracking-tighter text-blue-700 dark:text-blue-500">Pikabuddy</span>
+<nav class="hidden lg:flex items-center gap-6">
+<a class="text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-colors font-manrope font-bold text-sm tracking-tight" href="#">Dashboard</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-colors font-manrope font-bold text-sm tracking-tight" href="#">Curriculum</a>
+<a class="text-blue-700 dark:text-blue-400 border-b-2 border-blue-700 dark:border-blue-400 pb-1 font-manrope font-bold text-sm tracking-tight" href="#">Analytics</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-colors font-manrope font-bold text-sm tracking-tight" href="#">Community</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="bg-tertiary-container/10 text-tertiary px-4 py-2 rounded-full font-bold text-sm flex items-center gap-2 hover:bg-tertiary-container/20 transition-all">
+<span class="material-symbols-outlined text-lg">bolt</span>
+                        AI Tutor
+                    </button>
+<div class="flex items-center gap-2">
+<button class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-all">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-all">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</div>
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary-fixed">
+<img alt="User profile avatar" class="w-full h-full object-cover" data-alt="professional headshot of a smiling young male student in a minimal studio setting with soft lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAkeMq-p_Xt7NKeKl1F_YaBLqQtU5jg46qP4uczn3aO0MAe3CNAwo2jkb7zZTRbrGAKnBGCA-py1BR59ETgsjeMhFrUC8JGVLTq0nt7QudKCzGg2p4ZC9XO-UI6sjRhVQb2PhbzwMddEpBZHGHyQRdLX8rO8nN7uaHLp58OaxiGy9ZHZ_1sR0KJLfHPJnaU3UtxsCJiKbtrb17EH9Gh6K-UQsTXt9Bwr-xVxJBLR9Js9rzGd0i_EEjAJ884CI7B01ixVebItaGREus"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Content Canvas -->
+<div class="max-w-6xl mx-auto px-8 pt-12">
+<!-- Header Section -->
+<div class="mb-12">
+<p class="text-primary font-bold tracking-widest text-xs uppercase mb-2">MONTHLY PERFORMANCE</p>
+<h2 class="text-4xl font-extrabold text-on-surface tracking-tight mb-4">김철수 님의 이번 달 학습 리포트</h2>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2 bg-primary/5 px-4 py-2 rounded-full">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">calendar_today</span>
+<span class="text-sm font-semibold text-primary">2024년 5월</span>
+</div>
+<div class="flex items-center gap-2 bg-tertiary/5 px-4 py-2 rounded-full">
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<span class="text-sm font-semibold text-tertiary">AI 분석 완료</span>
+</div>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-12 gap-6 mb-6">
+<!-- Gamification: Stats Column -->
+<div class="col-span-12 md:col-span-4 flex flex-col gap-6">
+<!-- Streak Card -->
+<div class="bg-surface-container-low p-8 rounded-xl relative overflow-hidden group">
+<div class="relative z-10">
+<p class="text-secondary text-sm font-bold mb-1">학습 연속 일수</p>
+<h3 class="text-6xl font-black text-primary tracking-tighter">14<span class="text-xl font-bold ml-1">일</span></h3>
+<div class="mt-4 flex items-center gap-2 text-xs font-bold text-green-600">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+                                지난달 대비 +5일
+                            </div>
+</div>
+<span class="material-symbols-outlined absolute -bottom-4 -right-4 text-9xl text-primary/5 group-hover:scale-110 transition-transform" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
+</div>
+<!-- Badges Card -->
+<div class="bg-surface-container-low p-8 rounded-xl flex-1">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-headline font-bold text-lg">획득한 뱃지</h3>
+<span class="text-xs text-secondary font-bold hover:text-primary cursor-pointer">전체보기</span>
+</div>
+<div class="grid grid-cols-3 gap-4">
+<div class="flex flex-col items-center gap-2 group">
+<div class="w-16 h-16 rounded-full bg-surface-container-highest flex items-center justify-center group-hover:bg-primary-fixed transition-colors">
+<span class="material-symbols-outlined text-primary text-3xl" style="font-variation-settings: 'FILL' 1;">workspace_premium</span>
+</div>
+<span class="text-[10px] font-bold text-secondary text-center leading-tight">알고리즘 초보</span>
+</div>
+<div class="flex flex-col items-center gap-2 group">
+<div class="w-16 h-16 rounded-full bg-surface-container-highest flex items-center justify-center group-hover:bg-primary-fixed transition-colors">
+<span class="material-symbols-outlined text-primary text-3xl" style="font-variation-settings: 'FILL' 1;">rocket_launch</span>
+</div>
+<span class="text-[10px] font-bold text-secondary text-center leading-tight">주간 퀘스트</span>
+</div>
+<div class="flex flex-col items-center gap-2 group opacity-40">
+<div class="w-16 h-16 rounded-full border-2 border-dashed border-outline-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-outline-variant text-3xl">lock</span>
+</div>
+<span class="text-[10px] font-bold text-secondary text-center leading-tight">자료구조 정복</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Growth Curve: Main Chart Area -->
+<div class="col-span-12 md:col-span-8 bg-surface-container-lowest p-8 rounded-xl shadow-sm flex flex-col">
+<div class="flex justify-between items-start mb-8">
+<div>
+<h3 class="font-headline font-bold text-xl mb-1">나의 학습 성장 곡선</h3>
+<p class="text-secondary text-sm">최근 4주간의 이해도 변화 추이</p>
+</div>
+<div class="flex gap-2">
+<span class="px-3 py-1 bg-surface-container-high rounded text-[10px] font-bold text-secondary">이해성취도</span>
+<span class="px-3 py-1 bg-primary/10 rounded text-[10px] font-bold text-primary">학습 시간</span>
+</div>
+</div>
+<!-- Mock Graph Visualization -->
+<div class="flex-1 w-full flex items-end justify-between gap-4 min-h-[240px] px-4">
+<div class="flex-1 flex flex-col items-center gap-3">
+<div class="w-full bg-surface-container-high rounded-t-lg relative group h-32">
+<div class="absolute bottom-0 w-full bg-primary/30 rounded-t-lg group-hover:bg-primary/50 transition-all h-[40%]"></div>
+</div>
+<span class="text-[10px] font-bold text-secondary">4월 4주</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-3">
+<div class="w-full bg-surface-container-high rounded-t-lg relative group h-32">
+<div class="absolute bottom-0 w-full bg-primary/40 rounded-t-lg group-hover:bg-primary/50 transition-all h-[65%]"></div>
+</div>
+<span class="text-[10px] font-bold text-secondary">5월 1주</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-3">
+<div class="w-full bg-surface-container-high rounded-t-lg relative group h-32">
+<div class="absolute bottom-0 w-full bg-primary/60 rounded-t-lg group-hover:bg-primary/50 transition-all h-[82%]"></div>
+</div>
+<span class="text-[10px] font-bold text-secondary">5월 2주</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-3">
+<div class="w-full bg-surface-container-high rounded-t-lg relative group h-32">
+<div class="absolute bottom-0 w-full bg-primary/90 rounded-t-lg h-[95%]">
+<div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-on-surface text-white px-2 py-1 rounded text-[10px] whitespace-nowrap">현재 최고점!</div>
+</div>
+</div>
+<span class="text-[10px] font-bold text-secondary">현재</span>
+</div>
+</div>
+<div class="mt-8 pt-6 border-t border-surface-container-high grid grid-cols-3 gap-4">
+<div>
+<p class="text-[10px] font-bold text-secondary uppercase mb-1">Total Hours</p>
+<p class="text-xl font-bold font-manrope">42.5h</p>
+</div>
+<div>
+<p class="text-[10px] font-bold text-secondary uppercase mb-1">Completion Rate</p>
+<p class="text-xl font-bold font-manrope">88%</p>
+</div>
+<div>
+<p class="text-[10px] font-bold text-secondary uppercase mb-1">Avg Score</p>
+<p class="text-xl font-bold font-manrope text-primary">A+</p>
+</div>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-6 mb-12">
+<!-- Most Frequent Errors -->
+<div class="col-span-12 md:col-span-5 bg-surface-container-low p-8 rounded-xl">
+<h3 class="font-headline font-bold text-xl mb-6">자주 틀리는 개념 Top 3</h3>
+<div class="flex flex-col gap-4">
+<div class="flex items-center gap-4 p-4 bg-white/50 rounded-xl">
+<div class="w-10 h-10 rounded-lg bg-error-container flex items-center justify-center shrink-0">
+<span class="text-error font-black text-lg">1</span>
+</div>
+<div class="flex-1">
+<h4 class="text-sm font-bold mb-1">재귀 함수의 기저 사례</h4>
+<div class="w-full h-1.5 bg-surface-container rounded-full overflow-hidden">
+<div class="w-[75%] h-full bg-error rounded-full"></div>
+</div>
+</div>
+<span class="text-xs font-bold text-secondary">75%</span>
+</div>
+<div class="flex items-center gap-4 p-4 bg-white/50 rounded-xl">
+<div class="w-10 h-10 rounded-lg bg-error-container/60 flex items-center justify-center shrink-0">
+<span class="text-error font-black text-lg opacity-80">2</span>
+</div>
+<div class="flex-1">
+<h4 class="text-sm font-bold mb-1">포인터와 배열의 관계</h4>
+<div class="w-full h-1.5 bg-surface-container rounded-full overflow-hidden">
+<div class="w-[42%] h-full bg-error/70 rounded-full"></div>
+</div>
+</div>
+<span class="text-xs font-bold text-secondary">42%</span>
+</div>
+<div class="flex items-center gap-4 p-4 bg-white/50 rounded-xl">
+<div class="w-10 h-10 rounded-lg bg-error-container/40 flex items-center justify-center shrink-0">
+<span class="text-error font-black text-lg opacity-60">3</span>
+</div>
+<div class="flex-1">
+<h4 class="text-sm font-bold mb-1">시간 복잡도 Big-O 계산</h4>
+<div class="w-full h-1.5 bg-surface-container rounded-full overflow-hidden">
+<div class="w-[28%] h-full bg-error/50 rounded-full"></div>
+</div>
+</div>
+<span class="text-xs font-bold text-secondary">28%</span>
+</div>
+</div>
+</div>
+<!-- AI Recommendations -->
+<div class="col-span-12 md:col-span-7 glass-ai p-8 rounded-xl border border-tertiary/10 relative overflow-hidden">
+<div class="relative z-10">
+<div class="flex items-center gap-3 mb-6">
+<div class="w-10 h-10 rounded-full bg-tertiary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">psychology</span>
+</div>
+<h3 class="font-headline font-bold text-xl text-tertiary-fixed-dim">AI 튜터가 추천하는 맞춤 학습 경로</h3>
+</div>
+<div class="space-y-4">
+<div class="flex gap-4 p-4 bg-white/10 rounded-xl border border-white/10 group cursor-pointer hover:bg-white/20 transition-all">
+<div class="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center shrink-0 border border-white/5">
+<span class="material-symbols-outlined text-tertiary">quick_reference_all</span>
+</div>
+<div>
+<h4 class="text-sm font-bold text-on-surface mb-1">재귀 함수 핵심 마스터 클래스</h4>
+<p class="text-xs text-secondary leading-relaxed">자주 틀리는 기저 사례 설정법을 10분 만에 복습해보세요.</p>
+</div>
+</div>
+<div class="flex gap-4 p-4 bg-white/10 rounded-xl border border-white/10 group cursor-pointer hover:bg-white/20 transition-all">
+<div class="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center shrink-0 border border-white/5">
+<span class="material-symbols-outlined text-tertiary">quiz</span>
+</div>
+<div>
+<h4 class="text-sm font-bold text-on-surface mb-1">오늘의 도전: 트리 순회 알고리즘</h4>
+<p class="text-xs text-secondary leading-relaxed">학습 성장도를 5% 더 높일 수 있는 맞춤형 연습 문제입니다.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Abstract Background Shape for AI Section -->
+<div class="absolute -top-24 -right-24 w-64 h-64 bg-tertiary/10 rounded-full blur-3xl"></div>
+</div>
+</div>
+<!-- Footer Action -->
+<div class="flex flex-col items-center justify-center text-center p-12 bg-primary/5 rounded-3xl border border-primary/10">
+<h3 class="text-2xl font-black mb-2">훌륭합니다! 이미 상위 5%의 학습 속도입니다.</h3>
+<p class="text-secondary mb-8 max-w-md mx-auto">현재의 흐름을 유지하여 다음 고난도 주제인 자료구조 심화 과정으로 넘어가 볼까요?</p>
+<button class="gradient-primary text-white px-10 py-5 rounded-2xl font-bold text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform active:scale-[0.98] flex items-center gap-3">
+                    다음 단계로 가기: 자료구조 심화 학습
+                    <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+</div>
+</main>
+<!-- Floating AI Assistant Bubble -->
+<button class="fixed bottom-8 right-8 w-16 h-16 rounded-full bg-tertiary-container shadow-[0_10px_40px_-10px_rgba(125,76,231,0.5)] flex items-center justify-center text-white hover:scale-110 transition-transform z-50">
+<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+</button>
+</body></html>

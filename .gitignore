@@ -1,39 +1,26 @@
 # Dependencies
 node_modules/
-venv/
 __pycache__/
 *.pyc
 
-# Environment variables
+# Environment
 .env
-.env.local
-.env.*.local
+backend/.env
 
-# IDE / Editor
+# Build
+frontend/dist/
+*.egg-info/
+
+# IDE
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
 
-# OS files
+# OS
 .DS_Store
 Thumbs.db
 
-# Build output
-dist/
-build/
-*.egg-info/
+# SSL
+nginx/ssl/*.pem
 
 # Logs
 *.log
-npm-debug.log*
-
-# Test coverage
-coverage/
-.coverage
-htmlcov/
-
-# Misc
-*.zip
-*.tar.gz

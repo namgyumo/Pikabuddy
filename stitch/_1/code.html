@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+
+<html class="light" lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>pikabudy | AI 기반 차세대 교육 플랫폼</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Plus+Jakarta+Sans:wght@400;500;600&amp;family=JetBrains+Mono&amp;display=swap" rel="stylesheet"/>
+<!-- Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "tertiary": "#632ecd",
+                "error-container": "#ffdad6",
+                "on-secondary-fixed-variant": "#3a485b",
+                "secondary-fixed-dim": "#b9c7df",
+                "inverse-surface": "#2d3133",
+                "primary": "#004ac6",
+                "primary-container": "#2563eb",
+                "surface-tint": "#0053db",
+                "tertiary-fixed-dim": "#d0bcff",
+                "surface-container-lowest": "#ffffff",
+                "on-surface": "#191c1e",
+                "error": "#ba1a1a",
+                "on-error": "#ffffff",
+                "on-primary": "#ffffff",
+                "surface-dim": "#d8dadc",
+                "inverse-primary": "#b4c5ff",
+                "on-secondary": "#ffffff",
+                "on-tertiary": "#ffffff",
+                "on-background": "#191c1e",
+                "tertiary-fixed": "#e9ddff",
+                "outline-variant": "#c3c6d7",
+                "on-secondary-fixed": "#0d1c2e",
+                "on-tertiary-container": "#f6edff",
+                "on-primary-container": "#eeefff",
+                "surface-container": "#eceef0",
+                "tertiary-container": "#7d4ce7",
+                "inverse-on-surface": "#eff1f3",
+                "secondary-container": "#d5e3fc",
+                "surface": "#f7f9fb",
+                "surface-container-highest": "#e0e3e5",
+                "surface-bright": "#f7f9fb",
+                "outline": "#737686",
+                "on-tertiary-fixed-variant": "#5516be",
+                "primary-fixed-dim": "#b4c5ff",
+                "on-tertiary-fixed": "#23005c",
+                "on-secondary-container": "#57657a",
+                "surface-container-low": "#f2f4f6",
+                "surface-container-high": "#e6e8ea",
+                "background": "#f7f9fb",
+                "on-primary-fixed-variant": "#003ea8",
+                "on-surface-variant": "#434655",
+                "secondary": "#515f74",
+                "surface-variant": "#e0e3e5",
+                "on-primary-fixed": "#00174b",
+                "on-error-container": "#93000a",
+                "primary-fixed": "#dbe1ff",
+                "secondary-fixed": "#d5e3fc"
+            },
+            "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+            },
+            "fontFamily": {
+                "headline": ["Manrope"],
+                "body": ["Plus Jakarta Sans"],
+                "label": ["Plus Jakarta Sans"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        h1, h2, h3 {
+            font-family: 'Manrope', sans-serif;
+        }
+        .glass-ai {
+            background: rgba(125, 76, 231, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(99, 46, 205, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface antialiased">
+<!-- TopNavBar (JSON Managed) -->
+<header class="bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl shadow-sm docked full-width top-0 sticky z-50">
+<nav class="flex justify-between items-center w-full px-6 py-3 max-w-7xl mx-auto">
+<div class="flex items-center gap-8">
+<span class="text-2xl font-bold text-blue-800 dark:text-blue-200 tracking-tighter">pikabudy</span>
+<div class="hidden md:flex gap-6">
+<a class="font-manrope font-semibold tracking-tight text-slate-500 hover:text-blue-600 transition-colors" href="#">Classroom</a>
+<a class="font-manrope font-semibold tracking-tight text-slate-500 hover:text-blue-600 transition-colors" href="#">Curriculum</a>
+<a class="font-manrope font-semibold tracking-tight text-slate-500 hover:text-blue-600 transition-colors" href="#">Insights</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="px-5 py-2 text-sm font-semibold text-primary hover:bg-secondary-container rounded-lg transition-all duration-200">
+                    Login
+                </button>
+<div class="flex gap-2 text-slate-500">
+<span class="material-symbols-outlined cursor-pointer hover:text-blue-600">notifications</span>
+<span class="material-symbols-outlined cursor-pointer hover:text-blue-600">settings</span>
+</div>
+</div>
+</nav>
+</header>
+<main>
+<!-- Hero Section -->
+<section class="relative overflow-hidden pt-20 pb-32 px-6">
+<div class="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
+<div class="z-10">
+<div class="inline-flex items-center px-3 py-1 rounded-full bg-tertiary-fixed text-on-tertiary-fixed-variant text-xs font-bold mb-6 tracking-wider">
+                        AI-POWERED LEARNING
+                    </div>
+<h1 class="text-5xl lg:text-7xl font-extrabold text-on-surface leading-[1.1] mb-8 tracking-tighter">
+                        AI가 학습 과정을 분석하는 <br/>
+<span class="bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary-container">차세대 교육 플랫폼</span>
+</h1>
+<p class="text-xl text-secondary mb-10 max-w-lg leading-relaxed">
+                        정답만 알려주는 AI가 아닙니다. 당신의 사고 과정과 학습 패턴을 정밀하게 추적하여 최적의 성장을 가이드하는 나만의 AI 튜터를 만나보세요.
+                    </p>
+<div class="flex flex-col sm:flex-row gap-4">
+<button class="flex items-center justify-center gap-3 bg-gradient-to-br from-primary to-primary-container text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform">
+<svg class="w-6 h-6" viewbox="0 0 24 24">
+<path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="currentColor"></path>
+<path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="currentColor"></path>
+<path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="currentColor"></path>
+<path d="M12 5.38c1.62 0 3.06.56 4.21 1.66l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="currentColor"></path>
+</svg>
+                            Google로 시작하기
+                        </button>
+<button class="px-8 py-4 rounded-xl font-bold text-lg text-secondary bg-surface-container-high hover:bg-surface-container-highest transition-colors">
+                            데모 둘러보기
+                        </button>
+</div>
+</div>
+<div class="relative">
+<div class="absolute -top-20 -right-20 w-80 h-80 bg-tertiary/10 rounded-full blur-3xl"></div>
+<div class="absolute -bottom-10 -left-10 w-60 h-60 bg-primary/10 rounded-full blur-3xl"></div>
+<div class="relative bg-surface-container-lowest p-6 rounded-3xl shadow-2xl border border-outline-variant/20">
+<img alt="Student dashboard with AI insights" class="rounded-2xl w-full h-auto" data-alt="Modern clean educational dashboard UI showing learning progress graphs and an AI chat bubble in a minimalist classroom setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBnw-vtN-Qjpf-zFY9ja9GqQg2qQr22pNtanNfW2hLfH62dYOGCuvlI0N8LZnOZZyIFs5lNw94-fbaQbueRjbqjHxFdpkXQAtchIwkG5F2sA7Cd4O0sGpD0hAX7nTQcMcPkiTxnHxaSQMgwjOXfz6uFad5KRTsZO8ZMcFmxV69d2JY17nWCk3-JUn2VZLMr68aKPdcLVUaLQ_q3rdzs4IMkcUyKMWde4xhw-ib39UoPOkS0fUX8bsJECyaHpkjjW9rSvrBv5fEzw4g"/>
+<div class="absolute -bottom-6 -left-6 glass-ai p-4 rounded-2xl shadow-xl max-w-[200px]">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-tertiary text-sm">auto_awesome</span>
+<span class="text-xs font-bold text-tertiary uppercase tracking-tighter">AI Insight</span>
+</div>
+<p class="text-[10px] text-on-surface leading-snug">"수학적 증명 단계에서 논리적 비약이 발견되었습니다. 이 부분을 함께 보충해볼까요?"</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Features Bento Grid -->
+<section class="py-24 bg-surface-container-low">
+<div class="max-w-7xl mx-auto px-6">
+<div class="text-center mb-16">
+<h2 class="text-3xl md:text-4xl font-bold mb-4 tracking-tight">지능형 학습의 모든 것</h2>
+<p class="text-secondary max-w-xl mx-auto">기술과 교육의 결합이 만드는 새로운 몰입 경험</p>
+</div>
+<div class="grid md:grid-cols-3 gap-8">
+<!-- Feature 1: Process Tracking -->
+<div class="bg-surface-container-lowest p-8 rounded-3xl group hover:-translate-y-2 transition-all duration-300 shadow-sm">
+<div class="w-14 h-14 bg-secondary-container rounded-2xl flex items-center justify-center text-primary mb-6 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-3xl">timeline</span>
+</div>
+<h3 class="text-2xl font-bold mb-4">과정 추적</h3>
+<p class="text-secondary leading-relaxed">단순히 결과를 기록하는 것이 아닙니다. 학습자가 문제를 해결하는 동안 겪는 고민의 흔적과 시간을 초 단위로 분석합니다.</p>
+<div class="mt-8 pt-8 border-t border-surface-container-highest">
+<div class="flex items-center justify-between text-xs font-semibold text-outline uppercase tracking-wider">
+<span>Dynamic Analysis</span>
+<span class="text-primary">Real-time</span>
+</div>
+</div>
+</div>
+<!-- Feature 2: AI Feedback (Highlighted) -->
+<div class="bg-gradient-to-b from-tertiary-container/10 to-transparent p-8 rounded-3xl border border-tertiary-container/20 group hover:-translate-y-2 transition-all duration-300 shadow-sm relative overflow-hidden">
+<div class="absolute top-0 right-0 p-4">
+<span class="material-symbols-outlined text-tertiary opacity-20 text-6xl">auto_awesome</span>
+</div>
+<div class="w-14 h-14 bg-tertiary-container rounded-2xl flex items-center justify-center text-white mb-6 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">psychology</span>
+</div>
+<h3 class="text-2xl font-bold mb-4">AI 피드백</h3>
+<p class="text-secondary leading-relaxed">개별 학습 성향에 맞춘 실시간 피드백을 제공합니다. 취약점을 정밀 진단하고 보완 학습 콘텐츠를 즉시 생성하여 제공합니다.</p>
+<div class="mt-8 pt-8 border-t border-tertiary-container/10">
+<div class="flex items-center gap-2">
+<div class="flex -space-x-2">
+<div class="w-6 h-6 rounded-full bg-slate-200 border-2 border-white"></div>
+<div class="w-6 h-6 rounded-full bg-slate-300 border-2 border-white"></div>
+<div class="w-6 h-6 rounded-full bg-slate-400 border-2 border-white"></div>
+</div>
+<span class="text-xs font-medium text-tertiary">1.2M+ AI Interactions</span>
+</div>
+</div>
+</div>
+<!-- Feature 3: Integrated Management -->
+<div class="bg-surface-container-lowest p-8 rounded-3xl group hover:-translate-y-2 transition-all duration-300 shadow-sm">
+<div class="w-14 h-14 bg-secondary-container rounded-2xl flex items-center justify-center text-primary mb-6 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-3xl">hub</span>
+</div>
+<h3 class="text-2xl font-bold mb-4">통합 관리</h3>
+<p class="text-secondary leading-relaxed">분산된 학습 자료와 이력을 한곳에서 관리하세요. 대시보드를 통해 학습 진행률과 성취도를 직관적인 데이터로 확인 가능합니다.</p>
+<div class="mt-8 pt-8 border-t border-surface-container-highest">
+<div class="w-full bg-surface-container rounded-full h-1.5 mb-2">
+<div class="bg-primary h-1.5 rounded-full w-[85%]"></div>
+</div>
+<span class="text-[10px] text-outline font-medium">Weekly Goal Completion: 85%</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Proof Section -->
+<section class="py-24 max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-16 items-center">
+<div class="order-2 md:order-1">
+<img alt="Students collaborating" class="rounded-[2.5rem] shadow-xl" data-alt="Group of diverse university students working together on laptops in a bright modern co-working space with floor-to-ceiling windows" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCz4rVgG8JcvnJl2wkqIu8PJxMc0qo1akxO9EY84qM38taC5_QswNHRi8jNz15Q6A9ZKw4rBQLz-lDJi8bhiMoirehhlYud-DRCwRdc-M-J2eobVJinCzRArH_Rwn40lcmSbzg-_finiNIvo88JtxWORIKQwTVaX6VEbRLa1iGI4CnarjawsgTgELsFdpfldv0ITMXY5CvaCI4fh-RWNVlbR2Hu2zxHr87O__PxHe6Ml-yYnI7UHivN2fKv9pB7J4dKNmCtJuJxryk"/>
+</div>
+<div class="order-1 md:order-2">
+<h2 class="text-4xl font-bold mb-8 leading-tight">성장의 본질에 집중하는<br/>새로운 교육 방식</h2>
+<div class="space-y-8">
+<div class="flex gap-4">
+<div class="mt-1 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined text-sm">check</span>
+</div>
+<div>
+<h4 class="font-bold mb-1">데이터 기반 맞춤형 경로</h4>
+<p class="text-secondary text-sm">수천 개의 학습 노드를 연결하여 개인별 최적화된 커리큘럼을 실시간으로 재설계합니다.</p>
+</div>
+</div>
+<div class="flex gap-4">
+<div class="mt-1 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined text-sm">check</span>
+</div>
+<div>
+<h4 class="font-bold mb-1">인지 부하 최적화</h4>
+<p class="text-secondary text-sm">학습자의 현재 지식 수준에 맞춰 정보 제공의 밀도를 조절하여 몰입도를 극대화합니다.</p>
+</div>
+</div>
+<div class="flex gap-4">
+<div class="mt-1 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined text-sm">check</span>
+</div>
+<div>
+<h4 class="font-bold mb-1">협력적 학습 커뮤니티</h4>
+<p class="text-secondary text-sm">비슷한 학습 목표를 가진 동료들과 AI 튜터가 함께 시너지를 내는 소셜 러닝 환경을 제공합니다.</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Final CTA -->
+<section class="py-24 px-6">
+<div class="max-w-4xl mx-auto text-center bg-inverse-surface text-inverse-on-surface rounded-[3rem] p-12 md:p-20 relative overflow-hidden">
+<div class="absolute top-0 left-0 w-full h-full opacity-10 bg-[radial-gradient(circle_at_50%_120%,#004ac6,transparent)]"></div>
+<h2 class="text-3xl md:text-5xl font-extrabold mb-8 relative z-10 leading-tight">지금 바로<br/>공부의 패러다임을 바꾸세요.</h2>
+<div class="flex flex-col sm:flex-row gap-4 justify-center relative z-10">
+<button class="bg-primary hover:bg-primary-container text-white px-10 py-5 rounded-2xl font-bold text-xl transition-all shadow-xl shadow-primary/20">
+                        무료로 시작하기
+                    </button>
+<button class="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white px-10 py-5 rounded-2xl font-bold text-xl transition-all border border-white/20">
+                        문의하기
+                    </button>
+</div>
+<p class="mt-10 text-white/50 text-sm font-medium tracking-wide">Join 50,000+ proactive learners worldwide.</p>
+</div>
+</section>
+</main>
+<!-- Footer (JSON Managed) -->
+<footer class="bg-white dark:bg-slate-950 w-full py-8 mt-auto border-t border-slate-100 dark:border-slate-800">
+<div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center opacity-80 hover:opacity-100 transition-opacity">
+<div class="flex flex-col items-center md:items-start mb-6 md:mb-0">
+<span class="font-manrope font-bold text-slate-400 mb-2">pikabudy AI Education</span>
+<p class="font-plus-jakarta text-xs text-slate-500">© 2024 Pikabudy AI Education. Built for the Cognitive Atelier.</p>
+</div>
+<div class="flex gap-6">
+<a class="font-plus-jakarta text-xs text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors" href="#">Privacy Policy</a>
+<a class="font-plus-jakarta text-xs text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors" href="#">Terms of Service</a>
+<a class="font-plus-jakarta text-xs text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors" href="#">AI Ethics</a>
+<a class="font-plus-jakarta text-xs text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors" href="#">Contact Support</a>
+</div>
+</div>
+</footer>
+</body></html>

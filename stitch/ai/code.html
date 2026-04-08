@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AI Assistant | The Atelier</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&amp;family=Plus+Jakarta+Sans:wght@400;500;600&amp;family=JetBrains+Mono&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .font-headline { font-family: 'Manrope', sans-serif; }
+        .glass-ai {
+            background: rgba(99, 46, 205, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .luminous-glow {
+            box-shadow: 0 0 40px -10px rgba(99, 46, 205, 0.15);
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed-dim": "#b4c5ff",
+                        "surface-container-low": "#f2f4f6",
+                        "primary-fixed": "#dbe1ff",
+                        "tertiary-fixed": "#e9ddff",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "surface": "#f7f9fb",
+                        "inverse-primary": "#b4c5ff",
+                        "surface-dim": "#d8dadc",
+                        "on-secondary-fixed-variant": "#3a485b",
+                        "on-primary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "background": "#f7f9fb",
+                        "tertiary-fixed-dim": "#d0bcff",
+                        "inverse-surface": "#2d3133",
+                        "on-surface-variant": "#434655",
+                        "on-primary-container": "#eeefff",
+                        "tertiary-container": "#7d4ce7",
+                        "on-background": "#191c1e",
+                        "on-secondary-container": "#57657a",
+                        "primary": "#004ac6",
+                        "outline-variant": "#c3c6d7",
+                        "surface-variant": "#e0e3e5",
+                        "on-secondary-fixed": "#0d1c2e",
+                        "on-primary-fixed": "#00174b",
+                        "secondary-fixed": "#d5e3fc",
+                        "inverse-on-surface": "#eff1f3",
+                        "on-error-container": "#93000a",
+                        "error-container": "#ffdad6",
+                        "surface-bright": "#f7f9fb",
+                        "on-tertiary-container": "#f6edff",
+                        "surface-tint": "#0053db",
+                        "error": "#ba1a1a",
+                        "on-surface": "#191c1e",
+                        "secondary": "#515f74",
+                        "secondary-fixed-dim": "#b9c7df",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-fixed": "#23005c",
+                        "surface-container-highest": "#e0e3e5",
+                        "outline": "#737686",
+                        "primary-container": "#2563eb",
+                        "tertiary": "#632ecd",
+                        "secondary-container": "#d5e3fc",
+                        "on-secondary": "#ffffff",
+                        "surface-container-high": "#e6e8ea",
+                        "surface-container": "#eceef0",
+                        "on-tertiary-fixed-variant": "#5516be"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Plus Jakarta Sans"],
+                        "label": ["Plus Jakarta Sans"]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- Top Navigation Anchor -->
+<header class="w-full sticky top-0 z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl shadow-sm dark:shadow-none">
+<div class="flex justify-between items-center h-16 px-8 max-w-[1440px] mx-auto">
+<div class="flex items-center gap-8">
+<span class="text-2xl font-bold tracking-tighter text-blue-700 dark:text-blue-500 font-['Manrope']">Pikabudy</span>
+<nav class="hidden md:flex items-center gap-6 font-['Manrope'] font-semibold tracking-tight">
+<a class="text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-colors" href="#">Curriculum</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-colors" href="#">Analytics</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-colors" href="#">Community</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-colors" href="#">Library</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="bg-primary text-on-primary px-5 py-2 rounded-lg font-semibold text-sm hover:opacity-90 transition-all scale-95 active:opacity-80">Ask AI</button>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined p-2 text-secondary hover:bg-slate-50 rounded-full cursor-pointer">notifications</span>
+<span class="material-symbols-outlined p-2 text-secondary hover:bg-slate-50 rounded-full cursor-pointer">account_circle</span>
+</div>
+</div>
+</div>
+</header>
+<div class="flex h-[calc(100vh-64px)] overflow-hidden">
+<!-- SideNavBar (The Anchor) -->
+<aside class="hidden md:flex h-screen w-64 flex-col py-6 px-4 gap-4 bg-slate-50 dark:bg-slate-900 sticky top-0">
+<div class="flex items-center gap-3 px-2 mb-4">
+<div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-white">menu_book</span>
+</div>
+<div>
+<div class="font-['Manrope'] font-extrabold text-blue-600 leading-tight">The Atelier</div>
+<div class="text-[10px] text-secondary font-medium uppercase tracking-widest">Deep Learning Mode</div>
+</div>
+</div>
+<nav class="flex flex-col gap-1 font-['Plus_Jakarta_Sans'] text-sm font-medium">
+<a class="flex items-center gap-3 px-3 py-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg hover:pl-2 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">menu_book</span> Curriculum
+                </a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg hover:pl-2 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">analytics</span> Analytics
+                </a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg hover:pl-2 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">groups</span> Community
+                </a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg hover:pl-2 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">folder_open</span> Library
+                </a>
+<a class="flex items-center gap-3 px-3 py-2.5 bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm rounded-lg transition-all duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">auto_awesome</span> AI Assistant
+                </a>
+</nav>
+<div class="mt-auto p-4 bg-tertiary-fixed rounded-2xl">
+<div class="text-on-tertiary-fixed-variant font-bold text-xs mb-1 uppercase tracking-tighter">Current Session</div>
+<div class="text-tertiary font-semibold text-sm">Neural Networks Deep Dive</div>
+<button class="mt-3 w-full py-2 bg-tertiary text-white rounded-lg text-xs font-bold shadow-md">New Lesson</button>
+</div>
+</aside>
+<!-- Main Workspace -->
+<main class="flex-1 flex flex-col md:flex-row bg-surface overflow-hidden">
+<!-- Whiteboard & Content Area -->
+<section class="flex-1 flex flex-col min-w-0 p-6 gap-6 bg-surface-container-low overflow-y-auto no-scrollbar">
+<!-- Workspace Header -->
+<div class="flex justify-between items-end">
+<div>
+<h1 class="text-3xl font-bold font-headline tracking-tight text-on-surface">Interactive Whiteboard</h1>
+<p class="text-secondary text-sm">Visualizing complex systems and data structures</p>
+</div>
+<div class="flex gap-2">
+<button class="p-2 rounded-lg bg-surface-container-lowest text-secondary shadow-sm hover:bg-white transition-colors">
+<span class="material-symbols-outlined">save</span>
+</button>
+<button class="p-2 rounded-lg bg-surface-container-lowest text-secondary shadow-sm hover:bg-white transition-colors">
+<span class="material-symbols-outlined">share</span>
+</button>
+</div>
+</div>
+<!-- The Bento Grid Whiteboard -->
+<div class="grid grid-cols-12 grid-rows-6 gap-4 min-h-[600px]">
+<!-- Main Diagram Area -->
+<div class="col-span-12 lg:col-span-8 row-span-4 bg-surface-container-lowest rounded-2xl p-6 shadow-sm relative overflow-hidden group">
+<div class="absolute top-4 left-4 flex gap-2 z-10">
+<div class="bg-surface-container-high px-3 py-1 rounded-full text-xs font-semibold text-on-surface-variant flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span>
+                                Live Syncing
+                            </div>
+</div>
+<div class="w-full h-full flex items-center justify-center border-2 border-dashed border-outline-variant rounded-xl bg-slate-50/50">
+<div class="text-center p-8">
+<img alt="Geometric AI abstraction" class="w-64 h-64 mx-auto mb-6 opacity-80" data-alt="Abstract geometric network diagram with nodes and connections in soft blue and purple tones" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZAXYH7RUYupvszyWcDfGK5vJcwa3az1O8e2hyBNrXA8aa_ekzMTdy15b-OMK8E4t8H-Dm_yXRA202Am87L7muwES3vhvAefjMdbptO_bgmlRktg2SMo9-_AKmWr402rg4ddk-B5zuoWyFIIL_Bim-PMssJqtN9cs8Y_dt9C-6rC_fW2Yx0LEXifH9Zhi9ilH9DFxSO5y8ok_Qc8qPU181ohE4WqRm7QQQIPzGiEMoDe_XTjVA3HXKCExxwcbM4kNNL0jfDetxSR4"/>
+<p class="text-secondary font-medium">Neural Network Architecture: Visual Representation</p>
+<button class="mt-4 px-6 py-2.5 bg-surface-container-highest text-on-surface font-semibold rounded-xl text-sm transition-all hover:bg-surface-variant">
+                                    Edit Layout
+                                </button>
+</div>
+</div>
+</div>
+<!-- Side Insight Cards -->
+<div class="col-span-12 lg:col-span-4 row-span-2 glass-ai p-6 rounded-2xl border border-tertiary/10 luminous-glow">
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">lightbulb</span>
+<h3 class="font-headline font-bold text-tertiary text-lg">AI Concept Breakdown</h3>
+</div>
+<p class="text-sm text-secondary leading-relaxed">
+                            The current model uses <span class="font-semibold text-tertiary">Backpropagation</span> to minimize the cost function. Observe how the gradients flow back through the hidden layers.
+                        </p>
+</div>
+<div class="col-span-12 lg:col-span-4 row-span-2 bg-surface-container-lowest p-6 rounded-2xl shadow-sm">
+<h3 class="font-headline font-bold text-on-surface text-lg mb-3">Technical Data</h3>
+<div class="space-y-3">
+<div class="flex justify-between items-center py-2 border-b border-surface-container">
+<span class="text-xs text-secondary uppercase font-bold tracking-widest">Complexity</span>
+<span class="font-mono text-sm text-primary">O(n log n)</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-surface-container">
+<span class="text-xs text-secondary uppercase font-bold tracking-widest">Efficiency</span>
+<span class="font-mono text-sm text-primary">89.4%</span>
+</div>
+<div class="flex justify-between items-center py-2">
+<span class="text-xs text-secondary uppercase font-bold tracking-widest">Nodes Active</span>
+<span class="font-mono text-sm text-primary">1,024</span>
+</div>
+</div>
+</div>
+<!-- Horizontal Tooling -->
+<div class="col-span-12 row-span-2 bg-inverse-surface rounded-2xl p-6 flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<h3 class="font-headline font-bold text-surface text-lg">Session Code Editor</h3>
+<div class="flex gap-2">
+<span class="px-2 py-1 bg-surface/10 rounded text-[10px] text-surface/60 font-mono">Python 3.10</span>
+<span class="px-2 py-1 bg-tertiary/20 rounded text-[10px] text-tertiary-fixed font-mono">AI Analysis Active</span>
+</div>
+</div>
+<div class="flex-1 font-mono text-sm text-primary-fixed-dim overflow-hidden bg-black/20 p-4 rounded-xl border border-white/5">
+<pre><code>def train_model(data, epochs=100):
+    for epoch in range(epochs):
+        # AI Tip: Ensure learning rate is decayed
+        # during late stage training sessions.
+        optimizer.step()
+        print(f"Epoch {epoch} loss: {loss.item()}")</code></pre>
+</div>
+</div>
+</div>
+</section>
+<!-- AI Chat & Tutor Sidebar -->
+<section class="w-full md:w-96 flex flex-col bg-surface border-l border-surface-container relative">
+<!-- Persistent Chat History Header -->
+<div class="p-6 border-b border-surface-container flex items-center justify-between bg-surface-container-lowest">
+<div>
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-tertiary"></div>
+<h2 class="font-headline font-bold text-on-surface">AI Tutor Session</h2>
+</div>
+<p class="text-[11px] text-secondary font-medium mt-0.5">Response time: &lt; 200ms</p>
+</div>
+<button class="p-2 text-secondary hover:bg-slate-100 rounded-lg transition-colors">
+<span class="material-symbols-outlined">history</span>
+</button>
+</div>
+<!-- Messages Container -->
+<div class="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
+<!-- AI Message -->
+<div class="flex gap-4">
+<div class="w-8 h-8 rounded-lg bg-tertiary-container flex-shrink-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-sm" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+</div>
+<div class="space-y-3 max-w-[85%]">
+<div class="glass-ai p-4 rounded-2xl rounded-tl-none border border-tertiary/10">
+<p class="text-sm text-on-surface leading-relaxed">
+                                    I've analyzed the neural network diagram you're building. The <span class="font-bold text-tertiary">ReLU activation</span> in your third layer might lead to vanishing gradients. Would you like to try <span class="underline decoration-tertiary/30">Leaky ReLU</span> instead?
+                                </p>
+</div>
+<div class="flex gap-2">
+<button class="text-[10px] font-bold text-tertiary px-3 py-1.5 bg-tertiary-fixed rounded-full hover:bg-tertiary-fixed-dim transition-colors">Explain Why</button>
+<button class="text-[10px] font-bold text-secondary px-3 py-1.5 bg-surface-container rounded-full hover:bg-surface-container-high transition-colors">Show Example</button>
+</div>
+</div>
+</div>
+<!-- User Message -->
+<div class="flex gap-4 flex-row-reverse">
+<div class="w-8 h-8 rounded-lg bg-primary flex-shrink-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-sm">person</span>
+</div>
+<div class="bg-surface-container-high p-4 rounded-2xl rounded-tr-none max-w-[85%] shadow-sm">
+<p class="text-sm text-on-surface-variant">
+                                That makes sense. Can you help me rewrite the activation function in the code block below?
+                            </p>
+</div>
+</div>
+<!-- AI Code Preview Message -->
+<div class="flex gap-4">
+<div class="w-8 h-8 rounded-lg bg-tertiary-container flex-shrink-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-sm" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+</div>
+<div class="bg-surface-container-lowest p-1 rounded-2xl border border-surface-container overflow-hidden shadow-sm">
+<div class="bg-slate-900 p-4 font-mono text-xs text-primary-fixed leading-relaxed">
+<span class="text-tertiary-fixed"># Implementation of Leaky ReLU</span><br/>
+                                x = torch.nn.functional.leaky_relu(x, negative_slope=0.01)
+                            </div>
+<button class="w-full py-2.5 text-xs font-bold text-primary bg-primary-fixed/30 hover:bg-primary-fixed/50 transition-colors">Apply Change to Workspace</button>
+</div>
+</div>
+</div>
+<!-- Input Zone -->
+<div class="p-6 bg-surface-container-lowest border-t border-surface-container">
+<div class="relative group">
+<textarea class="w-full bg-surface-container-low border-none rounded-2xl p-4 pr-12 text-sm focus:ring-2 focus:ring-tertiary/20 placeholder:text-secondary/50 resize-none h-24 transition-all" placeholder="Ask your AI tutor anything..."></textarea>
+<div class="absolute bottom-3 right-3 flex gap-1">
+<button class="p-2 text-secondary hover:text-tertiary transition-colors">
+<span class="material-symbols-outlined text-lg">attach_file</span>
+</button>
+<button class="p-2 bg-tertiary text-white rounded-xl shadow-lg shadow-tertiary/20 hover:scale-105 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-lg">send</span>
+</button>
+</div>
+</div>
+<div class="mt-4 flex items-center justify-between">
+<div class="flex gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+<span class="text-[10px] text-secondary font-bold uppercase tracking-widest">AI Online</span>
+</div>
+<button class="text-[10px] text-tertiary font-bold hover:underline">Voice Interaction (Beta)</button>
+</div>
+</div>
+</section>
+</main>
+</div>
+</body></html>

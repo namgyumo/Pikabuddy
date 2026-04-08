@@ -1,0 +1,171 @@
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: "professor" | "student" | null;
+  avatar_url: string | null;
+  school: string | null;
+  department: string | null;
+  student_id: string | null;
+}
+
+export interface Course {
+  id: string;
+  professor_id: string;
+  title: string;
+  description: string | null;
+  objectives: string[] | null;
+  invite_code: string;
+  created_at: string;
+}
+
+export interface Assignment {
+  id: string;
+  course_id: string;
+  title: string;
+  topic: string | null;
+  type: "coding" | "writing" | "both";
+  status: "draft" | "published";
+  problems: Problem[];
+  rubric: Rubric;
+  ai_policy: "free" | "normal" | "strict" | "exam";
+  language: string;
+  writing_prompt: string | null;
+  due_date: string | null;
+  show_score_to_student: boolean;
+  grading_strictness: "mild" | "normal" | "strict";
+  grading_note: string | null;
+  created_at: string;
+}
+
+export interface Problem {
+  id: number;
+  title: string;
+  description: string;
+  starter_code: string;
+  expected_output: string;
+  hints: string[];
+}
+
+export interface Rubric {
+  criteria: { name: string; weight: number; description: string }[];
+}
+
+export interface Submission {
+  id: string;
+  assignment_id: string;
+  student_id: string;
+  code: string;
+  status: "submitted" | "analyzing" | "completed";
+  submitted_at: string;
+}
+
+export interface Snapshot {
+  id: string;
+  assignment_id: string;
+  student_id: string;
+  code_diff: Record<string, unknown>;
+  cursor_position: { line: number; col: number } | null;
+  is_paste: boolean;
+  paste_source: "internal" | "external" | null;
+  created_at: string;
+}
+
+export interface Note {
+  id: string;
+  student_id: string;
+  course_id: string;
+  parent_id: string | null;
+  title: string;
+  content: Record<string, unknown>;
+  gap_analysis: Record<string, unknown> | null;
+  understanding_score: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NoteTag {
+  id: string;
+  note_id: string;
+  tag: string;
+  created_at: string;
+}
+
+export interface NoteLink {
+  source_note_id: string;
+  target_note_id: string;
+  target_title: string;
+}
+
+export interface GraphNode {
+  id: string;
+  title: string;
+  parent_id: string | null;
+  understanding_score: number | null;
+  tags: string[];
+  updated_at: string;
+  created_at: string;
+  content_length: number;
+}
+
+export interface GraphEdge {
+  source: string;
+  target: string;
+  type: "parent" | "link" | "similar";
+}
+
+export interface GraphData {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
+
+export interface WeeklyReport {
+  period: string;
+  total_notes: number;
+  new_notes: number;
+  avg_score: number | null;
+  weakest_notes: { id: string; title: string; score: number }[];
+  summary: string;
+}
+
+export interface CourseMaterial {
+  id: string;
+  course_id: string;
+  uploaded_by: string;
+  title: string;
+  file_name: string;
+  file_url: string;
+  file_size: number;
+  mime_type: string | null;
+  created_at: string;
+}
+
+export interface AiAnalysis {
+  id: string;
+  submission_id: string;
+  score: number | null;
+  final_score: number | null;
+  feedback: string | null;
+  logic_analysis: Record<string, unknown> | null;
+  quality_analysis: Record<string, unknown> | null;
+  suggestions: string[] | null;
+  created_at: string;
+}
+
+export interface DashboardData {
+  course_id: string;
+  student_count: number;
+  avg_class_score: number;
+  at_risk_count: number;
+  students: StudentSummary[];
+}
+
+export interface StudentSummary {
+  student: Pick<User, "id" | "name" | "email" | "avatar_url">;
+  avg_score: number;
+  avg_understanding: number;
+  paste_count: number;
+  gap_level: "high" | "medium" | "low";
+  submission_count: number;
+  status: "warning" | "ok";
+}

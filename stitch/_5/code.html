@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+
+<html class="light" lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pikabuddy - 학생 상세 인사이트</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Plus+Jakarta+Sans:wght@400;500;600&amp;family=JetBrains+Mono&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-variant": "#e0e3e5",
+                    "on-surface": "#191c1e",
+                    "on-tertiary-fixed": "#23005c",
+                    "tertiary-fixed-dim": "#d0bcff",
+                    "surface-tint": "#0053db",
+                    "secondary": "#515f74",
+                    "on-secondary-fixed-variant": "#3a485b",
+                    "outline": "#737686",
+                    "on-background": "#191c1e",
+                    "background": "#f7f9fb",
+                    "surface-container-highest": "#e0e3e5",
+                    "primary": "#004ac6",
+                    "on-error-container": "#93000a",
+                    "on-tertiary-container": "#f6edff",
+                    "inverse-primary": "#b4c5ff",
+                    "on-secondary": "#ffffff",
+                    "inverse-surface": "#2d3133",
+                    "tertiary-fixed": "#e9ddff",
+                    "secondary-fixed": "#d5e3fc",
+                    "tertiary-container": "#7d4ce7",
+                    "surface-container-high": "#e6e8ea",
+                    "on-primary-container": "#eeefff",
+                    "surface-dim": "#d8dadc",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container-low": "#f2f4f6",
+                    "secondary-fixed-dim": "#b9c7df",
+                    "primary-fixed": "#dbe1ff",
+                    "on-secondary-fixed": "#0d1c2e",
+                    "inverse-on-surface": "#eff1f3",
+                    "surface-container": "#eceef0",
+                    "on-tertiary-fixed-variant": "#5516be",
+                    "primary-container": "#2563eb",
+                    "on-primary": "#ffffff",
+                    "on-error": "#ffffff",
+                    "on-surface-variant": "#434655",
+                    "primary-fixed-dim": "#b4c5ff",
+                    "outline-variant": "#c3c6d7",
+                    "error-container": "#ffdad6",
+                    "on-secondary-container": "#57657a",
+                    "on-primary-fixed-variant": "#003ea8",
+                    "secondary-container": "#d5e3fc",
+                    "surface": "#f7f9fb",
+                    "error": "#ba1a1a",
+                    "on-tertiary": "#ffffff",
+                    "tertiary": "#632ecd",
+                    "surface-bright": "#f7f9fb",
+                    "on-primary-fixed": "#00174b"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Plus Jakarta Sans"],
+                    "label": ["Plus Jakarta Sans"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .ai-glass {
+            background: rgba(125, 76, 231, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface">
+<!-- SideNavBar (Desktop) -->
+<aside class="hidden md:flex h-screen w-72 flex-col fixed left-0 top-0 z-40 bg-slate-50 dark:bg-slate-900 flex flex-col gap-4 p-6 border-r border-slate-200/50 dark:border-slate-800/50">
+<div class="mb-8">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">psychology</span>
+</div>
+<div>
+<h1 class="font-manrope font-extrabold text-blue-700 text-xl">Cognitive Atelier</h1>
+<p class="text-[10px] text-secondary font-medium tracking-widest uppercase">AI-Powered Learning</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-xl hover:translate-x-1 transition-all" href="#">
+<span class="material-symbols-outlined">switch_account</span>
+<span class="font-plus-jakarta text-sm font-medium">Role Selection</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-400 rounded-xl shadow-sm hover:translate-x-1 transition-all" href="#">
+<span class="material-symbols-outlined">query_stats</span>
+<span class="font-plus-jakarta text-sm font-medium">Student Analysis</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-xl hover:translate-x-1 transition-all" href="#">
+<span class="material-symbols-outlined">menu_book</span>
+<span class="font-plus-jakarta text-sm font-medium">Course Management</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-xl hover:translate-x-1 transition-all" href="#">
+<span class="material-symbols-outlined">auto_graph</span>
+<span class="font-plus-jakarta text-sm font-medium">Growth Reports</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-xl hover:translate-x-1 transition-all" href="#">
+<span class="material-symbols-outlined">psychology</span>
+<span class="font-plus-jakarta text-sm font-medium">AI Insights</span>
+</a>
+</nav>
+<div class="mt-auto space-y-4">
+<button class="w-full py-3 px-4 bg-tertiary-container/10 text-tertiary font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-tertiary-container/20 transition-all active:scale-95">
+<span class="material-symbols-outlined text-sm">bolt</span>
+                Ask AI Mentor
+            </button>
+<div class="pt-4 border-t border-slate-200/50">
+<a class="flex items-center gap-3 px-4 py-2 text-slate-500 text-xs font-medium hover:text-slate-700" href="#">
+<span class="material-symbols-outlined text-sm">help</span>
+                    Support
+                </a>
+<a class="flex items-center gap-3 px-4 py-2 text-slate-500 text-xs font-medium hover:text-slate-700" href="#">
+<span class="material-symbols-outlined text-sm">logout</span>
+                    Sign Out
+                </a>
+</div>
+</div>
+</aside>
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 left-0 md:left-72 z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl shadow-sm no-border">
+<div class="flex justify-between items-center w-full px-8 py-4 max-w-[1920px] mx-auto">
+<div class="flex items-center gap-8">
+<h2 class="font-manrope font-black tracking-tighter text-blue-700 text-2xl">Pikabuddy</h2>
+<nav class="hidden lg:flex items-center gap-6">
+<a class="font-manrope font-bold text-lg tracking-tight text-slate-500 hover:text-blue-600 transition-colors" href="#">Dashboard</a>
+<a class="font-manrope font-bold text-lg tracking-tight text-slate-500 hover:text-blue-600 transition-colors" href="#">Curriculum</a>
+<a class="font-manrope font-bold text-lg tracking-tight text-blue-700 border-b-2 border-blue-700 pb-1" href="#">Analytics</a>
+<a class="font-manrope font-bold text-lg tracking-tight text-slate-500 hover:text-blue-600 transition-colors" href="#">Community</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="bg-primary hover:bg-primary/90 text-white px-5 py-2 rounded-full font-bold text-sm transition-all flex items-center gap-2 active:scale-95">
+<span class="material-symbols-outlined text-sm">smart_toy</span>
+                    AI Tutor
+                </button>
+<div class="flex items-center gap-2">
+<button class="p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-all">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-all">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</div>
+<img alt="User profile avatar" class="w-10 h-10 rounded-full border-2 border-white shadow-sm" data-alt="professional portrait of a university professor in a light blue shirt, clean background, warm studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDeT-hZ9Nh_mSm_ywQx4Fp83KeQxjtJmdMZDE4kEi5JFPBgF3pf4qQRLGd96tuNYQhLokx1dk_lEgbQWXBs8jvi619i2K8OuW4AMczAknhQfdcfVHx5VWxdfPQT4SpNt8QBHLPmFiL3qzQEmu2z0yA66wkoezyqxrrEL1-Suc_JwyuokLRNE7qNVi9ykvd4eqPdjViI1ryMSS1kSRmEGSow6m7_psNzLKNdXaeHENelQp5EzuwYY9NEuna2Onzy1fJb3zYafWtNrHE"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-24 pb-12 md:pl-80 px-8 bg-surface min-h-screen">
+<div class="max-w-6xl mx-auto space-y-8">
+<!-- Student Header Profile Section (Asymmetric Layout) -->
+<section class="flex flex-col lg:flex-row gap-8 items-start">
+<div class="flex-1 bg-surface-container-lowest p-8 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] flex items-center gap-8 w-full">
+<div class="relative">
+<img alt="Student Avatar" class="w-32 h-32 rounded-3xl object-cover ring-4 ring-primary/5" data-alt="headshot of a focused male asian college student wearing glasses, neutral expression, library background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBGjN6NsXZomRb4pDgeRZDhcE170JK7NGVFbOtOWdquQNi6Z_LJn4g1j3gEkWNfvhOlcuKMALiQ_YnY7FMfFUb1e2XgENHHvy8yMsN6tV7uuweBWLsFs5exMzAOvYzI3SCociUEiZKWVyn4cJXldqP8ExeQL15uMJwAqwcl0I2ON9eZ8vwDRk_F_S0UJewSTbituOq1rh4n0f_X8YqquGo3hAzdxrT8pDe_5_IAKNYxE1NRZ9idOUA1Fs_mBbuxoXmGv4uL1juRjb0"/>
+<div class="absolute -bottom-2 -right-2 bg-green-500 border-4 border-white w-8 h-8 rounded-full"></div>
+</div>
+<div class="space-y-1">
+<div class="flex items-center gap-3">
+<h3 class="font-manrope text-3xl font-bold tracking-tight">김철수 <span class="text-secondary text-lg font-normal">Chul-soo Kim</span></h3>
+<span class="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full">컴퓨터공학과</span>
+</div>
+<p class="text-secondary flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">mail</span>
+                            chulsoo.k@university.ac.kr
+                        </p>
+<div class="flex gap-4 pt-4">
+<div class="bg-surface-container-low px-4 py-2 rounded-lg">
+<p class="text-[10px] text-secondary font-bold uppercase tracking-wider">과제 제출율</p>
+<p class="font-manrope font-bold text-xl">100%</p>
+</div>
+<div class="bg-surface-container-low px-4 py-2 rounded-lg">
+<p class="text-[10px] text-secondary font-bold uppercase tracking-wider">평균 학습시간</p>
+<p class="font-manrope font-bold text-xl">4.2h<span class="text-xs text-secondary font-normal">/일</span></p>
+</div>
+</div>
+</div>
+</div>
+<!-- Comprehensive Score Card (Material 3 Surface) -->
+<div class="w-full lg:w-72 bg-primary-container p-8 rounded-xl text-on-primary-container flex flex-col items-center justify-center text-center space-y-4">
+<p class="font-manrope font-bold text-sm tracking-widest opacity-80 uppercase">종합 이해도</p>
+<div class="relative w-32 h-32 flex items-center justify-center">
+<svg class="absolute inset-0 w-full h-full transform -rotate-90">
+<circle class="opacity-20" cx="64" cy="64" fill="transparent" r="58" stroke="currentColor" stroke-width="8"></circle>
+<circle cx="64" cy="64" fill="transparent" r="58" stroke="white" stroke-dasharray="364.4" stroke-dashoffset="29.1" stroke-linecap="round" stroke-width="8"></circle>
+</svg>
+<span class="text-4xl font-manrope font-black">92<span class="text-xl">%</span></span>
+</div>
+<p class="text-sm font-medium">상위 3% 이내 성취도</p>
+</div>
+</section>
+<!-- Main Insight Grid (Bento Style) -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+<!-- Weekly Understanding Graph (Wide Card) -->
+<div class="md:col-span-8 bg-surface-container-low p-8 rounded-xl">
+<div class="flex justify-between items-center mb-10">
+<div>
+<h4 class="font-manrope text-xl font-bold">주차별 이해도 추이</h4>
+<p class="text-sm text-secondary">C++ 프로그래밍 입문</p>
+</div>
+<div class="flex gap-2">
+<button class="bg-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm">이번 학기</button>
+<button class="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary">지난 학기</button>
+</div>
+</div>
+<div class="h-64 flex items-end justify-between gap-4 px-2">
+<!-- Bar chart mockup -->
+<div class="flex-1 flex flex-col items-center gap-3">
+<div class="w-full bg-slate-200 rounded-t-lg h-[65%] group transition-all hover:bg-primary relative">
+<span class="absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity">65%</span>
+</div>
+<span class="text-[10px] font-bold text-secondary">1주</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-3">
+<div class="w-full bg-slate-200 rounded-t-lg h-[72%] group transition-all hover:bg-primary relative">
+<span class="absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity">72%</span>
+</div>
+<span class="text-[10px] font-bold text-secondary">2주</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-3">
+<div class="w-full bg-slate-200 rounded-t-lg h-[88%] group transition-all hover:bg-primary relative">
+<span class="absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity">88%</span>
+</div>
+<span class="text-[10px] font-bold text-secondary">3주</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-3">
+<div class="w-full bg-primary rounded-t-lg h-[92%] group transition-all relative">
+<span class="absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-bold">92%</span>
+</div>
+<span class="text-[10px] font-bold text-primary">4주</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-3">
+<div class="w-full bg-slate-200 rounded-t-lg h-[85%] group transition-all hover:bg-primary relative">
+<span class="absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity">85%</span>
+</div>
+<span class="text-[10px] font-bold text-secondary">5주</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-3">
+<div class="w-full bg-slate-200 rounded-t-lg h-[94%] group transition-all hover:bg-primary relative">
+<span class="absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity">94%</span>
+</div>
+<span class="text-[10px] font-bold text-secondary">6주</span>
+</div>
+</div>
+</div>
+<!-- AI Comment Card (Glassmorphism Accent) -->
+<div class="md:col-span-4 ai-glass p-8 rounded-xl flex flex-col border border-tertiary/10">
+<div class="flex items-center gap-2 text-tertiary mb-6">
+<span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<h4 class="font-manrope font-bold">AI 학습 인사이트</h4>
+</div>
+<div class="flex-1 space-y-4">
+<p class="text-on-surface leading-relaxed text-sm">
+                            "이 학생은 <strong class="text-primary">포인터 개념</strong>에서 특히 높은 이해도를 보이나, <strong class="text-error">동적 할당</strong> 부분에서 AI 힌트를 3회 이상 요청했습니다."
+                        </p>
+<div class="bg-white/50 p-4 rounded-lg space-y-2">
+<p class="text-xs font-bold text-tertiary uppercase tracking-tighter">처방전</p>
+<p class="text-xs text-secondary leading-tight">메모리 누수(Memory Leak) 관련 심화 과제를 제공하여 실전 응용력을 강화할 것을 권장합니다.</p>
+</div>
+</div>
+<button class="mt-6 w-full py-2.5 bg-tertiary text-white rounded-lg font-bold text-xs hover:shadow-lg hover:shadow-tertiary/20 transition-all">맞춤형 과제 생성하기</button>
+</div>
+<!-- Copy/Paste Detection Timeline (Tall Card) -->
+<div class="md:col-span-5 bg-surface-container-low p-8 rounded-xl flex flex-col">
+<div class="flex justify-between items-start mb-8">
+<h4 class="font-manrope text-xl font-bold">부정행위 의심 타임라인</h4>
+<span class="bg-surface-container-highest px-3 py-1 rounded-full text-[10px] font-bold uppercase">Safe Level: High</span>
+</div>
+<div class="flex-1 space-y-6">
+<div class="flex gap-4 relative">
+<div class="w-0.5 bg-slate-200 absolute left-[15px] top-6 bottom-0"></div>
+<div class="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm z-10">
+<span class="material-symbols-outlined text-slate-400 text-lg">edit</span>
+</div>
+<div class="flex-1">
+<p class="text-xs font-bold">14:05 - 정상 타이핑 감지</p>
+<p class="text-[11px] text-secondary">주석 작성 및 변수 선언</p>
+</div>
+</div>
+<div class="flex gap-4 relative">
+<div class="w-0.5 bg-slate-200 absolute left-[15px] top-6 bottom-0"></div>
+<div class="w-8 h-8 rounded-full bg-error/10 flex items-center justify-center shadow-sm z-10">
+<span class="material-symbols-outlined text-error text-lg">content_paste</span>
+</div>
+<div class="flex-1">
+<p class="text-xs font-bold text-error">14:12 - 대량 텍스트 삽입</p>
+<p class="text-[11px] text-secondary">외부 소스코드 45라인 동시 입력</p>
+<div class="mt-2 bg-error/5 p-2 rounded border border-error/10 text-[10px] font-mono">
+                                    template &lt;typename T&gt; class Node...
+                                </div>
+</div>
+</div>
+<div class="flex gap-4 relative">
+<div class="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm z-10">
+<span class="material-symbols-outlined text-slate-400 text-lg">delete</span>
+</div>
+<div class="flex-1">
+<p class="text-xs font-bold">14:15 - 코드 수정 (삭제)</p>
+<p class="text-[11px] text-secondary">붙여넣은 코드의 일부 파라미터 변경</p>
+</div>
+</div>
+</div>
+</div>
+<!-- AI Tutor Conversation Log Summary (Grid Content) -->
+<div class="md:col-span-7 bg-surface-container-low p-8 rounded-xl">
+<h4 class="font-manrope text-xl font-bold mb-6">AI 튜터 대화 로그 요약</h4>
+<div class="space-y-4">
+<div class="bg-surface-container-lowest p-5 rounded-xl border border-outline-variant/10">
+<div class="flex justify-between items-center mb-3">
+<span class="text-[10px] font-bold text-tertiary-container bg-tertiary-container/10 px-2 py-0.5 rounded">Topic: Stack &amp; Queue</span>
+<span class="text-[10px] text-secondary">어제 오후 3:45</span>
+</div>
+<div class="flex gap-3 items-start">
+<div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-sm">person</span>
+</div>
+<p class="text-xs text-on-surface">"스택에서 pop 연산을 수행할 때 언더플로우 예외처리를 어떻게 해야 하나요?"</p>
+</div>
+<div class="flex gap-3 items-start mt-3 pt-3 border-t border-slate-100">
+<div class="w-8 h-8 rounded-full bg-tertiary/10 flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-tertiary text-sm">smart_toy</span>
+</div>
+<p class="text-xs text-on-surface italic font-medium">"현재 구현하신 코드에서 top 인덱스가 -1인지 먼저 확인하는 조건문을..."</p>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl border border-outline-variant/10 opacity-60">
+<div class="flex justify-between items-center mb-3">
+<span class="text-[10px] font-bold text-tertiary-container bg-tertiary-container/10 px-2 py-0.5 rounded">Topic: Recursion</span>
+<span class="text-[10px] text-secondary">2일 전</span>
+</div>
+<div class="flex gap-3 items-start">
+<div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-sm">person</span>
+</div>
+<p class="text-xs text-on-surface">"재귀함수 호출 시 스택 오버플로우가 발생하는 이유를 모르겠어요."</p>
+</div>
+</div>
+</div>
+<button class="mt-6 w-full text-center text-xs font-bold text-primary hover:underline">전체 대화 로그 14건 더보기</button>
+</div>
+</div>
+<!-- Footer Action Bar -->
+<footer class="flex justify-between items-center pt-8 border-t border-outline-variant/20">
+<div class="flex gap-4">
+<button class="px-6 py-2.5 bg-surface-container-high text-on-secondary-container font-bold rounded-lg text-sm transition-all hover:bg-surface-container-highest">
+                        상담 예약
+                    </button>
+<button class="px-6 py-2.5 bg-surface-container-high text-on-secondary-container font-bold rounded-lg text-sm transition-all hover:bg-surface-container-highest">
+                        데이터 PDF 다운로드
+                    </button>
+</div>
+<button class="px-8 py-2.5 bg-primary text-white font-bold rounded-lg text-sm shadow-md hover:translate-y-[-2px] transition-all">
+                    최종 성적 승인
+                </button>
+</footer>
+</div>
+</main>
+</body></html>

@@ -1,0 +1,213 @@
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
+import api from "../lib/api";
+import { renderMarkdown } from "../lib/markdown";
+import AppShell from "../components/common/AppShell";
+import type { DashboardData } from "../types";
+
+export default function Dashboard() {
+  const { courseId } = useParams<{ courseId: string }>();
+  const navigate = useNavigate();
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [insights, setInsights] = useState<{
+    insights: string[];
+    common_struggles: string[];
+    recommendations: string[];
+  } | null>(null);
+
+  useEffect(() => {
+    if (!courseId) return;
+    api
+      .get(`/courses/${courseId}/dashboard`)
+      .then(({ data }) => {
+        setData(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err?.response?.data?.detail || "대시보드를 불러오지 못했습니다.");
+        setLoading(false);
+      });
+    api
+      .get(`/courses/${courseId}/insights`)
+      .then(({ data }) => setInsights(data))
+      .catch(() => {});
+  }, [courseId]);
+
+  if (loading) {
+    return (
+      <AppShell>
+        <div className="loading-spinner" style={{ marginTop: 120 }}>
+          대시보드를 불러오는 중...
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <AppShell>
+        <main className="content">
+          <div className="empty" style={{ marginTop: 120 }}>
+            {error || "대시보드 데이터를 불러올 수 없습니다."}
+          </div>
+        </main>
+      </AppShell>
+    );
+  }
+
+  const chartData = data.students.map((s) => ({
+    name: s.student.name,
+    "코드 점수": s.avg_score,
+    "이해도": s.avg_understanding,
+  }));
+
+  return (
+    <AppShell>
+      <main className="content">
+        <h1 className="page-title">Dashboard</h1>
+        <p className="page-subtitle">클래스 전체 학습 현황을 확인하세요.</p>
+
+        <div className="stats-grid">
+          <div className="stat-card">
+            <div className="stat-label">평균 이해도</div>
+            <div className="stat-value">{data.avg_class_score}%</div>
+          </div>
+          <div className="stat-card stat-warning">
+            <div className="stat-label">위험 학생</div>
+            <div className="stat-value">{data.at_risk_count}명</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">수강생</div>
+            <div className="stat-value">{data.student_count}명</div>
+          </div>
+        </div>
+
+        {insights && (
+          <div className="card insights-card">
+            <h2>&#x2728; AI Recommendation</h2>
+            <div className="rendered-markdown">
+              {insights.insights.map((ins, i) => (
+                <div key={i} dangerouslySetInnerHTML={{ __html: renderMarkdown(ins) }} />
+              ))}
+              {insights.common_struggles.length > 0 && (
+                <>
+                  <h3>공통 어려움</h3>
+                  {insights.common_struggles.map((s, i) => (
+                    <div key={i} dangerouslySetInnerHTML={{ __html: renderMarkdown(s) }} />
+                  ))}
+                </>
+              )}
+              {insights.recommendations.length > 0 && (
+                <>
+                  <h3>추천 사항</h3>
+                  {insights.recommendations.map((r, i) => (
+                    <div key={i} dangerouslySetInnerHTML={{ __html: renderMarkdown(r) }} />
+                  ))}
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {chartData.length > 0 && (
+          <div className="card">
+            <h2 className="section-title">클래스 인사이트</h2>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={chartData} barGap={6}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#eaebf2" />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 13, fill: "#515F74" }}
+                />
+                <YAxis
+                  domain={[0, 100]}
+                  tick={{ fontSize: 13, fill: "#515F74" }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: 12,
+                    border: "none",
+                    boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: 13 }} />
+                <Bar
+                  dataKey="코드 점수"
+                  fill="#004AC6"
+                  radius={[6, 6, 0, 0]}
+                />
+                <Bar
+                  dataKey="이해도"
+                  fill="#632ECD"
+                  radius={[6, 6, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        <div className="card">
+          <h2 className="section-title">학생 목록</h2>
+          {data.students.length === 0 ? (
+            <div className="empty">아직 수강생이 없습니다.</div>
+          ) : (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>이름</th>
+                  <th>코드 점수</th>
+                  <th>이해도</th>
+                  <th>복붙</th>
+                  <th>갭</th>
+                  <th>상태</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.students.map((s) => (
+                  <tr
+                    key={s.student.id}
+                    style={{ cursor: "pointer" }}
+                    onClick={() =>
+                      navigate(
+                        `/courses/${courseId}/dashboard/students/${s.student.id}`
+                      )
+                    }
+                  >
+                    <td style={{ fontWeight: 600 }}>{s.student.name}</td>
+                    <td>{s.avg_score}%</td>
+                    <td>{s.avg_understanding}%</td>
+                    <td>{s.paste_count}회</td>
+                    <td>
+                      <span className={`badge badge-${s.gap_level}`}>
+                        {s.gap_level === "high"
+                          ? "높음"
+                          : s.gap_level === "medium"
+                            ? "중간"
+                            : "낮음"}
+                      </span>
+                    </td>
+                    <td style={{ fontSize: 18 }}>
+                      {s.status === "warning" ? "⚠️" : "✅"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </main>
+    </AppShell>
+  );
+}
