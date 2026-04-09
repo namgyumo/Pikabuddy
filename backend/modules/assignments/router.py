@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from common.supabase_client import get_supabase
-from common.gemini_client import get_gemini_model
+from common.gemini_client import get_gemini_model, FALLBACK_MODELS
 from google.generativeai.types import RequestOptions
 from middleware.auth import get_current_user, require_professor_or_personal
 
@@ -36,28 +36,42 @@ def _extract_json(text: str) -> dict | list:
     raise json.JSONDecodeError("No valid JSON found", text[:200], 0)
 
 
-def _generate_with_retry(generate_fn, *args, max_retries: int = 2) -> dict:
-    """Gemini 생성 함수를 재시도 로직으로 감싼다. 504 타임아웃은 재시도 안 함."""
+def _generate_with_retry(generate_fn, *args, max_retries: int = 3) -> dict:
+    """Gemini 생성 함수를 재시도 로직으로 감싼다. 503 시 폴백 모델 순차 시도."""
     fn_name = generate_fn.__name__
     last_error = None
-    for attempt in range(max_retries):
-        try:
-            t0 = time.time()
-            result = generate_fn(*args)
-            elapsed = time.time() - t0
-            print(f"  ✓ {fn_name} 완료 ({elapsed:.1f}초)")
-            return result
-        except Exception as e:
-            elapsed = time.time() - t0
-            last_error = e
-            err_str = str(e)
-            print(f"  ✗ {fn_name} 시도 {attempt + 1}/{max_retries} 실패 ({elapsed:.1f}초): {e}")
-            # 504/서버 타임아웃은 재시도해도 같은 결과 → 즉시 실패
-            if "504" in err_str or "timed out" in err_str.lower():
-                print(f"  ⏹ 서버 타임아웃 — 재시도 건너뜀")
-                break
-            if attempt < max_retries - 1:
-                time.sleep(1)
+
+    for model_name in FALLBACK_MODELS:
+        for attempt in range(max_retries):
+            try:
+                t0 = time.time()
+                result = generate_fn(*args, _model_name=model_name)
+                elapsed = time.time() - t0
+                print(f"  ✓ {fn_name} 완료 ({elapsed:.1f}초, {model_name})")
+                return result
+            except Exception as e:
+                elapsed = time.time() - t0
+                last_error = e
+                err_str = str(e)
+                print(f"  ✗ {fn_name} [{model_name}] 시도 {attempt + 1}/{max_retries} 실패 ({elapsed:.1f}초): {e}")
+                # 504/서버 타임아웃은 재시도해도 같은 결과 → 즉시 실패
+                if "504" in err_str or "timed out" in err_str.lower():
+                    print(f"  ⏹ 서버 타임아웃 — 재시도 건너뜀")
+                    break
+                if attempt < max_retries - 1:
+                    if "503" in err_str:
+                        wait = 2 * (attempt + 1)
+                        print(f"  ⏳ 과부하 — {wait}초 대기...")
+                        time.sleep(wait)
+                    else:
+                        time.sleep(1)
+        # 이 모델 전부 실패 → 다음 폴백 모델로
+        if last_error and "503" in str(last_error):
+            print(f"  🔄 {model_name} 과부하 → 다음 모델로 전환...")
+            continue
+        else:
+            break
+
     raise last_error
 
 router = APIRouter(prefix="/courses/{course_id}/assignments", tags=["과제"])
@@ -193,9 +207,9 @@ def _generate_bulk_test_cases_programmers(problem: dict) -> list[dict]:
     return cases if isinstance(cases, list) else []
 
 
-def _generate_algorithm_problems(topic: str, difficulty: str, count: int, language: str) -> dict:
+def _generate_algorithm_problems(topic: str, difficulty: str, count: int, language: str, _model_name: str = "gemini-2.5-flash") -> dict:
     """Gemini로 백준 형식 알고리즘 문제를 생성한다. (엣지 케이스만 flash, 랜덤은 lite)"""
-    model = get_gemini_model(json_mode=True)
+    model = get_gemini_model(_model_name, json_mode=True)
     prompt = f"""백준 스타일 표준입출력 알고리즘 문제 {count}개를 JSON으로 생성하세요.
 점진적 난이도 (1번=쉬움 → 마지막=어려움).
 
@@ -233,9 +247,9 @@ JSON 형식:
     return result
 
 
-def _generate_programmers_problems(topic: str, difficulty: str, count: int, language: str) -> dict:
+def _generate_programmers_problems(topic: str, difficulty: str, count: int, language: str, _model_name: str = "gemini-2.5-flash") -> dict:
     """Gemini로 프로그래머스 형식 문제를 생성한다. (엣지 케이스만 flash, 랜덤은 lite)"""
-    model = get_gemini_model(json_mode=True)
+    model = get_gemini_model(_model_name, json_mode=True)
 
     prompt = f"""당신은 프로그래머스(Programmers) 스타일의 알고리즘 문제 출제자입니다.
 다음 조건에 맞는 함수 기반 알고리즘 문제 {count}개를 JSON으로 생성하세요.
@@ -336,7 +350,7 @@ starter_code는 반드시 {language}로, 전체 코드 틀을 제공하되 solut
     return result
 
 
-def _generate_problem_outlines(topic: str, difficulty: str, count: int, language: str) -> list[dict]:
+def _generate_problem_outlines(topic: str, difficulty: str, count: int, language: str, _model_name: str = "gemini-2.5-flash") -> list[dict]:
     """Phase 1: 점진적 난이도 문제 아웃라인 생성 (빠른 단일 호출)"""
     difficulty_curves = {
         "easy": lambda i, n: max(1, min(5, 1 + int(4 * i / max(n - 1, 1)))),
@@ -344,7 +358,7 @@ def _generate_problem_outlines(topic: str, difficulty: str, count: int, language
         "hard": lambda i, n: max(4, min(10, 4 + int(6 * i / max(n - 1, 1)))),
     }
     curve = difficulty_curves.get(difficulty, difficulty_curves["medium"])
-    model = get_gemini_model(json_mode=True)
+    model = get_gemini_model(_model_name, json_mode=True)
     prompt = f"""당신은 프로그래밍 교수입니다.
 다음 조건으로 문제 {count}개의 제목과 핵심 개념만 간략히 JSON 배열로 생성하세요.
 문제는 점진적으로 난이도가 올라가야 합니다.
@@ -363,9 +377,9 @@ def _generate_problem_outlines(topic: str, difficulty: str, count: int, language
     return outlines
 
 
-def _generate_single_problem(outline: dict, language: str) -> dict:
+def _generate_single_problem(outline: dict, language: str, _model_name: str = "gemini-2.5-flash") -> dict:
     """Phase 2: 개별 문제 상세 생성"""
-    model = get_gemini_model(json_mode=True)
+    model = get_gemini_model(_model_name, json_mode=True)
     prompt = f"""당신은 프로그래밍 교수입니다.
 다음 문제 아웃라인을 기반으로 완전한 문제를 JSON으로 생성하세요.
 
@@ -437,9 +451,9 @@ async def _generate_problems_progressive(topic: str, difficulty: str, count: int
     return {"problems": problems, "rubric": rubric}
 
 
-def _generate_problems(topic: str, difficulty: str, count: int, language: str) -> dict:
+def _generate_problems(topic: str, difficulty: str, count: int, language: str, _model_name: str = "gemini-2.5-flash") -> dict:
     """Gemini로 문제와 루브릭을 생성한다. (폴백용 단일 호출)"""
-    model = get_gemini_model(json_mode=True)
+    model = get_gemini_model(_model_name, json_mode=True)
     prompt = f"""당신은 대학교 프로그래밍 교수입니다.
 다음 조건에 맞는 실습 문제 {count}개와 채점 루브릭을 JSON으로 생성하세요.
 문제는 점진적으로 난이도가 올라가야 합니다 (1번이 가장 쉽고 마지막이 가장 어려움).
@@ -582,6 +596,10 @@ async def _background_generate_problems(
         for i, p in enumerate(all_problems):
             p["id"] = i + 1
 
+        # 실패 원인 수집 (503 등)
+        fail_reasons = [str(r) for r in results if isinstance(r, Exception)]
+        has_503 = any("503" in r for r in fail_reasons)
+
         elapsed = time.time() - t_start
         if all_problems:
             _safe_update_status(supabase, assignment_id, "completed", {
@@ -589,8 +607,11 @@ async def _background_generate_problems(
             })
             print(f"\n✅ 생성 완료 [{short_id}] — {len(all_problems)}개 문제, {elapsed:.1f}초")
         else:
-            _safe_update_status(supabase, assignment_id, "failed")
-            print(f"\n❌ 생성 실패 [{short_id}] — 0개 문제, {elapsed:.1f}초")
+            fail_detail = "ai_overloaded" if has_503 else "generation_error"
+            _safe_update_status(supabase, assignment_id, "failed", {
+                "rubric": {"fail_reason": fail_detail},
+            })
+            print(f"\n❌ 생성 실패 [{short_id}] — 0개 문제, {elapsed:.1f}초 (reason={fail_detail})")
         print(f"{'='*50}\n")
 
     except Exception as e:
@@ -599,7 +620,10 @@ async def _background_generate_problems(
         print(f"{'='*50}\n")
         traceback.print_exc()
         try:
-            _safe_update_status(get_supabase(), assignment_id, "failed")
+            fail_detail = "ai_overloaded" if "503" in str(e) else "generation_error"
+            _safe_update_status(get_supabase(), assignment_id, "failed", {
+                "rubric": {"fail_reason": fail_detail},
+            })
         except Exception:
             pass
 

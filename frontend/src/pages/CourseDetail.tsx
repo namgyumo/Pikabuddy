@@ -147,6 +147,8 @@ export default function CourseDetail() {
 
   const isAdmin = user?.email?.endsWith("@pikabuddy.admin") ?? false;
   const isProfessor = user?.role === "professor";
+  const isPersonal = user?.role === "personal";
+  const canManage = isProfessor || isPersonal;
   const policyLabels: Record<string, string> = {
     free: "자유",
     normal: "보통",
@@ -190,7 +192,7 @@ export default function CourseDetail() {
         {/* Assignments */}
         <div className="page-header" style={{ marginTop: 12 }}>
           <h2 className="section-title">과제 목록</h2>
-          {isProfessor && (
+          {canManage && (
             <button
               className="btn btn-primary"
               onClick={() => setShowCreate(true)}
@@ -379,7 +381,7 @@ export default function CourseDetail() {
         {assignments.length === 0 ? (
           <div className="empty">
             아직 과제가 없습니다.
-            {isProfessor && (
+            {canManage && (
               <>
                 <br />
                 "과제 생성"으로 AI가 자동 생성하는 실습 문제를 만들어보세요.
@@ -401,7 +403,9 @@ export default function CourseDetail() {
                   key={a.id}
                   className="card course-card"
                   onClick={() => {
-                    if (isProfessor) {
+                    if (isPersonal) {
+                      navigate(`/personal/courses/${courseId}/assignments/${a.id}`);
+                    } else if (isProfessor) {
                       navigate(`/courses/${courseId}/assignments/${a.id}`);
                     } else if (a.type === "writing") {
                       navigate(`/assignments/${a.id}/write`);
@@ -424,7 +428,7 @@ export default function CourseDetail() {
                     )}
                     {a.generation_status === "failed" && (
                       <span className="badge" style={{ background: "rgba(220,38,38,0.08)", color: "var(--error)", fontSize: 11 }}>
-                        생성 실패
+                        {a.rubric?.fail_reason === "ai_overloaded" ? "AI 서버 과부하 — 잠시 후 다시 시도해주세요" : "생성 실패"}
                       </span>
                     )}
                   </h3>
@@ -471,7 +475,7 @@ export default function CourseDetail() {
         <div style={{ marginTop: 32 }}>
           <div className="page-header">
             <h2 className="section-title">강의자료</h2>
-            {isProfessor && (
+            {canManage && (
               <button className="btn btn-primary" onClick={() => setShowUpload(true)}>+ 자료 업로드</button>
             )}
           </div>
@@ -554,7 +558,7 @@ export default function CourseDetail() {
                       <div className="material-meta">{m.file_name} &middot; {sizeLabel} &middot; {new Date(m.created_at).toLocaleDateString("ko-KR")}</div>
                     </div>
                     <div style={{ display: "flex", gap: 6 }}>
-                      {!isProfessor && (
+                      {!canManage && (
                         <button className="btn btn-primary" style={{ fontSize: 12, padding: "4px 14px" }}
                           onClick={() => navigate(`/courses/${courseId}/notes?material=${m.id}`)}>
                           노트와 함께 보기
@@ -564,7 +568,7 @@ export default function CourseDetail() {
                         className="btn btn-secondary" style={{ fontSize: 12, padding: "4px 14px", textDecoration: "none" }}>
                         다운로드
                       </a>
-                      {isProfessor && (
+                      {canManage && (
                         <button className="btn btn-ghost" style={{ fontSize: 12, padding: "4px 8px", color: "var(--error)" }}
                           onClick={async () => {
                             await api.delete(`/courses/${courseId}/materials/${m.id}`);
@@ -579,8 +583,8 @@ export default function CourseDetail() {
           )}
         </div>
 
-        {/* Student quick links */}
-        {!isProfessor && (
+        {/* Student / Personal quick links */}
+        {(!isProfessor || isPersonal) && (
           <div style={{ marginTop: 32 }}>
             <div className="page-header">
               <h2 className="section-title">학습 도구</h2>
@@ -593,6 +597,14 @@ export default function CourseDetail() {
                 <div style={{ fontSize: 32, marginBottom: 8 }}>&#x1F4DD;</div>
                 <h3>노트</h3>
                 <p>강의 내용을 정리하고 AI 이해도 분석을 받아보세요.</p>
+              </div>
+              <div
+                className="card course-card"
+                onClick={() => navigate(`/courses/${courseId}/graph`)}
+              >
+                <div style={{ fontSize: 32, marginBottom: 8 }}>&#x1F578;</div>
+                <h3>지식 그래프</h3>
+                <p>학습한 내용의 연결 관계를 시각적으로 확인하세요.</p>
               </div>
             </div>
           </div>

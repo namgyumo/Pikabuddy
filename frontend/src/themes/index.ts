@@ -11,6 +11,8 @@ export interface CustomTheme {
   version: number;
   variables: Record<string, string>;
   preview: [string, string, string, string];
+  customCSS?: string;
+  animation?: string;
 }
 
 /** Allowed CSS variable names for custom themes (whitelist) */
@@ -82,6 +84,148 @@ export const CUSTOM_THEME_TEMPLATE = {
     "--error": "#ef4444",
   },
 };
+
+/* ── Variable groups for GUI editor ── */
+
+export interface VariableDefinition {
+  key: string;
+  label: string;
+  type: "color" | "slider" | "font";
+  min?: number;
+  max?: number;
+  unit?: string;
+}
+
+export interface VariableGroup {
+  id: string;
+  label: string;
+  variables: VariableDefinition[];
+}
+
+export const VARIABLE_GROUPS: VariableGroup[] = [
+  {
+    id: "primary",
+    label: "주 색상",
+    variables: [
+      { key: "--primary", label: "메인", type: "color" },
+      { key: "--primary-light", label: "밝은 톤", type: "color" },
+      { key: "--primary-container", label: "컨테이너", type: "color" },
+      { key: "--primary-hover", label: "호버", type: "color" },
+    ],
+  },
+  {
+    id: "accent",
+    label: "보조 / 강조",
+    variables: [
+      { key: "--secondary", label: "보조 색상", type: "color" },
+      { key: "--secondary-light", label: "보조 밝은", type: "color" },
+      { key: "--tertiary", label: "강조 색상", type: "color" },
+      { key: "--tertiary-light", label: "강조 밝은", type: "color" },
+    ],
+  },
+  {
+    id: "surface",
+    label: "배경",
+    variables: [
+      { key: "--surface", label: "기본 배경", type: "color" },
+      { key: "--surface-container-lowest", label: "가장 밝은", type: "color" },
+      { key: "--surface-container-low", label: "밝은", type: "color" },
+      { key: "--surface-container", label: "보통", type: "color" },
+      { key: "--surface-container-high", label: "어두운", type: "color" },
+      { key: "--editor-bg", label: "코드 에디터", type: "color" },
+    ],
+  },
+  {
+    id: "text",
+    label: "텍스트",
+    variables: [
+      { key: "--on-surface", label: "기본 텍스트", type: "color" },
+      { key: "--on-surface-variant", label: "보조 텍스트", type: "color" },
+    ],
+  },
+  {
+    id: "status",
+    label: "상태",
+    variables: [
+      { key: "--success", label: "성공", type: "color" },
+      { key: "--success-light", label: "성공 배경", type: "color" },
+      { key: "--warning", label: "경고", type: "color" },
+      { key: "--warning-light", label: "경고 배경", type: "color" },
+      { key: "--error", label: "오류", type: "color" },
+      { key: "--error-light", label: "오류 배경", type: "color" },
+    ],
+  },
+  {
+    id: "shape",
+    label: "모서리",
+    variables: [
+      { key: "--radius-sm", label: "Small", type: "slider", min: 0, max: 20, unit: "px" },
+      { key: "--radius-md", label: "Medium", type: "slider", min: 0, max: 28, unit: "px" },
+      { key: "--radius-lg", label: "Large", type: "slider", min: 0, max: 36, unit: "px" },
+      { key: "--radius-xl", label: "XL", type: "slider", min: 0, max: 48, unit: "px" },
+    ],
+  },
+  {
+    id: "font",
+    label: "글꼴",
+    variables: [
+      { key: "--font-display", label: "제목", type: "font" },
+      { key: "--font-body", label: "본문", type: "font" },
+    ],
+  },
+];
+
+export const FONT_OPTIONS = [
+  { value: "'Pretendard Variable', Pretendard, sans-serif", label: "Pretendard (기본)" },
+  { value: "'Noto Sans KR', sans-serif", label: "Noto Sans KR" },
+  { value: "'IBM Plex Sans KR', sans-serif", label: "IBM Plex Sans KR" },
+  { value: "system-ui, sans-serif", label: "시스템 기본" },
+  { value: "'Fira Code', monospace", label: "Fira Code" },
+  { value: "'Nanum Gothic', sans-serif", label: "나눔 고딕" },
+  { value: "'Nanum Myeongjo', serif", label: "나눔 명조" },
+  { value: "Georgia, serif", label: "Georgia" },
+];
+
+export const ANIMATION_PRESETS = [
+  { id: "none", label: "없음" },
+  { id: "particles", label: "떠다니는 입자" },
+  { id: "rain", label: "비" },
+  { id: "sparkle", label: "반짝임" },
+  { id: "snow", label: "눈" },
+  { id: "gradient", label: "그라디언트 흐름" },
+] as const;
+
+/** Sanitize user CSS — strip JS injection vectors, keep valid CSS */
+export function sanitizeCSS(css: string): string {
+  return css
+    .replace(/@import\b[^;]*;/gi, "")
+    .replace(/expression\s*\(/gi, "")
+    .replace(/javascript\s*:/gi, "")
+    .replace(/behavior\s*:/gi, "")
+    .replace(/-moz-binding\s*:/gi, "")
+    .replace(/<\/?script[^>]*>/gi, "");
+}
+
+/** Convert rgb()/rgba() or hex to 7-char hex */
+export function toHex(color: string): string {
+  if (color.startsWith("#")) return color.slice(0, 7);
+  const m = color.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+  if (m) {
+    return "#" + [m[1], m[2], m[3]].map((n) => parseInt(n).toString(16).padStart(2, "0")).join("");
+  }
+  return "#000000";
+}
+
+/** Read current computed CSS variable values */
+export function getCurrentVariableValues(): Record<string, string> {
+  const style = getComputedStyle(document.documentElement);
+  const values: Record<string, string> = {};
+  for (const key of ALLOWED_CSS_VARIABLES) {
+    const val = style.getPropertyValue(key).trim();
+    if (val) values[key] = val;
+  }
+  return values;
+}
 
 export const THEMES: ThemeDefinition[] = [
   {

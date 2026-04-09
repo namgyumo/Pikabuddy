@@ -4477,7 +4477,8 @@ select.form-input {
   transition: all 0.2s var(--ease);
   z-index: 2;
 }
-.custom-theme-card-wrap:hover .custom-theme-delete {
+.custom-theme-card-wrap:hover .custom-theme-delete,
+.custom-theme-card-wrap:hover .custom-theme-edit {
   opacity: 1;
   transform: scale(1);
 }

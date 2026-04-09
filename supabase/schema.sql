@@ -14,6 +14,9 @@ CREATE TABLE users (
     bio TEXT DEFAULT '',
     social_links JSONB NOT NULL DEFAULT '{}'::jsonb,
     profile_color VARCHAR(7) DEFAULT '#004AC6',
+    school VARCHAR(100) DEFAULT '',
+    department VARCHAR(100) DEFAULT '',
+    student_id VARCHAR(50) DEFAULT '',
     supabase_uid VARCHAR(255) NOT NULL UNIQUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

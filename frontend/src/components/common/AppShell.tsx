@@ -87,18 +87,11 @@ export default function AppShell({ children, courseTitle }: Props) {
                 to={homeLink}
                 className={`sidebar-link ${location.pathname === homeLink ? "active" : ""}`}
               >
-                <span className="sidebar-link-icon">&#x1F3E0;</span>
-                Home
+                <span className="sidebar-link-icon">&#x1F4CA;</span>
+                Dashboard
               </Link>
               {courseId && (
                 <>
-                  <Link
-                    to={`/courses/${courseId}`}
-                    className={`sidebar-link ${isActive("courses") && !isActive("notes") && !isActive("graph") ? "active" : ""}`}
-                  >
-                    <span className="sidebar-link-icon">&#x1F4CB;</span>
-                    Assignments
-                  </Link>
                   <Link
                     to={`/courses/${courseId}/notes`}
                     className={`sidebar-link ${isActive("notes") ? "active" : ""}`}

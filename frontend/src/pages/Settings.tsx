@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import Cropper from "react-easy-crop";
+import type { Area } from "react-easy-crop";
 import { useAuthStore } from "../store/authStore";
 import { useTutorialStore } from "../store/tutorialStore";
 import AppShell from "../components/common/AppShell";
@@ -24,6 +26,66 @@ export default function Settings() {
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [roleConfirm, setRoleConfirm] = useState<"professor" | "student" | "personal" | null>(null);
+
+  // Avatar crop state
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+
+  const onCropComplete = useCallback((_: Area, croppedPixels: Area) => {
+    setCroppedAreaPixels(croppedPixels);
+  }, []);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropSrc(reader.result as string);
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  const getCroppedBlob = (src: string, area: Area): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 256;
+        canvas.height = 256;
+        const ctx = canvas.getContext("2d")!;
+        ctx.drawImage(img, area.x, area.y, area.width, area.height, 0, 0, 256, 256);
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error("Canvas toBlob failed"));
+        }, "image/png");
+      };
+      img.onerror = reject;
+      img.src = src;
+    });
+  };
+
+  const handleCropConfirm = async () => {
+    if (!cropSrc || !croppedAreaPixels) return;
+    setUploading(true);
+    setCropSrc(null);
+    try {
+      const blob = await getCroppedBlob(cropSrc, croppedAreaPixels);
+      const formData = new FormData();
+      formData.append("file", blob, "avatar.png");
+      await api.post("/auth/avatar", formData, { headers: { "Content-Type": "multipart/form-data" } });
+      await fetchUser();
+      setMessage({ type: "success", text: "프로필 사진이 변경되었습니다." });
+    } catch {
+      setMessage({ type: "error", text: "업로드에 실패했습니다." });
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleSave = async () => {
     const update: Record<string, string> = {};
@@ -110,20 +172,7 @@ export default function Settings() {
               cursor: "pointer", fontSize: 12, border: "2px solid var(--surface-container-lowest)",
             }}>
               +
-              <input type="file" accept="image/*" style={{ display: "none" }} onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                setUploading(true);
-                const formData = new FormData();
-                formData.append("file", file);
-                try {
-                  await api.post("/auth/avatar", formData, { headers: { "Content-Type": "multipart/form-data" } });
-                  await fetchUser();
-                  setMessage({ type: "success", text: "프로필 사진이 변경되었습니다." });
-                } catch {
-                  setMessage({ type: "error", text: "업로드에 실패했습니다." });
-                } finally { setUploading(false); }
-              }} />
+              <input type="file" accept="image/*" style={{ display: "none" }} onChange={handleFileSelect} />
             </label>
           </div>
           <div>
@@ -290,6 +339,47 @@ export default function Settings() {
           {saving ? "저장 중..." : "저장"}
         </button>
       </div>
+
+      {/* 아바타 크롭 모달 */}
+      {cropSrc && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 10000, background: "rgba(0,0,0,0.7)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <div style={{
+            background: "var(--surface-container-lowest)", borderRadius: 16,
+            width: "min(90vw, 480px)", overflow: "hidden",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+          }}>
+            <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--outline-variant)" }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>프로필 사진 자르기</h3>
+            </div>
+            <div style={{ position: "relative", height: 360, background: "#111" }}>
+              <Cropper
+                image={cropSrc}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                cropShape="round"
+                showGrid={false}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={onCropComplete}
+              />
+            </div>
+            <div style={{ padding: "12px 24px" }}>
+              <label style={{ fontSize: 12, color: "var(--on-surface-variant)", marginBottom: 4, display: "block" }}>확대</label>
+              <input type="range" min={1} max={3} step={0.05} value={zoom}
+                onChange={(e) => setZoom(Number(e.target.value))}
+                style={{ width: "100%" }} />
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "12px 24px", borderTop: "1px solid var(--outline-variant)" }}>
+              <button className="btn btn-ghost" onClick={() => setCropSrc(null)}>취소</button>
+              <button className="btn btn-primary" onClick={handleCropConfirm}>적용</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 역할 변경 확인 모달 */}
       {roleConfirm && (

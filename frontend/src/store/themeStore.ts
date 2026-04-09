@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { ALLOWED_CSS_VARIABLES } from "../themes";
+import { ALLOWED_CSS_VARIABLES, sanitizeCSS } from "../themes";
 import type { CustomTheme } from "../themes";
 
 const STORAGE_KEY = "pikabuddy-theme";
@@ -12,20 +12,39 @@ interface ThemeState {
   initTheme: () => void;
   addCustomTheme: (json: unknown) => CustomTheme;
   removeCustomTheme: (id: string) => void;
+  saveCustomTheme: (data: {
+    id?: string;
+    name: string;
+    variables: Record<string, string>;
+    customCSS?: string;
+    animation?: string;
+  }) => CustomTheme;
 }
 
 function clearCustomStyles() {
   const el = document.documentElement;
   ALLOWED_CSS_VARIABLES.forEach((v) => el.style.removeProperty(v));
+  // Remove injected custom CSS
+  document.getElementById("pikabuddy-custom-css")?.remove();
 }
 
-function applyCustomStyles(variables: Record<string, string>) {
+function applyCustomStyles(variables: Record<string, string>, customCSS?: string) {
   const el = document.documentElement;
   Object.entries(variables).forEach(([key, value]) => {
     if ((ALLOWED_CSS_VARIABLES as readonly string[]).includes(key)) {
       el.style.setProperty(key, value);
     }
   });
+  // Inject custom CSS if present
+  if (customCSS) {
+    let styleEl = document.getElementById("pikabuddy-custom-css") as HTMLStyleElement | null;
+    if (!styleEl) {
+      styleEl = document.createElement("style");
+      styleEl.id = "pikabuddy-custom-css";
+      document.head.appendChild(styleEl);
+    }
+    styleEl.textContent = sanitizeCSS(customCSS);
+  }
 }
 
 function loadCustomThemes(): CustomTheme[] {
@@ -109,7 +128,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
     if (custom) {
       // Custom theme: remove data-theme, apply inline styles
       document.documentElement.removeAttribute("data-theme");
-      applyCustomStyles(custom.variables);
+      applyCustomStyles(custom.variables, custom.customCSS);
     } else if (id === "default") {
       document.documentElement.removeAttribute("data-theme");
     } else {
@@ -126,7 +145,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
     const custom = customs.find((t) => t.id === saved);
 
     if (custom) {
-      applyCustomStyles(custom.variables);
+      applyCustomStyles(custom.variables, custom.customCSS);
     } else if (saved !== "default") {
       document.documentElement.setAttribute("data-theme", saved);
     }
@@ -164,6 +183,48 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
       set({ customThemes: updated, currentTheme: "default" });
     } else {
       set({ customThemes: updated });
+    }
+  },
+
+  saveCustomTheme: (data) => {
+    const existing = data.id ? get().customThemes.find((t) => t.id === data.id) : null;
+    const preview: [string, string, string, string] = [
+      data.variables["--primary"] || "#004AC6",
+      data.variables["--surface"] || "#f5f6fa",
+      data.variables["--tertiary"] || data.variables["--secondary"] || "#632ECD",
+      data.variables["--on-surface"] || "#1a1c23",
+    ];
+
+    if (existing) {
+      // Update existing
+      const updated: CustomTheme = {
+        ...existing,
+        name: data.name,
+        variables: data.variables,
+        customCSS: data.customCSS,
+        animation: data.animation,
+        preview,
+      };
+      const list = get().customThemes.map((t) => (t.id === existing.id ? updated : t));
+      saveCustomThemes(list);
+      set({ customThemes: list });
+      return updated;
+    } else {
+      // Create new
+      const id = `custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      const theme: CustomTheme = {
+        id,
+        name: data.name,
+        version: 1,
+        variables: data.variables,
+        customCSS: data.customCSS,
+        animation: data.animation,
+        preview,
+      };
+      const list = [...get().customThemes, theme];
+      saveCustomThemes(list);
+      set({ customThemes: list });
+      return theme;
     }
   },
 }));

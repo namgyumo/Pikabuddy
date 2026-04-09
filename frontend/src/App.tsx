@@ -19,6 +19,7 @@ import JoinCourse from "./pages/JoinCourse";
 import Workspace from "./pages/Workspace";
 import NoteGraph from "./pages/NoteGraph";
 import PersonalHome from "./pages/PersonalHome";
+import PersonalAssignmentDetail from "./pages/PersonalAssignmentDetail";
 import Profile from "./pages/Profile";
 import TutorialProvider from "./components/common/TutorialProvider";
 import "./App.css";
@@ -132,6 +133,14 @@ export default function App() {
           element={
             <ProtectedRoute role="professor">
               <AssignmentDetail />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/personal/courses/:courseId/assignments/:assignmentId"
+          element={
+            <ProtectedRoute role="personal">
+              <PersonalAssignmentDetail />
             </ProtectedRoute>
           }
         />

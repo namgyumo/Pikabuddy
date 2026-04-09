@@ -581,3 +581,94 @@ html[data-theme="anime"] {
   50%  { opacity: 1; }
   100% { opacity: 0.4; }
 }
+
+/* ═════ Custom theme generic animations (use CSS variables for colors) ═════ */
+
+/* -- Custom: floating particles -- */
+.theme-bg-custom-particles {
+  background:
+    radial-gradient(2px 2px, var(--primary) 50%, transparent 50%) 10% 20% / 160px 160px,
+    radial-gradient(1.5px 1.5px, var(--tertiary, var(--secondary)) 50%, transparent 50%) 35% 55% / 200px 200px,
+    radial-gradient(2px 2px, var(--primary) 50%, transparent 50%) 60% 15% / 120px 120px,
+    radial-gradient(1.5px 1.5px, var(--tertiary, var(--secondary)) 50%, transparent 50%) 80% 70% / 180px 180px,
+    radial-gradient(2px 2px, var(--primary) 50%, transparent 50%) 95% 40% / 140px 140px;
+  opacity: 0.2;
+  animation: custom-particles-drift 18s ease-in-out infinite;
+}
+@keyframes custom-particles-drift {
+  0%, 100% { transform: translate(0, 0); }
+  25%  { transform: translate(-12px, 8px); }
+  50%  { transform: translate(8px, -12px); }
+  75%  { transform: translate(-6px, -6px); }
+}
+
+/* -- Custom: rain -- */
+.theme-bg-custom-rain {
+  background:
+    radial-gradient(1px 6px, var(--primary) 50%, transparent 50%) 8% 0 / 50px 60px,
+    radial-gradient(1px 8px, var(--primary) 50%, transparent 50%) 22% 0 / 40px 50px,
+    radial-gradient(1px 5px, var(--primary) 50%, transparent 50%) 40% 0 / 60px 70px,
+    radial-gradient(1px 7px, var(--primary) 50%, transparent 50%) 58% 0 / 35px 55px,
+    radial-gradient(1px 6px, var(--primary) 50%, transparent 50%) 75% 0 / 45px 65px,
+    radial-gradient(1px 4px, var(--primary) 50%, transparent 50%) 90% 0 / 55px 45px;
+  opacity: 0.15;
+  animation: custom-rain-fall 4s linear infinite;
+}
+@keyframes custom-rain-fall {
+  0%   { background-position-y: -20px, -40px, -10px, -35px, -25px, -50px; }
+  100% { background-position-y: 100vh, 100vh, 100vh, 100vh, 100vh, 100vh; }
+}
+
+/* -- Custom: sparkle -- */
+.theme-bg-custom-sparkle {
+  background:
+    radial-gradient(2px 2px, var(--primary) 50%, transparent 50%) 10% 20% / 150px 150px,
+    radial-gradient(3px 3px, var(--tertiary, var(--secondary)) 50%, transparent 50%) 30% 50% / 200px 200px,
+    radial-gradient(2px 2px, var(--primary) 50%, transparent 50%) 55% 30% / 120px 120px,
+    radial-gradient(3px 3px, var(--tertiary, var(--secondary)) 50%, transparent 50%) 75% 65% / 180px 180px,
+    radial-gradient(2px 2px, var(--primary) 50%, transparent 50%) 92% 40% / 100px 100px;
+  animation: custom-sparkle 3s ease-in-out infinite alternate;
+}
+@keyframes custom-sparkle {
+  0%   { opacity: 0.15; }
+  50%  { opacity: 0.4; }
+  100% { opacity: 0.15; }
+}
+
+/* -- Custom: snow -- */
+.theme-bg-custom-snow {
+  background:
+    radial-gradient(2px 2px, rgba(255,255,255,0.7) 50%, transparent 50%) 10% 0 / 60px 80px,
+    radial-gradient(3px 3px, rgba(255,255,255,0.5) 50%, transparent 50%) 25% 0 / 90px 120px,
+    radial-gradient(1.5px 1.5px, rgba(255,255,255,0.6) 50%, transparent 50%) 45% 0 / 50px 70px,
+    radial-gradient(2.5px 2.5px, rgba(255,255,255,0.4) 50%, transparent 50%) 65% 0 / 110px 100px,
+    radial-gradient(2px 2px, rgba(255,255,255,0.5) 50%, transparent 50%) 80% 0 / 70px 90px;
+  animation: custom-snow-fall 12s linear infinite;
+}
+@keyframes custom-snow-fall {
+  0%   { background-position-y: -10px, -30px, -20px, -50px, -15px; }
+  100% { background-position-y: 100vh, 100vh, 100vh, 100vh, 100vh; }
+}
+
+/* -- Custom: gradient flow -- */
+.theme-bg-custom-gradient::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    transparent 0%,
+    var(--primary) 25%,
+    var(--tertiary, var(--secondary)) 50%,
+    var(--primary) 75%,
+    transparent 100%
+  );
+  background-size: 400% 400%;
+  opacity: 0.04;
+  animation: custom-gradient-shift 12s ease infinite;
+}
+@keyframes custom-gradient-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
