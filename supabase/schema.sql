@@ -7,8 +7,13 @@ CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email VARCHAR(255) NOT NULL UNIQUE,
     name VARCHAR(100) NOT NULL,
-    role VARCHAR(20) CHECK (role IN ('professor', 'student')),
+    role VARCHAR(20) CHECK (role IN ('professor', 'student', 'personal')),
+    preferences JSONB NOT NULL DEFAULT '{}'::jsonb,
     avatar_url TEXT,
+    banner_url TEXT,
+    bio TEXT DEFAULT '',
+    social_links JSONB NOT NULL DEFAULT '{}'::jsonb,
+    profile_color VARCHAR(7) DEFAULT '#004AC6',
     supabase_uid VARCHAR(255) NOT NULL UNIQUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -25,11 +30,13 @@ CREATE TABLE courses (
     description TEXT,
     objectives JSONB,
     invite_code VARCHAR(10) NOT NULL UNIQUE,
+    is_personal BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_courses_professor_id ON courses(professor_id);
 CREATE INDEX idx_courses_invite_code ON courses(invite_code);
+CREATE INDEX idx_courses_is_personal ON courses(is_personal) WHERE is_personal = true;
 
 -- ===== 3. enrollments =====
 CREATE TABLE enrollments (
@@ -52,12 +59,14 @@ CREATE TABLE assignments (
     problems JSONB NOT NULL DEFAULT '[]'::jsonb,
     rubric JSONB NOT NULL DEFAULT '{}'::jsonb,
     type VARCHAR(20) NOT NULL DEFAULT 'coding'
-        CHECK (type IN ('coding', 'writing', 'both')),
+        CHECK (type IN ('coding', 'writing', 'both', 'algorithm')),
     ai_policy VARCHAR(20) NOT NULL DEFAULT 'normal'
         CHECK (ai_policy IN ('free', 'normal', 'strict', 'exam')),
     language VARCHAR(20) NOT NULL DEFAULT 'python',
     writing_prompt TEXT,
     due_date TIMESTAMPTZ,
+    generation_status VARCHAR(20) NOT NULL DEFAULT 'completed'
+        CHECK (generation_status IN ('generating', 'completed', 'failed')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -143,7 +152,60 @@ CREATE TABLE course_materials (
 
 CREATE INDEX idx_course_materials_course_id ON course_materials(course_id);
 
--- ===== 10. ai_comments =====
+-- ===== 10. user_exp =====
+CREATE TABLE user_exp (
+    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    total_exp INT NOT NULL DEFAULT 0,
+    tier VARCHAR(20) NOT NULL DEFAULT 'seed_iv',
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_user_exp_tier ON user_exp(tier);
+
+-- ===== 11. badges =====
+CREATE TABLE badges (
+    id VARCHAR(50) PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT NOT NULL,
+    category VARCHAR(30) NOT NULL,
+    condition_type VARCHAR(50) NOT NULL,
+    condition_value INT NOT NULL DEFAULT 1
+);
+
+-- ===== 12. user_badges =====
+CREATE TABLE user_badges (
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    badge_id VARCHAR(50) NOT NULL REFERENCES badges(id),
+    earned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, badge_id)
+);
+
+ALTER TABLE user_exp ENABLE ROW LEVEL SECURITY;
+ALTER TABLE badges ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_badges ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Service role full access" ON user_exp FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Service role full access" ON badges FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Service role full access" ON user_badges FOR ALL USING (true) WITH CHECK (true);
+
+-- ===== 13. judge_results =====
+CREATE TABLE judge_results (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    submission_id UUID NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
+    verdict VARCHAR(10) NOT NULL,
+    passed_count INT NOT NULL DEFAULT 0,
+    total_count INT NOT NULL DEFAULT 0,
+    total_time_ms FLOAT,
+    max_memory_mb FLOAT,
+    case_results JSONB NOT NULL DEFAULT '[]'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_judge_results_submission ON judge_results(submission_id);
+
+ALTER TABLE judge_results ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Service role full access" ON judge_results FOR ALL USING (true) WITH CHECK (true);
+
+-- ===== 11. ai_comments =====
 CREATE TABLE ai_comments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     note_id UUID NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
@@ -172,6 +234,38 @@ CREATE TRIGGER trg_notes_updated_at
     BEFORE UPDATE ON notes
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+-- ===== exam_screenshots =====
+CREATE TABLE exam_screenshots (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    assignment_id UUID NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
+    student_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    r2_key TEXT NOT NULL,
+    r2_url TEXT NOT NULL,
+    captured_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    file_size_kb INT DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_exam_screenshots_assignment ON exam_screenshots(assignment_id);
+CREATE INDEX idx_exam_screenshots_student ON exam_screenshots(student_id);
+CREATE INDEX idx_exam_screenshots_lookup ON exam_screenshots(assignment_id, student_id, captured_at);
+
+-- ===== exam_violations =====
+CREATE TABLE exam_violations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    assignment_id UUID NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
+    student_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    violation_type VARCHAR(30) NOT NULL
+        CHECK (violation_type IN ('fullscreen_exit', 'tab_switch', 'window_blur', 'forced_end')),
+    violation_count INT NOT NULL DEFAULT 1,
+    detail TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_exam_violations_assignment ON exam_violations(assignment_id);
+CREATE INDEX idx_exam_violations_student ON exam_violations(student_id);
+CREATE INDEX idx_exam_violations_lookup ON exam_violations(assignment_id, student_id);
+
 -- ===== RLS (Row Level Security) 기본 설정 =====
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE courses ENABLE ROW LEVEL SECURITY;
@@ -183,6 +277,8 @@ ALTER TABLE ai_analyses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE course_materials ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_comments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE exam_screenshots ENABLE ROW LEVEL SECURITY;
+ALTER TABLE exam_violations ENABLE ROW LEVEL SECURITY;
 
 -- 서비스 키로 접근 시 모든 테이블 ��근 허용 (백엔드 API 서버용)
 CREATE POLICY "Service role full access" ON users FOR ALL USING (true) WITH CHECK (true);
@@ -195,3 +291,5 @@ CREATE POLICY "Service role full access" ON ai_analyses FOR ALL USING (true) WIT
 CREATE POLICY "Service role full access" ON notes FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Service role full access" ON course_materials FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Service role full access" ON ai_comments FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Service role full access" ON exam_screenshots FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Service role full access" ON exam_violations FOR ALL USING (true) WITH CHECK (true);

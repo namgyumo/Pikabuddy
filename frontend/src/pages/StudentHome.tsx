@@ -1,19 +1,34 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useCourseStore } from "../store/courseStore";
+import { useAuthStore } from "../store/authStore";
+import { useTutorialStore } from "../store/tutorialStore";
+import { getTutorialKey } from "../lib/tutorials";
 import api from "../lib/api";
 import AppShell from "../components/common/AppShell";
+import { SkeletonList } from "../components/common/Skeleton";
 
 export default function StudentHome() {
   const { courses, fetchCourses, loading } = useCourseStore();
+  const user = useAuthStore((s) => s.user);
 
   const [showJoin, setShowJoin] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
   const [joining, setJoining] = useState(false);
 
+  const tutorialStart = useTutorialStore((s) => s.start);
+  const tutorialCompleted = useTutorialStore((s) => s.isCompleted);
+
   useEffect(() => {
     fetchCourses();
   }, [fetchCourses]);
+
+  useEffect(() => {
+    if (user && !tutorialCompleted(getTutorialKey("student", user.id))) {
+      const timer = setTimeout(() => tutorialStart(), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleJoin = async () => {
     if (!inviteCode.trim()) return;
@@ -45,6 +60,7 @@ export default function StudentHome() {
           <button
             className="btn btn-primary"
             onClick={() => setShowJoin(true)}
+            data-tutorial="join-course"
           >
             + 초대코드로 참여
           </button>
@@ -78,7 +94,7 @@ export default function StudentHome() {
         )}
 
         {loading ? (
-          <div className="loading-spinner">강의를 불러오는 중...</div>
+          <SkeletonList count={3} />
         ) : courses.length === 0 ? (
           <div className="empty">
             참여한 강의가 없습니다.
@@ -86,7 +102,7 @@ export default function StudentHome() {
             교수에게 초대 코드를 받아 참여하세요.
           </div>
         ) : (
-          <div className="course-grid">
+          <div className="course-grid" data-tutorial="course-list">
             {courses.map((course) => (
               <Link
                 key={course.id}

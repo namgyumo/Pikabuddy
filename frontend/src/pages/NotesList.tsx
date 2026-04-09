@@ -14,6 +14,8 @@ export default function NotesList() {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string; childCount: number } | null>(null);
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     if (!courseId) return;
@@ -54,8 +56,12 @@ export default function NotesList() {
     });
   };
 
+  const filteredNotes = searchQuery
+    ? notes.filter((n) => n.title.toLowerCase().includes(searchQuery.toLowerCase()))
+    : notes;
+
   // Separate root notes and child notes
-  const rootNotes = notes.filter((n) => !n.parent_id);
+  const rootNotes = filteredNotes.filter((n) => !n.parent_id);
   const childMap = new Map<string, Note[]>();
   for (const n of notes) {
     if (n.parent_id) {
@@ -78,7 +84,31 @@ export default function NotesList() {
   return (
     <AppShell courseTitle={course?.title}>
       <main className="content">
-        <h1 className="page-title">노트</h1>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+          <h1 className="page-title" style={{ marginBottom: 0 }}>노트</h1>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <input
+              type="text"
+              placeholder="노트 검색..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                padding: "6px 12px", borderRadius: "var(--radius-sm)", border: "1px solid var(--outline-variant)",
+                fontSize: 13, background: "var(--surface-container-lowest)", color: "var(--on-surface)", width: 180,
+              }}
+            />
+            <button
+              onClick={() => setViewMode(viewMode === "list" ? "grid" : "list")}
+              style={{
+                padding: "6px 10px", borderRadius: "var(--radius-sm)", border: "1px solid var(--outline-variant)",
+                background: "var(--surface-container-lowest)", cursor: "pointer", fontSize: 14,
+              }}
+              title={viewMode === "list" ? "그리드 뷰" : "목록 뷰"}
+            >
+              {viewMode === "list" ? "\u{25A6}" : "\u{2630}"}
+            </button>
+          </div>
+        </div>
         <p className="page-subtitle">
           강의 내용을 정리하고 AI가 이해도를 분석해드립니다.
         </p>

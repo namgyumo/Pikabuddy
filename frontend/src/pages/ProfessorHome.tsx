@@ -1,19 +1,34 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useCourseStore } from "../store/courseStore";
+import { useAuthStore } from "../store/authStore";
+import { useTutorialStore } from "../store/tutorialStore";
+import { getTutorialKey } from "../lib/tutorials";
 import AppShell from "../components/common/AppShell";
+import { SkeletonList } from "../components/common/Skeleton";
 
 export default function ProfessorHome() {
   const { courses, fetchCourses, createCourse, loading } = useCourseStore();
+  const user = useAuthStore((s) => s.user);
 
   const [showCreate, setShowCreate] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [objectives, setObjectives] = useState("");
 
+  const tutorialStart = useTutorialStore((s) => s.start);
+  const tutorialCompleted = useTutorialStore((s) => s.isCompleted);
+
   useEffect(() => {
     fetchCourses();
   }, [fetchCourses]);
+
+  useEffect(() => {
+    if (user && !tutorialCompleted(getTutorialKey("professor", user.id))) {
+      const timer = setTimeout(() => tutorialStart(), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCreate = async () => {
     if (!title.trim()) return;
@@ -43,6 +58,7 @@ export default function ProfessorHome() {
           <button
             className="btn btn-primary"
             onClick={() => setShowCreate(true)}
+            data-tutorial="create-course"
           >
             + 새 강의 개설
           </button>
@@ -85,7 +101,7 @@ export default function ProfessorHome() {
         )}
 
         {loading ? (
-          <div className="loading-spinner">강의를 불러오는 중...</div>
+          <SkeletonList count={3} />
         ) : courses.length === 0 ? (
           <div className="empty">
             아직 생성된 강의가 없습니다.
@@ -93,7 +109,7 @@ export default function ProfessorHome() {
             위의 "새 강의 개설" 버튼으로 시작하세요.
           </div>
         ) : (
-          <div className="course-grid">
+          <div className="course-grid" data-tutorial="course-list">
             {courses.map((course) => (
               <Link
                 key={course.id}

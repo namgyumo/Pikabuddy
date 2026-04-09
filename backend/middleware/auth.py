@@ -69,3 +69,13 @@ async def require_student(user: dict = Depends(get_current_user)) -> dict:
             detail="학생 권한이 필요합니다.",
         )
     return user
+
+
+async def require_student_or_personal(user: dict = Depends(get_current_user)) -> dict:
+    """학생 또는 개인 권한을 요구한다."""
+    if user.get("role") not in ("student", "personal"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="학생 또는 개인 권한이 필요합니다.",
+        )
+    return user

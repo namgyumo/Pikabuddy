@@ -39,9 +39,11 @@ async def upload_material(
     course_id: str,
     title: str = Form(...),
     file: UploadFile = File(...),
-    user: dict = Depends(require_professor),
+    user: dict = Depends(get_current_user),
 ):
-    """교수가 강의자료 업로드 (Supabase Storage 사용)"""
+    """교수 또는 개인 모드 유저가 강의자료 업로드 (Supabase Storage 사용)"""
+    if user.get("role") not in ("professor", "personal"):
+        raise HTTPException(status_code=403, detail="자료 업로드 권한이 없습니다.")
     supabase = get_supabase()
 
     # Read file

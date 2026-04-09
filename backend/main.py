@@ -14,6 +14,7 @@ from modules.proctor.router import router as proctor_router
 from modules.runner.router import router as runner_router
 from modules.agents.router import router as agents_router
 from modules.materials.router import router as materials_router
+from modules.gamification.router import router as gamification_router
 
 settings = get_settings()
 
@@ -43,6 +44,7 @@ app.include_router(dashboard_router, prefix="/api")
 app.include_router(proctor_router, prefix="/api")
 app.include_router(runner_router, prefix="/api")
 app.include_router(materials_router, prefix="/api")
+app.include_router(gamification_router, prefix="/api")
 
 
 @app.get("/")

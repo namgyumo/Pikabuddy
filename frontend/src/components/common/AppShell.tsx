@@ -1,5 +1,8 @@
+import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
+import TierBadge from "./TierBadge";
+import ThemeBackground from "./ThemeBackground";
 
 interface Props {
   children: React.ReactNode;
@@ -11,9 +14,17 @@ export default function AppShell({ children, courseTitle }: Props) {
   const signOut = useAuthStore((s) => s.signOut);
   const location = useLocation();
   const navigate = useNavigate();
-  const isProfessor = user?.role === "professor";
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const homeLink = isProfessor ? "/professor" : "/student";
+  // Close sidebar on navigation (mobile)
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
+
+  const isProfessor = user?.role === "professor";
+  const isPersonal = user?.role === "personal";
+
+  const homeLink = isProfessor ? "/professor" : isPersonal ? "/personal" : "/student";
   const isActive = (path: string) => location.pathname.includes(path);
 
   // Extract courseId from URL for contextual navigation
@@ -22,9 +33,16 @@ export default function AppShell({ children, courseTitle }: Props) {
 
   return (
     <div className="app-shell">
+      {/* Mobile hamburger */}
+      <button className="mobile-menu-btn" onClick={() => setSidebarOpen(!sidebarOpen)}>
+        {sidebarOpen ? "\u2715" : "\u2630"}
+      </button>
+      {/* Mobile overlay */}
+      <ThemeBackground />
+      <div className={`sidebar-overlay${sidebarOpen ? " open" : ""}`} onClick={() => setSidebarOpen(false)} />
       {/* Sidebar */}
-      <aside className="sidebar">
-        <div className="sidebar-brand">
+      <aside className={`sidebar${sidebarOpen ? " open" : ""}`}>
+        <div className="sidebar-brand" data-tutorial="sidebar-brand">
           <Link to={homeLink}>
             <div className="sidebar-brand-name">pikabuddy</div>
           </Link>
@@ -48,6 +66,7 @@ export default function AppShell({ children, courseTitle }: Props) {
                   <Link
                     to={`/courses/${courseId}/dashboard`}
                     className={`sidebar-link ${isActive("dashboard") ? "active" : ""}`}
+                    data-tutorial="sidebar-dashboard"
                   >
                     <span className="sidebar-link-icon">&#x1F4CA;</span>
                     Dashboard
@@ -58,6 +77,42 @@ export default function AppShell({ children, courseTitle }: Props) {
                   >
                     <span className="sidebar-link-icon">&#x1F4DD;</span>
                     Curriculum
+                  </Link>
+                </>
+              )}
+            </>
+          ) : isPersonal ? (
+            <>
+              <Link
+                to={homeLink}
+                className={`sidebar-link ${location.pathname === homeLink ? "active" : ""}`}
+              >
+                <span className="sidebar-link-icon">&#x1F3E0;</span>
+                Home
+              </Link>
+              {courseId && (
+                <>
+                  <Link
+                    to={`/courses/${courseId}`}
+                    className={`sidebar-link ${isActive("courses") && !isActive("notes") && !isActive("graph") ? "active" : ""}`}
+                  >
+                    <span className="sidebar-link-icon">&#x1F4CB;</span>
+                    Assignments
+                  </Link>
+                  <Link
+                    to={`/courses/${courseId}/notes`}
+                    className={`sidebar-link ${isActive("notes") ? "active" : ""}`}
+                    data-tutorial="sidebar-notes"
+                  >
+                    <span className="sidebar-link-icon">&#x1F4DD;</span>
+                    Notes
+                  </Link>
+                  <Link
+                    to={`/courses/${courseId}/graph`}
+                    className={`sidebar-link ${isActive("graph") ? "active" : ""}`}
+                  >
+                    <span className="sidebar-link-icon">&#x1F578;</span>
+                    Graph
                   </Link>
                 </>
               )}
@@ -83,6 +138,7 @@ export default function AppShell({ children, courseTitle }: Props) {
                   <Link
                     to={`/courses/${courseId}/notes`}
                     className={`sidebar-link ${isActive("notes") ? "active" : ""}`}
+                    data-tutorial="sidebar-notes"
                   >
                     <span className="sidebar-link-icon">&#x1F4DD;</span>
                     Notes
@@ -94,9 +150,15 @@ export default function AppShell({ children, courseTitle }: Props) {
         </nav>
 
         <div className="sidebar-bottom">
+          {!isProfessor && (
+            <div style={{ padding: "8px 16px" }} data-tutorial="sidebar-tier">
+              <TierBadge compact />
+            </div>
+          )}
           <Link
             to="/settings"
             className={`sidebar-link ${location.pathname === "/settings" ? "active" : ""}`}
+            data-tutorial="sidebar-settings"
           >
             <span className="sidebar-link-icon">&#x2699;</span>
             Settings

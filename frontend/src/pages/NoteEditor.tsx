@@ -32,6 +32,8 @@ import { SubNoteExtension } from "../lib/SubNoteExtension";
 import { NoteLinkExtension } from "../lib/NoteLinkExtension";
 import { SlashCommandExtension } from "../lib/SlashCommandExtension";
 import { BlockHandleExtension } from "../lib/BlockHandleExtension";
+import { ToggleExtension } from "../lib/ToggleExtension";
+import { CalloutExtension } from "../lib/CalloutExtension";
 import MiniNoteTree from "../components/MiniNoteTree";
 import type { Note } from "../types";
 
@@ -230,6 +232,8 @@ export default function NoteEditor() {
       NoteLinkExtension,
       SlashCommandExtension,
       BlockHandleExtension,
+      ToggleExtension,
+      CalloutExtension,
     ],
     content: "",
   });

@@ -1,18 +1,29 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
+import { useTutorialStore } from "../store/tutorialStore";
 import AppShell from "../components/common/AppShell";
+import ThemePicker from "../components/settings/ThemePicker";
 import api from "../lib/api";
 
 export default function Settings() {
   const user = useAuthStore((s) => s.user);
   const fetchUser = useAuthStore((s) => s.fetchUser);
+  const switchRole = useAuthStore((s) => s.switchRole);
+  const navigate = useNavigate();
 
   const [name, setName] = useState(user?.name || "");
   const [school, setSchool] = useState(user?.school || "");
   const [department, setDepartment] = useState(user?.department || "");
   const [studentId, setStudentId] = useState(user?.student_id || "");
+  const [bio, setBio] = useState(user?.bio || "");
+  const [profileColor, setProfileColor] = useState(user?.profile_color || "#004AC6");
+  const [socialGithub, setSocialGithub] = useState(user?.social_links?.github || "");
+  const [socialBlog, setSocialBlog] = useState(user?.social_links?.blog || "");
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [roleConfirm, setRoleConfirm] = useState<"professor" | "student" | "personal" | null>(null);
 
   const handleSave = async () => {
     const update: Record<string, string> = {};
@@ -20,6 +31,14 @@ export default function Settings() {
     if (school !== (user?.school || "")) update.school = school;
     if (department !== (user?.department || "")) update.department = department;
     if (studentId !== (user?.student_id || "")) update.student_id = studentId;
+    if (bio !== (user?.bio || "")) (update as Record<string, unknown>).bio = bio;
+    if (profileColor !== (user?.profile_color || "#004AC6")) (update as Record<string, unknown>).profile_color = profileColor;
+    const newSocial: Record<string, string> = {};
+    if (socialGithub) newSocial.github = socialGithub;
+    if (socialBlog) newSocial.blog = socialBlog;
+    if (JSON.stringify(newSocial) !== JSON.stringify(user?.social_links || {})) {
+      (update as Record<string, unknown>).social_links = newSocial;
+    }
 
     if (Object.keys(update).length === 0) {
       setMessage({ type: "error", text: "변경된 내용이 없습니다." });
@@ -44,8 +63,81 @@ export default function Settings() {
       <div style={{ padding: "32px 40px", maxWidth: 600 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>계정 설정</h1>
         <p style={{ color: "var(--on-surface-variant)", fontSize: 14, marginBottom: 28 }}>
-          프로필 정보를 수정할 수 있습니다.
+          프로필 정보와 앱 외관을 설정할 수 있습니다.
         </p>
+
+        {/* ── 튜토리얼 ── */}
+        <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12, color: "var(--on-surface)" }}>튜토리얼</h2>
+        <button
+          className="btn btn-secondary"
+          onClick={() => {
+            useTutorialStore.getState().resetAll();
+            const home = user?.role === "professor" ? "/professor" : user?.role === "personal" ? "/personal" : "/student";
+            navigate(home);
+          }}
+          style={{ marginBottom: 28 }}
+        >
+          튜토리얼 다시 보기
+        </button>
+
+        {/* ── 외관 설정 ── */}
+        <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12, color: "var(--on-surface)" }}>외관</h2>
+        <ThemePicker />
+        <div style={{ height: 28 }} />
+
+        {/* ── 프로필 설정 ── */}
+        <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12, color: "var(--on-surface)" }}>프로필</h2>
+
+        {/* 아바타 & 배너 */}
+        <div style={{ display: "flex", gap: 20, alignItems: "center", marginBottom: 20 }}>
+          <div style={{ position: "relative" }}>
+            <div style={{
+              width: 72, height: 72, borderRadius: "50%", overflow: "hidden",
+              border: `3px solid ${profileColor}`, background: "var(--surface-container)",
+              display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 700,
+              color: "var(--primary)",
+            }}>
+              {user?.avatar_url ? (
+                <img src={user.avatar_url} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                user?.name?.charAt(0)?.toUpperCase() || "U"
+              )}
+            </div>
+            <label style={{
+              position: "absolute", bottom: -2, right: -2, width: 24, height: 24,
+              borderRadius: "50%", background: "var(--primary)", color: "#fff",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer", fontSize: 12, border: "2px solid var(--surface-container-lowest)",
+            }}>
+              +
+              <input type="file" accept="image/*" style={{ display: "none" }} onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                setUploading(true);
+                const formData = new FormData();
+                formData.append("file", file);
+                try {
+                  await api.post("/auth/avatar", formData, { headers: { "Content-Type": "multipart/form-data" } });
+                  await fetchUser();
+                  setMessage({ type: "success", text: "프로필 사진이 변경되었습니다." });
+                } catch {
+                  setMessage({ type: "error", text: "업로드에 실패했습니다." });
+                } finally { setUploading(false); }
+              }} />
+            </label>
+          </div>
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>프로필 사진</div>
+            <div style={{ fontSize: 12, color: "var(--on-surface-variant)" }}>
+              {uploading ? "업로드 중..." : "클릭하여 변경"}
+            </div>
+          </div>
+          <div style={{ marginLeft: "auto" }}>
+            <label style={labelStyle}>프로필 색상</label>
+            <input type="color" value={profileColor} onChange={(e) => setProfileColor(e.target.value)}
+              style={{ width: 40, height: 32, border: "none", cursor: "pointer", borderRadius: 4 }} />
+          </div>
+        </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {/* Email (read-only) */}
@@ -59,15 +151,24 @@ export default function Settings() {
             />
           </div>
 
-          {/* Role (read-only) */}
+          {/* Role (switchable) */}
           <div>
             <label style={labelStyle}>역할</label>
-            <input
-              type="text"
-              value={user?.role === "professor" ? "교수" : user?.role === "student" ? "학생" : "미설정"}
-              disabled
-              style={{ ...inputStyle, background: "var(--surface-container)", color: "var(--on-surface-variant)" }}
-            />
+            <select
+              value={user?.role || ""}
+              onChange={(e) => {
+                const newRole = e.target.value as "professor" | "student" | "personal";
+                if (newRole === user?.role) return;
+                setRoleConfirm(newRole);
+                // 셀렉트 값 되돌리기 (확인 전까지)
+                e.target.value = user?.role || "";
+              }}
+              style={inputStyle}
+            >
+              <option value="professor">교수</option>
+              <option value="student">학생</option>
+              <option value="personal">개인</option>
+            </select>
           </div>
 
           {/* Name */}
@@ -119,6 +220,40 @@ export default function Settings() {
               />
             </div>
           )}
+
+          {/* Bio */}
+          <div>
+            <label style={labelStyle}>자기소개</label>
+            <textarea
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              placeholder="자기소개를 작성하세요"
+              rows={3}
+              style={{ ...inputStyle, resize: "vertical" }}
+            />
+          </div>
+
+          {/* Social Links */}
+          <div>
+            <label style={labelStyle}>GitHub</label>
+            <input
+              type="text"
+              value={socialGithub}
+              onChange={(e) => setSocialGithub(e.target.value)}
+              placeholder="https://github.com/username"
+              style={inputStyle}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>블로그</label>
+            <input
+              type="text"
+              value={socialBlog}
+              onChange={(e) => setSocialBlog(e.target.value)}
+              placeholder="https://blog.example.com"
+              style={inputStyle}
+            />
+          </div>
         </div>
 
         {message && (
@@ -155,6 +290,35 @@ export default function Settings() {
           {saving ? "저장 중..." : "저장"}
         </button>
       </div>
+
+      {/* 역할 변경 확인 모달 */}
+      {roleConfirm && (
+        <div className="confirm-overlay" onClick={() => setRoleConfirm(null)}>
+          <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="confirm-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="8.5" cy="7" r="4"/>
+                <polyline points="17 11 19 13 23 9"/>
+              </svg>
+            </div>
+            <h3 className="confirm-title">역할 변경</h3>
+            <p className="confirm-desc">
+              <strong>{roleConfirm === "professor" ? "교수" : roleConfirm === "student" ? "학생" : "개인"}</strong> 모드로 전환하시겠습니까?
+              <br />역할에 따라 사용할 수 있는 기능이 달라집니다.
+            </p>
+            <div className="confirm-actions">
+              <button className="btn btn-secondary" onClick={() => setRoleConfirm(null)}>취소</button>
+              <button className="btn btn-primary" onClick={async () => {
+                const r = roleConfirm;
+                setRoleConfirm(null);
+                await switchRole(r);
+                navigate(r === "professor" ? "/professor" : r === "personal" ? "/personal" : "/student");
+              }}>변경</button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }

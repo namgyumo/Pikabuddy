@@ -5,9 +5,11 @@ export default function SelectRole() {
   const navigate = useNavigate();
   const selectRole = useAuthStore((s) => s.selectRole);
 
-  const handleSelect = async (role: "professor" | "student") => {
+  const handleSelect = async (role: "professor" | "student" | "personal") => {
     await selectRole(role);
-    navigate(role === "professor" ? "/professor" : "/student");
+    if (role === "professor") navigate("/professor");
+    else if (role === "student") navigate("/student");
+    else navigate("/personal");
   };
 
   return (
@@ -36,6 +38,14 @@ export default function SelectRole() {
           <p>
             AI 튜터와 함께 코딩 실력을 키워보세요. 실시간 피드백과 함께
             나만의 페이스로 학습을 경험하세요.
+          </p>
+        </button>
+        <button className="role-card" onClick={() => handleSelect("personal")}>
+          <div className="role-icon">&#x1F4BB;</div>
+          <h2>개인 (Personal)</h2>
+          <p>
+            혼자서 자유롭게 학습하세요. 직접 문제를 만들고 AI가 평가해주며
+            노트 작성을 도와줍니다.
           </p>
         </button>
       </div>

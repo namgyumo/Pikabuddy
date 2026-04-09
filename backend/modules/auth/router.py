@@ -1,5 +1,6 @@
 import hmac
-from fastapi import APIRouter, Depends, HTTPException, status
+import uuid
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from pydantic import BaseModel
 from common.supabase_client import get_supabase
 from middleware.auth import get_current_user
@@ -167,11 +168,26 @@ async def auth_callback(body: AuthCallbackRequest):
 @router.post("/role")
 async def select_role(body: RoleSelectRequest, user: dict = Depends(get_current_user)):
     """최초 로그인 시 역할 선택"""
-    if body.role not in ("professor", "student"):
-        raise HTTPException(status_code=400, detail="역할은 professor 또는 student만 가능합니다.")
+    if body.role not in ("professor", "student", "personal"):
+        raise HTTPException(status_code=400, detail="역할은 professor, student, personal만 가능합니다.")
 
     supabase = get_supabase()
     supabase.table("users").update({"role": body.role}).eq("id", user["id"]).execute()
+
+    # 개인 모드 선택 시 가상 코스 자동 생성
+    if body.role == "personal":
+        existing = supabase.table("courses").select("id").eq("professor_id", user["id"]).eq("is_personal", True).execute()
+        if not existing.data:
+            import random, string
+            code = "P" + "".join(random.choices(string.ascii_uppercase + string.digits, k=7))
+            supabase.table("courses").insert({
+                "professor_id": user["id"],
+                "title": "내 학습 공간",
+                "description": "개인 학습을 위한 공간입니다.",
+                "invite_code": code,
+                "is_personal": True,
+            }).execute()
+
     return {"message": "역할이 설정되었습니다.", "role": body.role}
 
 
@@ -181,11 +197,46 @@ async def get_me(user: dict = Depends(get_current_user)):
     return user
 
 
+class SwitchRoleRequest(BaseModel):
+    role: str  # "professor" | "student" | "personal"
+
+
+@router.post("/switch-role")
+async def switch_role(body: SwitchRoleRequest, user: dict = Depends(get_current_user)):
+    """계정 설정에서 역할 변경"""
+    if body.role not in ("professor", "student", "personal"):
+        raise HTTPException(status_code=400, detail="유효하지 않은 역할입니다.")
+
+    supabase = get_supabase()
+    supabase.table("users").update({"role": body.role}).eq("id", user["id"]).execute()
+
+    # 개인 모드로 전환 시 가상 코스 생성
+    if body.role == "personal":
+        existing = supabase.table("courses").select("id").eq("professor_id", user["id"]).eq("is_personal", True).execute()
+        if not existing.data:
+            import random, string
+            code = "P" + "".join(random.choices(string.ascii_uppercase + string.digits, k=7))
+            supabase.table("courses").insert({
+                "professor_id": user["id"],
+                "title": "내 학습 공간",
+                "description": "개인 학습을 위한 공간입니다.",
+                "invite_code": code,
+                "is_personal": True,
+            }).execute()
+
+    result = supabase.table("users").select("*").eq("id", user["id"]).single().execute()
+    return result.data
+
+
 class ProfileUpdateRequest(BaseModel):
     name: str | None = None
     school: str | None = None
     department: str | None = None
     student_id: str | None = None
+    preferences: dict | None = None
+    bio: str | None = None
+    social_links: dict | None = None
+    profile_color: str | None = None
 
 
 @router.patch("/profile")
@@ -198,4 +249,46 @@ async def update_profile(body: ProfileUpdateRequest, user: dict = Depends(get_cu
     supabase = get_supabase()
     supabase.table("users").update(update_data).eq("id", user["id"]).execute()
     result = supabase.table("users").select("*").eq("id", user["id"]).single().execute()
+    return result.data
+
+
+@router.post("/avatar")
+async def upload_avatar(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
+    """아바타 이미지 업로드"""
+    supabase = get_supabase()
+    ext = file.filename.split(".")[-1] if file.filename else "png"
+    path = f"avatars/{user['id']}/{uuid.uuid4().hex}.{ext}"
+    content = await file.read()
+
+    supabase.storage.from_("avatars").upload(path, content, {"content-type": file.content_type or "image/png"})
+    url = supabase.storage.from_("avatars").get_public_url(path)
+
+    supabase.table("users").update({"avatar_url": url}).eq("id", user["id"]).execute()
+    return {"avatar_url": url}
+
+
+@router.post("/banner")
+async def upload_banner(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
+    """배너 이미지 업로드"""
+    supabase = get_supabase()
+    ext = file.filename.split(".")[-1] if file.filename else "png"
+    path = f"banners/{user['id']}/{uuid.uuid4().hex}.{ext}"
+    content = await file.read()
+
+    supabase.storage.from_("banners").upload(path, content, {"content-type": file.content_type or "image/png"})
+    url = supabase.storage.from_("banners").get_public_url(path)
+
+    supabase.table("users").update({"banner_url": url}).eq("id", user["id"]).execute()
+    return {"banner_url": url}
+
+
+@router.get("/profile/{user_id}")
+async def get_public_profile(user_id: str):
+    """공개 프로필 조회"""
+    supabase = get_supabase()
+    result = supabase.table("users").select(
+        "id, name, role, avatar_url, banner_url, bio, social_links, profile_color, school, department, created_at"
+    ).eq("id", user_id).single().execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
     return result.data

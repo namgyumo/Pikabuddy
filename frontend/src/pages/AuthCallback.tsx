@@ -23,6 +23,8 @@ export default function AuthCallback() {
         navigate("/select-role");
       } else if (user.role === "professor") {
         navigate("/professor");
+      } else if (user.role === "personal") {
+        navigate("/personal");
       } else {
         navigate("/student");
       }

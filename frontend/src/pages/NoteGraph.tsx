@@ -55,6 +55,14 @@ function scoreColor(s: number | null) {
   return "#4ade80";
 }
 
+function scoreEmoji(s: number | null) {
+  if (s == null) return "\u{1F4DD}";
+  if (s < 40) return "\u{1F534}";
+  if (s < 60) return "\u{1F7E1}";
+  if (s < 80) return "\u{1F535}";
+  return "\u{1F7E2}";
+}
+
 export default function NoteGraph() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
@@ -162,19 +170,48 @@ export default function NoteGraph() {
   const gd = useMemo(() => {
     if (!graphData) return { nodes: [] as GNode[], links: [] as GLink[] };
     const cutoff = dateRange.min + (dateRange.max - dateRange.min) * (timeRange / 100);
-    const nodes = graphData.nodes.filter((n) => {
+    const filtered = graphData.nodes.filter((n) => {
       if (new Date(n.created_at).getTime() > cutoff) return false;
       const s = n.understanding_score;
       if (s != null && (s < scoreRange[0] || s > scoreRange[1])) return false;
       if (tagFilter && !n.tags.includes(tagFilter)) return false;
       return true;
     });
-    const ids = new Set(nodes.map((n) => n.id));
+    const ids = new Set(filtered.map((n) => n.id));
+
+    // Compute depth for each node (root=0, child=1, grandchild=2, ...)
+    const parentMap = new Map<string, string | null>();
+    filtered.forEach((n) => parentMap.set(n.id, ids.has(n.parent_id ?? "") ? n.parent_id : null));
+    const depthMap = new Map<string, number>();
+    const childCountMap = new Map<string, number>();
+    const getDepth = (id: string): number => {
+      if (depthMap.has(id)) return depthMap.get(id)!;
+      const pid = parentMap.get(id);
+      const d = pid ? getDepth(pid) + 1 : 0;
+      depthMap.set(id, d);
+      return d;
+    };
+    filtered.forEach((n) => getDepth(n.id));
+    // Count children for sizing parents bigger
+    filtered.forEach((n) => {
+      const pid = parentMap.get(n.id);
+      if (pid) childCountMap.set(pid, (childCountMap.get(pid) || 0) + 1);
+    });
+
+    // Size: root nodes biggest, deeper nodes smaller
+    const sizeByDepth = (id: string) => {
+      const depth = depthMap.get(id) ?? 0;
+      const children = childCountMap.get(id) || 0;
+      const base = depth === 0 ? 18 : depth === 1 ? 12 : 8;
+      const bonus = Math.min(6, children * 1.5); // parents with more children slightly bigger
+      return base + bonus;
+    };
+
     return {
-      nodes: nodes.map((n): GNode => ({
+      nodes: filtered.map((n): GNode => ({
         id: n.id, title: n.title, score: n.understanding_score,
-        tags: n.tags, parentId: n.parent_id,
-        size: Math.max(4, Math.min(14, 3 + Math.sqrt(n.content_length) / 5)),
+        tags: n.tags, parentId: parentMap.get(n.id) ?? null,
+        size: sizeByDepth(n.id),
         createdAt: n.created_at, updatedAt: n.updated_at,
       })),
       links: graphData.edges
@@ -182,6 +219,34 @@ export default function NoteGraph() {
         .map((e): GLink => ({ source: e.source, target: e.target, type: e.type })),
     };
   }, [graphData, scoreRange, tagFilter, timeRange, dateRange]);
+
+  /* ── configure d3 forces after graph mounts ── */
+  useEffect(() => {
+    const fg = fgRef.current;
+    if (!fg || gd.nodes.length === 0) return;
+    try {
+      // Stronger charge repulsion — root nodes push harder
+      fg.d3Force("charge")?.strength((node: GNode) => {
+        return node.parentId === null ? -500 : -250;
+      }).distanceMax(500);
+
+      // Link distance by type — parent-child closer, rest further
+      fg.d3Force("link")
+        ?.distance((link: GLink) => {
+          if (link.type === "parent") return 100;
+          if (link.type === "link") return 180;
+          return 220;
+        })
+        .strength((link: GLink) => {
+          return link.type === "parent" ? 0.7 : 0.15;
+        });
+
+      // Weaker center force so it doesn't crush nodes together
+      fg.d3Force("center")?.strength(0.03);
+
+      fg.d3ReheatSimulation();
+    } catch { /* force API may vary */ }
+  }, [gd]);
 
   /* ── zoom to fit + freeze all nodes after engine settles ── */
   const onEngineStop = useCallback(() => {
@@ -193,34 +258,70 @@ export default function NoteGraph() {
     }
   }, [gd.nodes]);
 
+  /* ── label collision avoidance ── */
+  const labelRectsRef = useRef<{ x: number; y: number; w: number; h: number }[]>([]);
+  const paintCountRef = useRef(0);
+
+  function reserveLabel(cx: number, cy: number, w: number, h: number): { lx: number; ly: number } {
+    const rects = labelRectsRef.current;
+    let lx = cx, ly = cy;
+    // Try original position, then nudge down, then left/right
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const left = lx - w / 2, top = ly - h / 2;
+      let overlap = false;
+      for (const r of rects) {
+        if (left < r.x + r.w && left + w > r.x && top < r.y + r.h && top + h > r.y) {
+          overlap = true;
+          break;
+        }
+      }
+      if (!overlap) break;
+      // Nudge: alternate between down and sideways
+      if (attempt % 2 === 0) ly += h + 2;
+      else lx += (attempt % 4 < 2 ? 1 : -1) * (w * 0.6);
+    }
+    rects.push({ x: lx - w / 2, y: ly - h / 2, w, h });
+    return { lx, ly };
+  }
+
   /* ── node paint ── */
   const paintNode = useCallback((node: GNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
     const x = node.x, y = node.y;
     if (x == null || y == null || !isFinite(x) || !isFinite(y)) return;
 
     const isHov = hovered?.id === node.id;
-    const r = isHov ? node.size + 2 : node.size;
+    const isRoot = node.parentId === null;
+    const r = isHov ? node.size + 3 : node.size;
     const col = scoreColor(node.score);
 
     // soft glow behind hovered node
     if (isHov) {
       ctx.beginPath();
-      ctx.arc(x, y, r + 8, 0, Math.PI * 2);
-      ctx.fillStyle = col + "18"; // ~10% opacity hex
+      ctx.arc(x, y, r + 10, 0, Math.PI * 2);
+      ctx.fillStyle = col + "18";
       ctx.fill();
       ctx.beginPath();
-      ctx.arc(x, y, r + 4, 0, Math.PI * 2);
-      ctx.fillStyle = col + "30"; // ~19% opacity hex
+      ctx.arc(x, y, r + 5, 0, Math.PI * 2);
+      ctx.fillStyle = col + "30";
       ctx.fill();
     }
 
-    // main circle with subtle border
+    // Root nodes: double ring for visual hierarchy
+    if (isRoot && !isHov) {
+      ctx.beginPath();
+      ctx.arc(x, y, r + 3, 0, Math.PI * 2);
+      ctx.strokeStyle = col + "40";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+
+    // main circle
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fillStyle = col;
     ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,0.15)";
-    ctx.lineWidth = 0.5;
+    ctx.strokeStyle = isRoot ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.1)";
+    ctx.lineWidth = isRoot ? 1 : 0.5;
     ctx.stroke();
 
     // inner highlight (gives depth)
@@ -230,22 +331,22 @@ export default function NoteGraph() {
     ctx.fill();
 
     // label
-    const showLbl = isHov || (showLabels && globalScale > 0.7);
+    const showLbl = isHov || (showLabels && globalScale > 0.55);
     if (!showLbl) return;
 
-    const fs = Math.min(11, Math.max(7, 10 / globalScale));
-    ctx.font = `${isHov ? "600" : "500"} ${fs}px "Pretendard", -apple-system, system-ui, sans-serif`;
-    const maxChars = isHov ? 24 : 14;
+    const fs = Math.min(isRoot ? 12 : 10, Math.max(7, (isRoot ? 11 : 9) / globalScale));
+    ctx.font = `${isHov || isRoot ? "600" : "400"} ${fs}px "Pretendard", -apple-system, system-ui, sans-serif`;
+    const maxChars = isHov ? 24 : isRoot ? 18 : 12;
     const txt = node.title.length > maxChars ? node.title.slice(0, maxChars) + "…" : node.title;
     const tw = ctx.measureText(txt).width;
 
-    // pill-shaped label background
+    // pill-shaped label background with collision avoidance
     const px = 5, py = 2.5;
-    const lx = x;
-    const ly = y + r + fs * 0.5 + 5;
     const pillW = tw + px * 2;
     const pillH = fs + py * 2;
-    const pillR = pillH / 2; // fully rounded ends
+    const pillR = pillH / 2;
+    const idealLy = y + r + fs * 0.5 + 6;
+    const { lx, ly } = reserveLabel(x, idealLy, pillW, pillH);
     const left = lx - pillW / 2;
     const top = ly - pillH / 2;
 
@@ -262,20 +363,20 @@ export default function NoteGraph() {
     ctx.closePath();
 
     if (isHov) {
-      ctx.fillStyle = "rgba(30,41,59,0.92)";
+      ctx.fillStyle = "rgba(30,41,59,0.95)";
       ctx.strokeStyle = col + "60";
-      ctx.lineWidth = 0.8;
+      ctx.lineWidth = 1;
       ctx.fill();
       ctx.stroke();
     } else {
-      ctx.fillStyle = "rgba(15,23,42,0.8)";
+      ctx.fillStyle = isRoot ? "rgba(15,23,42,0.9)" : "rgba(15,23,42,0.75)";
       ctx.fill();
     }
 
     // label text
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillStyle = isHov ? "#f8fafc" : "rgba(203,213,225,0.85)";
+    ctx.fillStyle = isHov ? "#f8fafc" : isRoot ? "#e2e8f0" : "rgba(203,213,225,0.8)";
     ctx.fillText(txt, lx, ly);
   }, [hovered, showLabels]);
 
@@ -285,24 +386,40 @@ export default function NoteGraph() {
     if (!isFinite(s.x!) || !isFinite(s.y!) || !isFinite(t.x!) || !isFinite(t.y!)) return;
 
     const lw = 1 / globalScale;
-    ctx.beginPath();
-    ctx.moveTo(s.x!, s.y!);
-    ctx.lineTo(t.x!, t.y!);
     if (link.type === "parent") {
-      ctx.strokeStyle = "rgba(96,165,250,0.3)";
-      ctx.lineWidth = Math.max(lw, 0.8);
+      // Curved parent→child line
+      const mx = (s.x! + t.x!) / 2;
+      const my = (s.y! + t.y!) / 2;
+      const dx = t.x! - s.x!, dy = t.y! - s.y!;
+      const offset = Math.min(20, Math.sqrt(dx * dx + dy * dy) * 0.1);
+      const cx = mx - dy * offset / Math.sqrt(dx * dx + dy * dy + 1);
+      const cy = my + dx * offset / Math.sqrt(dx * dx + dy * dy + 1);
+      ctx.beginPath();
+      ctx.moveTo(s.x!, s.y!);
+      ctx.quadraticCurveTo(cx, cy, t.x!, t.y!);
+      ctx.strokeStyle = "rgba(96,165,250,0.35)";
+      ctx.lineWidth = Math.max(lw * 1.2, 1);
       ctx.setLineDash([]);
+      ctx.stroke();
     } else if (link.type === "link") {
+      ctx.beginPath();
+      ctx.moveTo(s.x!, s.y!);
+      ctx.lineTo(t.x!, t.y!);
       ctx.strokeStyle = "rgba(251,191,36,0.25)";
       ctx.lineWidth = Math.max(lw * 0.8, 0.5);
       ctx.setLineDash([4 / globalScale, 4 / globalScale]);
+      ctx.stroke();
+      ctx.setLineDash([]);
     } else {
+      ctx.beginPath();
+      ctx.moveTo(s.x!, s.y!);
+      ctx.lineTo(t.x!, t.y!);
       ctx.strokeStyle = "rgba(148,163,184,0.12)";
       ctx.lineWidth = Math.max(lw * 0.5, 0.3);
       ctx.setLineDash([2 / globalScale, 4 / globalScale]);
+      ctx.stroke();
+      ctx.setLineDash([]);
     }
-    ctx.stroke();
-    ctx.setLineDash([]);
   }, []);
 
   const loadReport = useCallback(async () => {
@@ -405,7 +522,14 @@ export default function NoteGraph() {
                 height={dim.h}
                 graphData={gd}
                 nodeId="id"
-                nodeCanvasObject={paintNode}
+                nodeCanvasObject={(node: GNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
+                  // Reset label collision rects at the start of each paint cycle
+                  if (paintCountRef.current === 0) {
+                    labelRectsRef.current = [];
+                  }
+                  paintCountRef.current = (paintCountRef.current + 1) % Math.max(1, gd.nodes.length);
+                  paintNode(node, ctx, globalScale);
+                }}
                 nodePointerAreaPaint={(node: GNode, color: string, ctx: CanvasRenderingContext2D) => {
                   if (node.x == null || node.y == null) return;
                   ctx.beginPath();
@@ -420,15 +544,16 @@ export default function NoteGraph() {
                 onNodeDragEnd={(node: GNode) => { node.fx = node.x; node.fy = node.y; }}
                 onEngineStop={onEngineStop}
                 backgroundColor="transparent"
-                warmupTicks={120}
-                cooldownTicks={60}
-                cooldownTime={3000}
-                d3AlphaDecay={0.08}
-                d3VelocityDecay={0.45}
+                warmupTicks={150}
+                cooldownTicks={80}
+                cooldownTime={4000}
+                d3AlphaDecay={0.05}
+                d3VelocityDecay={0.4}
                 enableZoomInteraction={true}
                 enablePanInteraction={true}
                 minZoom={0.15}
                 maxZoom={6}
+                nodeRelSize={1}
               />
             )}
           </GraphErrorBoundary>

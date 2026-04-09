@@ -18,6 +18,9 @@ import Settings from "./pages/Settings";
 import JoinCourse from "./pages/JoinCourse";
 import Workspace from "./pages/Workspace";
 import NoteGraph from "./pages/NoteGraph";
+import PersonalHome from "./pages/PersonalHome";
+import Profile from "./pages/Profile";
+import TutorialProvider from "./components/common/TutorialProvider";
 import "./App.css";
 
 function ProtectedRoute({
@@ -25,7 +28,7 @@ function ProtectedRoute({
   role,
 }: {
   children: React.ReactNode;
-  role?: "professor" | "student";
+  role?: "professor" | "student" | "personal";
 }) {
   const user = useAuthStore((s) => s.user);
   const loading = useAuthStore((s) => s.loading);
@@ -47,6 +50,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <TutorialProvider />
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
@@ -72,6 +76,14 @@ export default function App() {
           element={
             <ProtectedRoute role="student">
               <StudentHome />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/personal"
+          element={
+            <ProtectedRoute role="personal">
+              <PersonalHome />
             </ProtectedRoute>
           }
         />
@@ -126,7 +138,7 @@ export default function App() {
         <Route
           path="/courses/:courseId/notes"
           element={
-            <ProtectedRoute role="student">
+            <ProtectedRoute>
               <NotesList />
             </ProtectedRoute>
           }
@@ -134,7 +146,7 @@ export default function App() {
         <Route
           path="/courses/:courseId/notes/:noteId"
           element={
-            <ProtectedRoute role="student">
+            <ProtectedRoute>
               <NoteEditor />
             </ProtectedRoute>
           }
@@ -142,7 +154,7 @@ export default function App() {
         <Route
           path="/courses/:courseId/graph"
           element={
-            <ProtectedRoute role="student">
+            <ProtectedRoute>
               <NoteGraph />
             </ProtectedRoute>
           }
@@ -150,8 +162,16 @@ export default function App() {
         <Route
           path="/courses/:courseId/workspace"
           element={
-            <ProtectedRoute role="student">
+            <ProtectedRoute>
               <Workspace />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile/:userId"
+          element={
+            <ProtectedRoute>
+              <Profile />
             </ProtectedRoute>
           }
         />

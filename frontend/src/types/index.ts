@@ -2,8 +2,12 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: "professor" | "student" | null;
+  role: "professor" | "student" | "personal" | null;
   avatar_url: string | null;
+  banner_url: string | null;
+  bio: string | null;
+  social_links: Record<string, string> | null;
+  profile_color: string | null;
   school: string | null;
   department: string | null;
   student_id: string | null;
@@ -24,7 +28,7 @@ export interface Assignment {
   course_id: string;
   title: string;
   topic: string | null;
-  type: "coding" | "writing" | "both";
+  type: "coding" | "writing" | "both" | "algorithm";
   status: "draft" | "published";
   problems: Problem[];
   rubric: Rubric;
@@ -35,6 +39,14 @@ export interface Assignment {
   show_score_to_student: boolean;
   grading_strictness: "mild" | "normal" | "strict";
   grading_note: string | null;
+  generation_status?: "generating" | "completed" | "failed";
+  exam_mode?: boolean;
+  exam_config?: {
+    screenshot_interval: number;
+    max_violations: number;
+    screenshot_quality: number;
+    fullscreen_required: boolean;
+  };
   created_at: string;
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   LineChart,
@@ -42,6 +42,7 @@ interface NoteItem {
   content: Record<string, unknown> | null;
   understanding_score: number | null;
   gap_analysis: Record<string, unknown> | null;
+  parent_id: string | null;
   updated_at: string;
 }
 
@@ -259,6 +260,20 @@ export default function StudentDetail() {
   const [viewMode, setViewMode] = useState<"code" | "diff" | "paste">("code");
   const [expandedAssignment, setExpandedAssignment] = useState<string | null>(null);
   const [expandedProblem, setExpandedProblem] = useState<string | null>(null);
+  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
+
+  // Memoize note tree structure
+  const noteTree = useMemo(() => {
+    if (!data?.notes.length) return { roots: [] as NoteItem[], childrenMap: new Map<string | null, NoteItem[]>() };
+    const noteIds = new Set(data.notes.map((n) => n.id));
+    const childrenMap = new Map<string | null, NoteItem[]>();
+    for (const n of data.notes) {
+      const pid = n.parent_id && noteIds.has(n.parent_id) ? n.parent_id : null;
+      if (!childrenMap.has(pid)) childrenMap.set(pid, []);
+      childrenMap.get(pid)!.push(n);
+    }
+    return { roots: childrenMap.get(null) || [], childrenMap };
+  }, [data?.notes]);
 
   useEffect(() => {
     if (!courseId || !studentId) return;
@@ -676,51 +691,84 @@ export default function StudentDetail() {
           )}
         </div>
 
-        {/* Notes Table */}
+        {/* Notes — hierarchical tree */}
         <div className="card" style={{ marginTop: 24 }}>
           <h2 className="section-title">노트</h2>
           {data.notes.length === 0 ? (
             <div className="empty">아직 작성한 노트가 없습니다.</div>
-          ) : (
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>제목</th>
-                  <th>이해도</th>
-                  <th>수정일</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.notes.map((n) => (
-                  <tr key={n.id}>
-                    <td style={{ fontWeight: 600 }}>{n.title}</td>
-                    <td>
-                      {n.understanding_score != null ? (
-                        <span style={{ fontWeight: 600, color: "var(--primary)" }}>
-                          {n.understanding_score}%
+          ) : (() => {
+            const { roots, childrenMap } = noteTree;
+
+            const renderNote = (note: NoteItem, depth: number): React.ReactNode => {
+              const children = childrenMap.get(note.id) || [];
+              const hasChildren = children.length > 0;
+              const isExpanded = expandedNotes.has(note.id);
+              return (
+                <div key={note.id}>
+                  <div
+                    style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      padding: "8px 12px", paddingLeft: 12 + depth * 24,
+                      borderBottom: "1px solid var(--outline-variant)",
+                      transition: "background 0.15s",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-container-high)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  >
+                    {/* Expand toggle */}
+                    {hasChildren ? (
+                      <span
+                        onClick={() => setExpandedNotes((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(note.id)) next.delete(note.id); else next.add(note.id);
+                          return next;
+                        })}
+                        style={{
+                          cursor: "pointer", fontSize: 12, color: "var(--on-surface-variant)",
+                          display: "inline-block", transition: "transform 0.2s", width: 16, textAlign: "center",
+                          transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)",
+                        }}
+                      >&#9654;</span>
+                    ) : (
+                      <span style={{ width: 16 }} />
+                    )}
+                    <span style={{ fontWeight: depth === 0 ? 700 : 500, fontSize: depth === 0 ? 14 : 13, flex: 1 }}>
+                      {note.title}
+                      {hasChildren && (
+                        <span style={{ fontSize: 11, color: "var(--on-surface-variant)", marginLeft: 6 }}>
+                          ({children.length})
                         </span>
-                      ) : (
-                        "-"
                       )}
-                    </td>
-                    <td>
-                      {new Date(n.updated_at).toLocaleDateString("ko-KR")}
-                    </td>
-                    <td>
-                      <button
-                        className="btn btn-ghost"
-                        style={{ fontSize: 13, padding: "4px 10px" }}
-                        onClick={() => { setSelectedNote(n); setSelectedSub(null); }}
-                      >
-                        노트 보기
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+                    </span>
+                    {note.understanding_score != null ? (
+                      <span style={{ fontWeight: 600, fontSize: 13, color: "var(--primary)", minWidth: 40, textAlign: "right" }}>
+                        {note.understanding_score}%
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 12, color: "var(--on-surface-variant)", minWidth: 40, textAlign: "right" }}>-</span>
+                    )}
+                    <span style={{ fontSize: 12, color: "var(--on-surface-variant)", minWidth: 70 }}>
+                      {new Date(note.updated_at).toLocaleDateString("ko-KR")}
+                    </span>
+                    <button
+                      className="btn btn-ghost"
+                      style={{ fontSize: 12, padding: "2px 8px" }}
+                      onClick={() => { setSelectedNote(note); setSelectedSub(null); }}
+                    >
+                      보기
+                    </button>
+                  </div>
+                  {hasChildren && isExpanded && children.map((c) => renderNote(c, depth + 1))}
+                </div>
+              );
+            };
+
+            return (
+              <div style={{ borderTop: "1px solid var(--outline-variant)" }}>
+                {roots.map((n) => renderNote(n, 0))}
+              </div>
+            );
+          })()}
         </div>
 
         {/* Code Detail Panel */}

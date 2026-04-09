@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
 import api from "../lib/api";
@@ -22,6 +22,8 @@ export default function CourseDetail() {
   const [language, setLanguage] = useState("python");
   const [aiPolicy, setAiPolicy] = useState("normal");
   const [problemCount, setProblemCount] = useState(5);
+  const [baekjoonCount, setBaekjoonCount] = useState(0);
+  const [programmersCount, setProgrammersCount] = useState(0);
   const [dueDate, setDueDate] = useState("");
   const [gradingStrictness, setGradingStrictness] = useState("normal");
   const [gradingNote, setGradingNote] = useState("");
@@ -55,6 +57,42 @@ export default function CourseDetail() {
     });
   }, [courseId]);
 
+  // 생성 중인 과제 폴링 — useEffect가 아닌 명시적 호출로만 시작
+  const pollingRef = useRef<ReturnType<typeof setInterval>>();
+  const startPolling = useCallback(() => {
+    if (pollingRef.current || !courseId) return;
+    let count = 0;
+    pollingRef.current = setInterval(async () => {
+      count++;
+      if (count > 40) {
+        clearInterval(pollingRef.current!);
+        pollingRef.current = undefined;
+        return;
+      }
+      try {
+        const { data } = await api.get(`/courses/${courseId}/assignments`);
+        const stillGenerating = data.some(
+          (a: any) => a.generation_status === "generating"
+        );
+        setAssignments(data);
+        if (!stillGenerating) {
+          clearInterval(pollingRef.current!);
+          pollingRef.current = undefined;
+        }
+      } catch { /* ignore */ }
+    }, 8000);
+  }, [courseId]);
+
+  // 컴포넌트 언마운트 시 폴링 정리
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = undefined;
+      }
+    };
+  }, []);
+
   const handleCreateAssignment = async () => {
     if (!title.trim() || !topic.trim() || !courseId) return;
     setCreating(true);
@@ -65,6 +103,8 @@ export default function CourseDetail() {
         type: assignType,
         difficulty: "medium",
         problem_count: assignType !== "writing" ? problemCount : 0,
+        baekjoon_count: assignType !== "writing" ? baekjoonCount : 0,
+        programmers_count: assignType !== "writing" ? programmersCount : 0,
         ai_policy: aiPolicy,
         language: assignType !== "writing" ? language : "text",
         grading_strictness: gradingStrictness,
@@ -76,6 +116,10 @@ export default function CourseDetail() {
       setTitle("");
       setTopic("");
       setDueDate("");
+      // 생성 중인 과제가 있으면 폴링 시작
+      if (data.generation_status === "generating") {
+        startPolling();
+      }
     } finally {
       setCreating(false);
     }
@@ -161,16 +205,15 @@ export default function CourseDetail() {
             <h3>새 과제 생성</h3>
 
             {/* 과제 유형 선택 */}
-            <div className="form-row" style={{ gap: 0 }}>
+            <div className="type-chips">
               {(["coding", "writing", "both"] as const).map((t) => (
                 <button
                   key={t}
-                  className={`btn ${assignType === t ? "btn-primary" : "btn-secondary"}`}
-                  style={{ flex: 1, borderRadius: t === "coding" ? "10px 0 0 10px" : t === "both" ? "0 10px 10px 0" : 0 }}
+                  className={`type-chip${assignType === t ? " active" : ""}`}
                   onClick={() => setAssignType(t)}
                   type="button"
                 >
-                  {t === "coding" ? "코딩" : t === "writing" ? "글쓰기" : "코딩 + 글쓰기"}
+                  {t === "coding" ? "코딩" : t === "writing" ? "글쓰기" : "코딩+글쓰기"}
                 </button>
               ))}
             </div>
@@ -190,28 +233,16 @@ export default function CourseDetail() {
 
             <div className="form-row">
               {assignType !== "writing" && (
-                <>
-                  <select
-                    className="input"
-                    value={language}
-                    onChange={(e) => setLanguage(e.target.value)}
-                  >
-                    <option value="python">Python</option>
-                    <option value="c">C</option>
-                    <option value="java">Java</option>
-                    <option value="javascript">JavaScript</option>
-                  </select>
-                  <input
-                    className="input"
-                    type="number"
-                    min={1}
-                    max={10}
-                    value={problemCount}
-                    onChange={(e) => setProblemCount(Number(e.target.value))}
-                    placeholder="문제 수"
-                    style={{ maxWidth: 120 }}
-                  />
-                </>
+                <select
+                  className="input"
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                >
+                  <option value="python">Python</option>
+                  <option value="c">C</option>
+                  <option value="java">Java</option>
+                  <option value="javascript">JavaScript</option>
+                </select>
               )}
               <select
                 className="input"
@@ -224,6 +255,59 @@ export default function CourseDetail() {
                 <option value="exam">시험 (전부 차단)</option>
               </select>
             </div>
+
+            {/* 문제 구성 */}
+            {assignType !== "writing" && (
+              <div className="problem-counts-section">
+                <label style={{ fontSize: 13, color: "var(--on-surface-variant)", marginBottom: 8, display: "block" }}>
+                  문제 구성
+                </label>
+                <div className="problem-counts-grid">
+                  <div className="problem-count-item">
+                    <label className="problem-count-label">일반 코딩</label>
+                    <input
+                      className="input"
+                      type="number"
+                      min={0}
+                      max={10}
+                      value={problemCount}
+                      onChange={(e) => setProblemCount(Number(e.target.value))}
+                    />
+                  </div>
+                  <div className="problem-count-item">
+                    <label className="problem-count-label">
+                      백준 형식
+                      <span className="problem-count-tag bj">stdin/stdout</span>
+                    </label>
+                    <input
+                      className="input"
+                      type="number"
+                      min={0}
+                      max={10}
+                      value={baekjoonCount}
+                      onChange={(e) => setBaekjoonCount(Number(e.target.value))}
+                    />
+                  </div>
+                  <div className="problem-count-item">
+                    <label className="problem-count-label">
+                      프로그래머스 형식
+                      <span className="problem-count-tag pg">함수 기반</span>
+                    </label>
+                    <input
+                      className="input"
+                      type="number"
+                      min={0}
+                      max={10}
+                      value={programmersCount}
+                      onChange={(e) => setProgrammersCount(Number(e.target.value))}
+                    />
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, color: "var(--on-surface-variant)", marginTop: 6 }}>
+                  총 {problemCount + baekjoonCount + programmersCount}문제
+                </div>
+              </div>
+            )}
             {/* 채점 강도 */}
             <div>
               <label style={{ fontSize: 13, color: "var(--on-surface-variant)", marginBottom: 6, display: "block" }}>
@@ -333,14 +417,24 @@ export default function CourseDetail() {
                     {a.status === "draft" && (
                       <span className="badge" style={{ background: "rgba(245,158,11,0.12)", color: "#d97706", fontSize: 11 }}>초안</span>
                     )}
+                    {a.generation_status === "generating" && (
+                      <span className="badge" style={{ background: "rgba(0,74,198,0.1)", color: "var(--primary)", fontSize: 11, animation: "pulse 1.5s infinite" }}>
+                        AI 생성 중...
+                      </span>
+                    )}
+                    {a.generation_status === "failed" && (
+                      <span className="badge" style={{ background: "rgba(220,38,38,0.08)", color: "var(--error)", fontSize: 11 }}>
+                        생성 실패
+                      </span>
+                    )}
                   </h3>
                   <p>{a.topic || "주제 없음"}</p>
                   <div className="course-meta">
                     <span className="badge" style={{
-                      background: a.type === "writing" ? "rgba(99,46,205,0.1)" : a.type === "both" ? "rgba(0,74,198,0.1)" : undefined,
-                      color: a.type === "writing" ? "var(--tertiary)" : a.type === "both" ? "var(--primary)" : undefined,
+                      background: a.type === "writing" ? "rgba(99,46,205,0.1)" : a.type === "both" ? "rgba(0,74,198,0.1)" : a.type === "algorithm" ? "rgba(16,185,129,0.1)" : undefined,
+                      color: a.type === "writing" ? "var(--tertiary)" : a.type === "both" ? "var(--primary)" : a.type === "algorithm" ? "var(--success)" : undefined,
                     }}>
-                      {a.type === "writing" ? "글쓰기" : a.type === "both" ? "코딩+글쓰기" : "코딩"}
+                      {a.type === "writing" ? "글쓰기" : a.type === "both" ? "코딩+글쓰기" : a.type === "algorithm" ? "알고리즘" : "코딩"}
                     </span>
                     <span className="badge badge-policy">
                       {policyLabels[a.ai_policy] || a.ai_policy}
@@ -349,6 +443,16 @@ export default function CourseDetail() {
                     {a.type !== "writing" && (
                       <span className="badge">문제 {a.problems?.length || 0}개</span>
                     )}
+                    {(() => {
+                      const bjCount = a.problems?.filter((p: Record<string, unknown>) => p.format === "baekjoon").length || 0;
+                      const pgCount = a.problems?.filter((p: Record<string, unknown>) => p.format === "programmers").length || 0;
+                      return (
+                        <>
+                          {bjCount > 0 && <span className="badge" style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)" }}>백준 {bjCount}</span>}
+                          {pgCount > 0 && <span className="badge" style={{ background: "rgba(99,46,205,0.1)", color: "var(--tertiary)" }}>프로그래머스 {pgCount}</span>}
+                        </>
+                      );
+                    })()}
                     {dueLabel && (
                       <span className="badge" style={{
                         background: isOverdue ? "rgba(220,38,38,0.08)" : undefined,

@@ -12,7 +12,8 @@ interface AuthState {
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
   adminLogin: (username: string, password: string) => Promise<void>;
-  selectRole: (role: "professor" | "student") => Promise<void>;
+  selectRole: (role: "professor" | "student" | "personal") => Promise<void>;
+  switchRole: (role: "professor" | "student" | "personal") => Promise<void>;
   fetchUser: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -41,6 +42,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     set((state) => ({
       user: state.user ? { ...state.user, role: data.role } : null,
     }));
+  },
+
+  switchRole: async (role) => {
+    const { data } = await api.post("/auth/switch-role", { role });
+    set({ user: data });
   },
 
   fetchUser: async () => {

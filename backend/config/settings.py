@@ -20,6 +20,12 @@ class Settings(BaseSettings):
     teacherAdminId: str = ""
     teacherAdminPassword: str = ""
 
+    # Cloudflare R2
+    R2_ACCOUNT_ID: str = ""
+    R2_ACCESS_KEY_ID: str = ""
+    R2_SECRET_ACCESS_KEY: str = ""
+    R2_BUCKET_NAME: str = "pikabuddy"
+
     # App
     APP_ENV: str = "development"
     DEBUG: bool = True

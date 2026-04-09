@@ -44,6 +44,16 @@ async def list_courses(user: dict = Depends(get_current_user)):
     """내 강의 목록 조회"""
     supabase = get_supabase()
 
+    if user["role"] == "personal":
+        result = (
+            supabase.table("courses")
+            .select("*")
+            .eq("professor_id", user["id"])
+            .eq("is_personal", True)
+            .execute()
+        )
+        return result.data
+
     if user["role"] == "professor":
         result = (
             supabase.table("courses")
@@ -129,9 +139,20 @@ async def get_course(course_id: str, user: dict = Depends(get_current_user)):
     """강의 상세 조회"""
     supabase = get_supabase()
 
-    # 학생은 수강 등록된 강의만 접근 가능
+    # 학생은 수강 등록된 강의만 접근 가능, 개인은 자기 코스만
     is_admin = user.get("email", "").endswith("@pikabuddy.admin")
-    if user.get("role") == "student" and not is_admin:
+    if user.get("role") == "personal" and not is_admin:
+        course_check = (
+            supabase.table("courses")
+            .select("id")
+            .eq("id", course_id)
+            .eq("professor_id", user["id"])
+            .eq("is_personal", True)
+            .execute()
+        )
+        if not course_check.data:
+            raise HTTPException(status_code=403, detail="접근 권한이 없습니다.")
+    elif user.get("role") == "student" and not is_admin:
         enrollment = (
             supabase.table("enrollments")
             .select("id")

@@ -5,6 +5,7 @@ import { renderMarkdown } from "../lib/markdown";
 import api from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { getAdminToken } from "../store/authStore";
+import { useExamMode } from "../lib/useExamMode";
 import type { Assignment } from "../types";
 
 
@@ -65,6 +66,13 @@ export default function CodeEditor() {
   const [running, setRunning] = useState(false);
   const [runOutput, setRunOutput] = useState<{ success: boolean; output: string; error: string } | null>(null);
   const [stdinInput, setStdinInput] = useState("");
+  const [judging, setJudging] = useState(false);
+  const [judgeResult, setJudgeResult] = useState<{
+    verdict: string; passed: number; total: number;
+    results: { index: number; verdict: string; time_ms: number; is_hidden: boolean; output?: string; error?: string }[];
+    total_time_ms: number; max_memory_mb: number;
+  } | null>(null);
+  const [runTab, setRunTab] = useState<"output" | "judge">("output");
   const [problemIdx, setProblemIdx] = useState(0);
   const problemIdxRef = useRef(0);
   const codeLoadedRef = useRef(false);
@@ -76,6 +84,13 @@ export default function CodeEditor() {
   const lastInternalCopyRef = useRef("");
   const logPasteRef = useRef<(text: string, pIdx: number) => void>(() => {});
   const navigate = useNavigate();
+
+  // 시험 모드
+  const examMode = useExamMode({
+    assignmentId: assignmentId || "",
+    enabled: !!(assignment?.exam_mode),
+  });
+  const [examStarted, setExamStarted] = useState(false);
 
   // Count only pastes whose content still exists in current code
   const activePastes = Array.from(pasteSet).filter((p) =>
@@ -263,6 +278,38 @@ export default function CodeEditor() {
     }
   };
 
+  const currentProblem = assignment?.problems?.[problemIdx] as Record<string, unknown> | undefined;
+  const problemFormat = (currentProblem?.format as string) || "regular";
+  const isAlgorithm = problemFormat === "baekjoon" || problemFormat === "programmers" || assignment?.type === "algorithm";
+
+  const handleJudge = async () => {
+    if (judging || !currentProblem) return;
+    setJudging(true);
+    setJudgeResult(null);
+    setRunTab("judge");
+    const testCases = (currentProblem.test_cases as { input: string; expected_output: string; is_hidden: boolean }[]) || [];
+    const examples = (currentProblem.examples as { input: string; output: string }[]) || [];
+    // 예제도 테스트케이스로 포함 (공개)
+    const allCases = [
+      ...examples.map((e) => ({ input: e.input, expected_output: e.output, is_hidden: false })),
+      ...testCases,
+    ];
+    try {
+      const { data } = await api.post("/code/judge", {
+        code,
+        language: assignment?.language || "python",
+        test_cases: allCases,
+        time_limit_ms: (currentProblem.time_limit_ms as number) || 1000,
+        memory_limit_mb: (currentProblem.memory_limit_mb as number) || 256,
+      });
+      setJudgeResult(data);
+    } catch {
+      setJudgeResult({ verdict: "RE", passed: 0, total: allCases.length, results: [], total_time_ms: 0, max_memory_mb: 0 });
+    } finally {
+      setJudging(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!assignmentId || submitting) return;
     setSubmitting(true);
@@ -406,8 +453,87 @@ export default function CodeEditor() {
     exam: "시험",
   };
 
+  // 시험 모드: 시작 전 오버레이
+  if (assignment?.exam_mode && !examStarted && !examMode.examEnded) {
+    return (
+      <div style={{
+        position: "fixed", inset: 0, zIndex: 9999,
+        background: "var(--surface)", display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        <div style={{
+          maxWidth: 500, padding: 40, borderRadius: 16,
+          background: "var(--surface-container)", textAlign: "center",
+        }}>
+          <h2 style={{ fontSize: 24, marginBottom: 16, color: "var(--on-surface)" }}>시험 모드</h2>
+          <p style={{ color: "var(--on-surface-variant)", lineHeight: 1.8, marginBottom: 8 }}>
+            이 과제는 <strong>시험 모드</strong>로 설정되어 있습니다.
+          </p>
+          <ul style={{ textAlign: "left", color: "var(--on-surface-variant)", lineHeight: 2, marginBottom: 24, paddingLeft: 20 }}>
+            <li>시험 중 <strong>전체화면</strong>이 유지됩니다</li>
+            <li>주기적으로 <strong>화면이 캡쳐</strong>됩니다</li>
+            <li>화면 이탈 시 <strong>경고</strong>가 누적됩니다</li>
+            <li><strong>{examMode.config?.max_violations || 3}회</strong> 이탈 시 시험이 <strong>자동 종료</strong>됩니다</li>
+          </ul>
+          <p style={{ color: "var(--on-surface-variant)", fontSize: 13, marginBottom: 24 }}>
+            "시험 시작"을 누르면 화면 공유 권한을 요청합니다.
+          </p>
+          <button
+            className="btn btn-primary"
+            style={{ padding: "12px 40px", fontSize: 16 }}
+            onClick={async () => {
+              const ok = await examMode.startExam();
+              if (ok) setExamStarted(true);
+              else alert("화면 공유를 허용해야 시험을 시작할 수 있습니다.");
+            }}
+          >
+            시험 시작
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 시험 모드: 강제 종료됨 또는 재입장 차단
+  if (examMode.examEnded) {
+    return (
+      <div style={{
+        position: "fixed", inset: 0, zIndex: 9999,
+        background: "var(--surface)", display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        <div style={{
+          maxWidth: 450, padding: 40, borderRadius: 16,
+          background: "var(--error-container)", textAlign: "center",
+        }}>
+          <h2 style={{ fontSize: 24, marginBottom: 16, color: "var(--on-error-container)" }}>
+            {examMode.alreadyEnded ? "재입장 불가" : "시험이 종료되었습니다"}
+          </h2>
+          <p style={{ color: "var(--on-error-container)", lineHeight: 1.8, marginBottom: 24 }}>
+            {examMode.alreadyEnded
+              ? "이미 종료된 시험입니다. 시험을 나간 후에는 다시 입장할 수 없습니다."
+              : <>화면 이탈 횟수 초과로 시험이 자동 종료되었습니다.<br/>현재까지 작성한 코드는 자동 저장되었습니다.</>
+            }
+          </p>
+          <button className="btn" onClick={() => navigate(-1)} style={{ padding: "10px 30px" }}>
+            돌아가기
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="editor-page">
+      {/* 시험 모드 경고 배너 — topbar 위에 표시 */}
+      {examMode.showWarning && (
+        <div style={{
+          padding: "10px 20px", textAlign: "center", fontWeight: 600,
+          background: "var(--error)", color: "var(--on-error)", fontSize: 14,
+          animation: "pulse 1s ease-in-out 3", flexShrink: 0,
+        }}>
+          {examMode.showWarning}
+        </div>
+      )}
+
       <header className="editor-topbar">
         <div className="topbar-left">
           <button className="btn btn-ghost" onClick={() => navigate(-1)}>
@@ -424,6 +550,31 @@ export default function CodeEditor() {
           <span className="badge badge-policy">
             AI 정책: {policyLabels[assignment?.ai_policy || ""] || "-"}
           </span>
+          {/* 시험 모드 상태 + 끝내기 */}
+          {assignment?.exam_mode && examStarted && (
+            <>
+              <div style={{
+                padding: "4px 12px", borderRadius: 20, fontSize: 11, fontWeight: 600,
+                background: "rgba(220,38,38,0.15)", color: "#fca5a5",
+              }}>
+                🔴 이탈 {examMode.violations}/{examMode.config?.max_violations || 3}
+              </div>
+              <button
+                onClick={() => {
+                  if (confirm("시험을 종료하시겠습니까? 종료 후에는 다시 입장할 수 없습니다.")) {
+                    examMode.endExam("학생이 직접 종료");
+                  }
+                }}
+                style={{
+                  padding: "4px 12px", borderRadius: 20, fontSize: 11, fontWeight: 600,
+                  background: "var(--error)", color: "var(--on-error)",
+                  border: "none", cursor: "pointer",
+                }}
+              >
+                시험 끝내기
+              </button>
+            </>
+          )}
         </div>
       </header>
 
@@ -454,41 +605,94 @@ export default function CodeEditor() {
           <div className="run-panel">
             <div className="run-panel-header">
               <div className="run-panel-tabs">
-                <span className="run-panel-tab active">출력</span>
+                <span className={`run-panel-tab${runTab === "output" ? " active" : ""}`} onClick={() => setRunTab("output")} style={{ cursor: "pointer" }}>출력</span>
+                {isAlgorithm && (
+                  <span className={`run-panel-tab${runTab === "judge" ? " active" : ""}`} onClick={() => setRunTab("judge")} style={{ cursor: "pointer" }}>채점</span>
+                )}
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <input
-                  className="stdin-input"
-                  placeholder="stdin 입력 (선택)"
-                  value={stdinInput}
-                  onChange={(e) => setStdinInput(e.target.value)}
-                />
-                <button
-                  className="btn-run"
-                  onClick={handleRun}
-                  disabled={running}
-                >
-                  {running ? "실행 중..." : "▶ 실행"}
-                </button>
+                {runTab === "output" && (
+                  <>
+                    <input
+                      className="stdin-input"
+                      placeholder="stdin 입력 (선택)"
+                      value={stdinInput}
+                      onChange={(e) => setStdinInput(e.target.value)}
+                    />
+                    <button className="btn-run" onClick={handleRun} disabled={running}>
+                      {running ? "실행 중..." : "▶ 실행"}
+                    </button>
+                  </>
+                )}
+                {runTab === "judge" && isAlgorithm && (
+                  <button className="btn-run" onClick={handleJudge} disabled={judging} style={{ background: "#10b981" }}>
+                    {judging ? "채점 중..." : "채점하기"}
+                  </button>
+                )}
               </div>
             </div>
-            <pre className="run-output">
-              {running && "실행 중...\n"}
-              {runOutput && (
-                <>
-                  {runOutput.output}
-                  {runOutput.error && (
-                    <span className="run-error">{runOutput.error}</span>
-                  )}
-                  {runOutput.success && !runOutput.output && !runOutput.error && (
-                    <span style={{ color: "#6b7280" }}>(출력 없음)</span>
-                  )}
-                </>
-              )}
-              {!running && !runOutput && (
-                <span style={{ color: "#6b7280" }}>코드를 실행하면 여기에 결과가 표시됩니다.</span>
-              )}
-            </pre>
+            {runTab === "output" ? (
+              <pre className="run-output">
+                {running && "실행 중...\n"}
+                {runOutput && (
+                  <>
+                    {runOutput.output}
+                    {runOutput.error && (
+                      <span className="run-error">{runOutput.error}</span>
+                    )}
+                    {runOutput.success && !runOutput.output && !runOutput.error && (
+                      <span style={{ color: "#6b7280" }}>(출력 없음)</span>
+                    )}
+                  </>
+                )}
+                {!running && !runOutput && (
+                  <span style={{ color: "#6b7280" }}>코드를 실행하면 여기에 결과가 표시됩니다.</span>
+                )}
+              </pre>
+            ) : (
+              <div className="run-output" style={{ overflow: "auto", fontFamily: "var(--font-code)", fontSize: 13 }}>
+                {judging && <div style={{ color: "#94a3b8", padding: 8 }}>채점 중...</div>}
+                {judgeResult && (
+                  <div style={{ padding: 8 }}>
+                    <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
+                      <span style={{
+                        fontWeight: 700, fontSize: 16,
+                        color: judgeResult.verdict === "AC" ? "#10b981" : judgeResult.verdict === "WA" ? "#ef4444" : judgeResult.verdict === "TLE" ? "#f59e0b" : "#94a3b8",
+                      }}>
+                        {judgeResult.verdict}
+                      </span>
+                      <span style={{ color: "#94a3b8" }}>
+                        {judgeResult.passed}/{judgeResult.total} 통과
+                      </span>
+                      <span style={{ color: "#94a3b8" }}>
+                        {judgeResult.total_time_ms}ms
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      {judgeResult.results.map((r, i) => (
+                        <div key={i} style={{
+                          display: "flex", gap: 8, alignItems: "center", padding: "4px 8px",
+                          borderRadius: 6, background: r.verdict === "AC" ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)",
+                        }}>
+                          <span style={{
+                            fontWeight: 600, width: 30,
+                            color: r.verdict === "AC" ? "#10b981" : r.verdict === "WA" ? "#ef4444" : r.verdict === "TLE" ? "#f59e0b" : "#94a3b8",
+                          }}>
+                            {r.verdict}
+                          </span>
+                          <span style={{ color: "#94a3b8", fontSize: 12 }}>
+                            #{i + 1} {r.is_hidden ? "(히든)" : ""} — {r.time_ms}ms
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {!judging && !judgeResult && (
+                  <div style={{ color: "#6b7280", padding: 8 }}>채점하기 버튼을 눌러 테스트케이스를 실행하세요.</div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -537,15 +741,146 @@ export default function CodeEditor() {
                 </div>
               )}
             </div>
-            <div className="problem-desc">
-              {assignment?.problems?.[problemIdx]?.description ||
-                "AI가 문제를 생성하고 있습니다..."}
-            </div>
-            {assignment?.problems?.[problemIdx]?.hints?.length ? (
+            <div
+              className="problem-desc markdown-body"
+              dangerouslySetInnerHTML={{
+                __html: renderMarkdown(
+                  (currentProblem?.description as string) || "AI가 문제를 생성하고 있습니다..."
+                ),
+              }}
+            />
+            {/* 문제 형식 배지 + 시간/메모리 제한 */}
+            {isAlgorithm && currentProblem && (
+              <div style={{ marginTop: 8, marginBottom: 4, display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+                <span style={{
+                  display: "inline-block", fontSize: 11, fontWeight: 700, padding: "2px 8px",
+                  borderRadius: 99, background: problemFormat === "programmers" ? "rgba(99,46,205,0.15)" : "rgba(16,185,129,0.15)",
+                  color: problemFormat === "programmers" ? "#a78bfa" : "#34d399",
+                }}>
+                  {problemFormat === "programmers" ? "프로그래머스 형식" : "백준 형식"}
+                </span>
+                {currentProblem.time_limit_ms && (
+                  <span className="badge" style={{ fontSize: 11, fontWeight: 600, color: "var(--warning)" }}>
+                    시간 {(currentProblem.time_limit_ms as number) / 1000}초
+                  </span>
+                )}
+                {currentProblem.memory_limit_mb && (
+                  <span className="badge" style={{ fontSize: 11, fontWeight: 600, color: "var(--primary)" }}>
+                    메모리 {currentProblem.memory_limit_mb as number}MB
+                  </span>
+                )}
+              </div>
+            )}
+            {/* 프로그래머스 형식: 함수 시그니처 + 매개변수 */}
+            {problemFormat === "programmers" && currentProblem && (
+              <div style={{ marginTop: 12, fontSize: 13 }}>
+                {(currentProblem.parameters as { name: string; type: string; description: string }[])?.length > 0 && (
+                  <div style={{ marginBottom: 12 }}>
+                    <strong style={{ fontSize: 14 }}>매개변수</strong>
+                    <div style={{ marginTop: 4 }}>
+                      {(currentProblem.parameters as { name: string; type: string; description: string }[]).map((p, i) => (
+                        <div key={i} style={{ marginBottom: 2 }}>
+                          <code style={{ color: "var(--primary)", fontSize: 12 }}>{p.name}</code>
+                          <span style={{ color: "var(--on-surface-variant)" }}> ({p.type})</span>
+                          {p.description && <span style={{ color: "var(--on-surface-variant)" }}> — {p.description}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {currentProblem.return_type && (
+                  <div style={{ marginBottom: 12 }}>
+                    <strong style={{ fontSize: 14 }}>반환값</strong>
+                    <div style={{ marginTop: 6 }}>
+                      <code style={{ color: "var(--primary)", fontSize: 12 }}>{currentProblem.return_type as string}</code>
+                      {currentProblem.return_description && (
+                        <span style={{ color: "var(--on-surface-variant)" }}> — {currentProblem.return_description as string}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {(currentProblem.constraints as string) && (
+                  <div style={{ marginBottom: 12 }}>
+                    <strong style={{ fontSize: 14 }}>제약 조건</strong>
+                    <div className="markdown-body" style={{ marginTop: 6, lineHeight: 1.7, color: "var(--warning)" }}
+                      dangerouslySetInnerHTML={{ __html: renderMarkdown(currentProblem.constraints as string) }} />
+                  </div>
+                )}
+                {(currentProblem.examples as { input: Record<string, unknown>; output: unknown; explanation?: string }[])?.length > 0 && (
+                  <div>
+                    <strong style={{ color: "var(--text-light)" }}>예제</strong>
+                    {(currentProblem.examples as { input: Record<string, unknown>; output: unknown; explanation?: string }[]).map((ex, i) => (
+                      <div key={i} style={{ marginTop: 8, background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: 10 }}>
+                        <div style={{ marginBottom: 4, color: "#94a3b8" }}>예제 {i + 1}</div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                          <div>
+                            <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>입력</div>
+                            <pre style={{ background: "rgba(0,0,0,0.3)", padding: 6, borderRadius: 4, margin: 0, fontSize: 12, whiteSpace: "pre-wrap", wordBreak: "break-all", overflow: "auto", maxHeight: 200 }}>{JSON.stringify(ex.input, null, 2)}</pre>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>출력</div>
+                            <pre style={{ background: "rgba(0,0,0,0.3)", padding: 6, borderRadius: 4, margin: 0, fontSize: 12, whiteSpace: "pre-wrap", wordBreak: "break-all", overflow: "auto", maxHeight: 200 }}>{JSON.stringify(ex.output)}</pre>
+                          </div>
+                        </div>
+                        {ex.explanation && <div style={{ marginTop: 4, fontSize: 12, color: "#94a3b8" }}>{ex.explanation}</div>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {/* 백준 형식: 입출력 형식, 제약조건, 예제 */}
+            {(problemFormat === "baekjoon" || (isAlgorithm && problemFormat !== "programmers")) && currentProblem && (
+              <div style={{ marginTop: 12, fontSize: 13 }}>
+                {(currentProblem.input_description as string) && (
+                  <div style={{ marginBottom: 12 }}>
+                    <strong style={{ fontSize: 14 }}>입력</strong>
+                    <div className="markdown-body" style={{ marginTop: 6, lineHeight: 1.7 }}
+                      dangerouslySetInnerHTML={{ __html: renderMarkdown(currentProblem.input_description as string) }} />
+                  </div>
+                )}
+                {(currentProblem.output_description as string) && (
+                  <div style={{ marginBottom: 12 }}>
+                    <strong style={{ fontSize: 14 }}>출력</strong>
+                    <div className="markdown-body" style={{ marginTop: 6, lineHeight: 1.7 }}
+                      dangerouslySetInnerHTML={{ __html: renderMarkdown(currentProblem.output_description as string) }} />
+                  </div>
+                )}
+                {(currentProblem.constraints as string) && (
+                  <div style={{ marginBottom: 12 }}>
+                    <strong style={{ fontSize: 14 }}>제약 조건</strong>
+                    <div className="markdown-body" style={{ marginTop: 6, lineHeight: 1.7, color: "var(--warning)" }}
+                      dangerouslySetInnerHTML={{ __html: renderMarkdown(currentProblem.constraints as string) }} />
+                  </div>
+                )}
+                {(currentProblem.examples as { input: string; output: string; explanation?: string }[])?.length > 0 && (
+                  <div>
+                    <strong style={{ color: "var(--text-light)" }}>예제</strong>
+                    {(currentProblem.examples as { input: string; output: string; explanation?: string }[]).map((ex, i) => (
+                      <div key={i} style={{ marginTop: 8, background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: 10 }}>
+                        <div style={{ marginBottom: 4, color: "#94a3b8" }}>예제 {i + 1}</div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                          <div>
+                            <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>입력</div>
+                            <pre style={{ background: "rgba(0,0,0,0.3)", padding: 6, borderRadius: 4, margin: 0, fontSize: 12, whiteSpace: "pre-wrap", wordBreak: "break-all", overflow: "auto", maxHeight: 200 }}>{typeof ex.input === "string" ? ex.input : JSON.stringify(ex.input, null, 2)}</pre>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>출력</div>
+                            <pre style={{ background: "rgba(0,0,0,0.3)", padding: 6, borderRadius: 4, margin: 0, fontSize: 12, whiteSpace: "pre-wrap", wordBreak: "break-all", overflow: "auto", maxHeight: 200 }}>{typeof ex.output === "string" ? ex.output : JSON.stringify(ex.output)}</pre>
+                          </div>
+                        </div>
+                        {ex.explanation && <div style={{ marginTop: 4, fontSize: 12, color: "#94a3b8" }}>{ex.explanation}</div>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {(currentProblem?.hints as string[])?.length ? (
               <details className="problem-hints">
                 <summary>힌트 보기</summary>
                 <ul>
-                  {assignment.problems[problemIdx].hints.map((h, i) => (
+                  {(currentProblem!.hints as string[]).map((h: string, i: number) => (
                     <li key={i}>{h}</li>
                   ))}
                 </ul>

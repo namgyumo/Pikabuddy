@@ -5,6 +5,7 @@ import api from "../lib/api";
 import { renderMarkdown } from "../lib/markdown";
 import { useAuthStore } from "../store/authStore";
 import AppShell from "../components/common/AppShell";
+import ExamProctorPanel from "../components/ExamProctorPanel";
 import type { Assignment, Problem } from "../types";
 
 interface SubmissionWithAnalysis {
@@ -143,7 +144,14 @@ export default function AssignmentDetail() {
   const [editingProblem, setEditingProblem] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<Partial<Problem>>({});
   const [addingProblem, setAddingProblem] = useState(false);
-  const [newProblem, setNewProblem] = useState({ title: "", description: "", starter_code: "", expected_output: "", hints: "" });
+  const [newProblemFormat, setNewProblemFormat] = useState<"regular" | "baekjoon" | "programmers">("regular");
+  const [newProblem, setNewProblem] = useState({
+    title: "", description: "", starter_code: "", expected_output: "", hints: "",
+    input_description: "", output_description: "", constraints: "",
+    time_limit_ms: 1000, memory_limit_mb: 256,
+    examples_text: "", test_cases_text: "",
+    function_name: "solution", return_type: "", return_description: "", parameters_text: "",
+  });
 
   // Writing prompt editing
   const [editingPrompt, setEditingPrompt] = useState(false);
@@ -162,6 +170,23 @@ export default function AssignmentDetail() {
 
   // QA
   const [qaMessage, setQaMessage] = useState("");
+
+  // Rubric editing
+  const [editingRubric, setEditingRubric] = useState(false);
+  const [rubricCriteria, setRubricCriteria] = useState<{ name: string; weight: number; description: string }[]>([]);
+
+  // Expanded students / problems in grouped submissions
+  const [expandedStudents, setExpandedStudents] = useState<Set<string>>(new Set());
+  const [expandedProblems, setExpandedProblems] = useState<Set<string>>(new Set());
+
+  // Exam student status
+  const [examStudents, setExamStudents] = useState<{
+    student_id: string; name: string; email: string; exam_ended: boolean;
+    last_reset: { reset_at: string; reason: string } | null;
+  }[]>([]);
+  const [examStudentsLoaded, setExamStudentsLoaded] = useState(false);
+  const [resetReason, setResetReason] = useState("");
+  const [resettingStudent, setResettingStudent] = useState<string | null>(null);
 
   // Confirm dialog
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -259,12 +284,58 @@ export default function AssignmentDetail() {
 
   const handleAddProblem = async () => {
     if (!courseId || !assignmentId || !newProblem.title.trim()) return;
-    const { data } = await api.post(`/courses/${courseId}/assignments/${assignmentId}/problems`, {
-      ...newProblem, hints: newProblem.hints ? newProblem.hints.split("\n").filter(Boolean) : [],
-    });
+
+    // Parse examples and test_cases from text
+    let examples: { input: string; output: string; explanation?: string }[] | undefined;
+    let test_cases: { input: string; expected_output: string; is_hidden: boolean }[] | undefined;
+    try {
+      if (newProblem.examples_text.trim()) examples = JSON.parse(newProblem.examples_text);
+    } catch { /* ignore parse error */ }
+    try {
+      if (newProblem.test_cases_text.trim()) test_cases = JSON.parse(newProblem.test_cases_text);
+    } catch { /* ignore parse error */ }
+
+    let parameters: { name: string; type: string; description: string }[] | undefined;
+    try {
+      if (newProblem.parameters_text.trim()) parameters = JSON.parse(newProblem.parameters_text);
+    } catch { /* ignore parse error */ }
+
+    const body: Record<string, unknown> = {
+      title: newProblem.title,
+      description: newProblem.description,
+      starter_code: newProblemFormat === "baekjoon" ? "" : newProblem.starter_code,
+      expected_output: newProblem.expected_output,
+      hints: newProblem.hints ? newProblem.hints.split("\n").filter(Boolean) : [],
+      format: newProblemFormat,
+    };
+
+    if (newProblemFormat === "baekjoon" || newProblemFormat === "programmers") {
+      body.input_description = newProblem.input_description || undefined;
+      body.output_description = newProblem.output_description || undefined;
+      body.constraints = newProblem.constraints || undefined;
+      body.time_limit_ms = newProblem.time_limit_ms;
+      body.memory_limit_mb = newProblem.memory_limit_mb;
+      if (examples) body.examples = examples;
+      if (test_cases) body.test_cases = test_cases;
+    }
+    if (newProblemFormat === "programmers") {
+      body.function_name = newProblem.function_name || undefined;
+      body.return_type = newProblem.return_type || undefined;
+      body.return_description = newProblem.return_description || undefined;
+      if (parameters) body.parameters = parameters;
+    }
+
+    const { data } = await api.post(`/courses/${courseId}/assignments/${assignmentId}/problems`, body);
     setAssignment((prev) => prev ? { ...prev, problems: [...prev.problems, data] } : null);
     setAddingProblem(false);
-    setNewProblem({ title: "", description: "", starter_code: "", expected_output: "", hints: "" });
+    setNewProblemFormat("regular");
+    setNewProblem({
+      title: "", description: "", starter_code: "", expected_output: "", hints: "",
+      input_description: "", output_description: "", constraints: "",
+      time_limit_ms: 1000, memory_limit_mb: 256,
+      examples_text: "", test_cases_text: "",
+      function_name: "solution", return_type: "", return_description: "", parameters_text: "",
+    });
   };
 
   const handleSavePrompt = async () => {
@@ -388,7 +459,7 @@ export default function AssignmentDetail() {
 
     return (
       <AppShell>
-        <main className="content" style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 64px)" }}>
+        <main className="content" style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 64px)", maxWidth: "none", padding: "0" }}>
           {/* Header */}
           <div className="detail-panel-header">
             <div className="detail-panel-title-row">
@@ -556,14 +627,24 @@ export default function AssignmentDetail() {
               {assignment.topic && <p className="page-subtitle">주제: {assignment.topic}</p>}
               <div className="course-meta" style={{ marginTop: 12 }}>
                 <span className="badge" style={{
-                  background: assignment.type === "writing" ? "rgba(99,46,205,0.1)" : assignment.type === "both" ? "rgba(0,74,198,0.1)" : undefined,
-                  color: assignment.type === "writing" ? "var(--tertiary)" : assignment.type === "both" ? "var(--primary)" : undefined,
+                  background: assignment.type === "writing" ? "rgba(99,46,205,0.1)" : assignment.type === "both" ? "rgba(0,74,198,0.1)" : assignment.type === "algorithm" ? "rgba(16,185,129,0.1)" : undefined,
+                  color: assignment.type === "writing" ? "var(--tertiary)" : assignment.type === "both" ? "var(--primary)" : assignment.type === "algorithm" ? "var(--success)" : undefined,
                 }}>
-                  {assignment.type === "writing" ? "글쓰기" : assignment.type === "both" ? "코딩+글쓰기" : "코딩"}
+                  {assignment.type === "writing" ? "글쓰기" : assignment.type === "both" ? "코딩+글쓰기" : assignment.type === "algorithm" ? "알고리즘" : "코딩"}
                 </span>
                 <span className="badge badge-policy">{policyLabels[assignment.ai_policy] || assignment.ai_policy}</span>
                 {assignment.type !== "writing" && <span className="badge">{assignment.language}</span>}
                 {assignment.type !== "writing" && <span className="badge">문제 {assignment.problems?.length || 0}개</span>}
+                {(() => {
+                  const bjCount = assignment.problems?.filter((p: Record<string, unknown>) => (p as Record<string, unknown>).format === "baekjoon").length || 0;
+                  const pgCount = assignment.problems?.filter((p: Record<string, unknown>) => (p as Record<string, unknown>).format === "programmers").length || 0;
+                  return (
+                    <>
+                      {bjCount > 0 && <span className="badge" style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)" }}>백준 {bjCount}</span>}
+                      {pgCount > 0 && <span className="badge" style={{ background: "rgba(99,46,205,0.1)", color: "var(--tertiary)" }}>프로그래머스 {pgCount}</span>}
+                    </>
+                  );
+                })()}
                 {assignment.due_date && (
                   <span className="badge">마감: {new Date(assignment.due_date).toLocaleDateString("ko-KR")}</span>
                 )}
@@ -606,6 +687,29 @@ export default function AssignmentDetail() {
               }}
               style={{ width: 18, height: 18, accentColor: "var(--primary)", cursor: "pointer" }} />
             학생에게 AI 추천 점수 공개
+          </label>
+
+          {/* 시험 모드 */}
+          <label style={{
+            display: "flex", alignItems: "center", gap: 10, marginTop: 12,
+            fontSize: 14, color: "var(--on-surface-variant)", cursor: "pointer",
+          }}>
+            <input type="checkbox" checked={assignment.exam_mode ?? false}
+              onChange={async (e) => {
+                const val = e.target.checked;
+                try {
+                  await api.patch(`/exam/config/${assignmentId}`, {
+                    exam_mode: val,
+                    screenshot_interval: 30,
+                    max_violations: 3,
+                    screenshot_quality: 0.3,
+                    fullscreen_required: true,
+                  });
+                  setAssignment((prev) => prev ? { ...prev, exam_mode: val } : null);
+                } catch { /* ignore */ }
+              }}
+              style={{ width: 18, height: 18, accentColor: "var(--error)", cursor: "pointer" }} />
+            시험 모드 (전체화면 강제 + 화면 캡쳐 + 이탈 감지)
           </label>
 
           {/* 채점 강도 */}
@@ -678,7 +782,7 @@ export default function AssignmentDetail() {
         )}
 
         {/* Problems */}
-        {(assignment.type === "coding" || assignment.type === "both") && (
+        {(assignment.type === "coding" || assignment.type === "both" || assignment.type === "algorithm") && (
           <div className="card" style={{ marginBottom: 24 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h2 className="section-title">문제 목록</h2>
@@ -688,16 +792,101 @@ export default function AssignmentDetail() {
               <div style={{ padding: 20, background: "var(--surface-container)", borderRadius: 12, marginBottom: 16 }}>
                 <h3 style={{ margin: "0 0 12px", fontSize: 15 }}>새 문제 추가</h3>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {/* 문제 형식 선택 */}
+                  <div className="type-chips">
+                    {(["regular", "baekjoon", "programmers"] as const).map((f) => (
+                      <button key={f} type="button"
+                        className={`type-chip${newProblemFormat === f ? " active" : ""}`}
+                        onClick={() => setNewProblemFormat(f)}>
+                        {f === "regular" ? "일반 코딩" : f === "baekjoon" ? "백준 형식" : "프로그래머스 형식"}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* 공통 필드 */}
                   <input className="input" placeholder="문제 제목" value={newProblem.title}
                     onChange={(e) => setNewProblem({ ...newProblem, title: e.target.value })} />
                   <textarea className="input" placeholder="문제 설명" value={newProblem.description}
                     onChange={(e) => setNewProblem({ ...newProblem, description: e.target.value })} rows={4}
                     style={{ resize: "vertical", fontFamily: "inherit" }} />
-                  <textarea className="input" placeholder="시작 코드 (선택)" value={newProblem.starter_code}
-                    onChange={(e) => setNewProblem({ ...newProblem, starter_code: e.target.value })} rows={3}
-                    style={{ resize: "vertical", fontFamily: "JetBrains Mono, monospace", fontSize: 13 }} />
-                  <input className="input" placeholder="예상 출력 (선택)" value={newProblem.expected_output}
-                    onChange={(e) => setNewProblem({ ...newProblem, expected_output: e.target.value })} />
+
+                  {/* 일반: 시작 코드 + 예상 출력 */}
+                  {newProblemFormat === "regular" && (
+                    <>
+                      <textarea className="input" placeholder="시작 코드 (선택)" value={newProblem.starter_code}
+                        onChange={(e) => setNewProblem({ ...newProblem, starter_code: e.target.value })} rows={3}
+                        style={{ resize: "vertical", fontFamily: "JetBrains Mono, monospace", fontSize: 13 }} />
+                      <input className="input" placeholder="예상 출력 (선택)" value={newProblem.expected_output}
+                        onChange={(e) => setNewProblem({ ...newProblem, expected_output: e.target.value })} />
+                    </>
+                  )}
+
+                  {/* 프로그래머스: 전체 코드 틀 (solution 비워둠) */}
+                  {newProblemFormat === "programmers" && (
+                    <>
+                      <textarea className="input" placeholder="시작 코드 (전체 구조 — solution 함수 body만 비워두기)" value={newProblem.starter_code}
+                        onChange={(e) => setNewProblem({ ...newProblem, starter_code: e.target.value })} rows={6}
+                        style={{ resize: "vertical", fontFamily: "JetBrains Mono, monospace", fontSize: 13 }} />
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <input className="input" placeholder="함수 이름 (예: solution)" value={newProblem.function_name}
+                          onChange={(e) => setNewProblem({ ...newProblem, function_name: e.target.value })} style={{ flex: 1 }} />
+                        <input className="input" placeholder="반환 타입 (예: int)" value={newProblem.return_type}
+                          onChange={(e) => setNewProblem({ ...newProblem, return_type: e.target.value })} style={{ flex: 1 }} />
+                      </div>
+                      <input className="input" placeholder="반환값 설명 (예: 최대 합. 답 없으면 -1)" value={newProblem.return_description}
+                        onChange={(e) => setNewProblem({ ...newProblem, return_description: e.target.value })} />
+                      <textarea className="input" placeholder={'매개변수 JSON (예: [{"name":"n","type":"int","description":"크기"}])'}
+                        value={newProblem.parameters_text}
+                        onChange={(e) => setNewProblem({ ...newProblem, parameters_text: e.target.value })} rows={2}
+                        style={{ resize: "vertical", fontFamily: "JetBrains Mono, monospace", fontSize: 12 }} />
+                    </>
+                  )}
+
+                  {/* 백준 / 프로그래머스 공통: 입출력 형식 + 제약 + 테스트케이스 */}
+                  {(newProblemFormat === "baekjoon" || newProblemFormat === "programmers") && (
+                    <>
+                      {newProblemFormat === "baekjoon" && (
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <textarea className="input" placeholder="입력 형식 설명" value={newProblem.input_description}
+                            onChange={(e) => setNewProblem({ ...newProblem, input_description: e.target.value })} rows={2}
+                            style={{ resize: "vertical", fontFamily: "inherit", flex: 1 }} />
+                          <textarea className="input" placeholder="출력 형식 설명" value={newProblem.output_description}
+                            onChange={(e) => setNewProblem({ ...newProblem, output_description: e.target.value })} rows={2}
+                            style={{ resize: "vertical", fontFamily: "inherit", flex: 1 }} />
+                        </div>
+                      )}
+                      <input className="input" placeholder="제약 조건 (예: 1 <= N <= 100000)" value={newProblem.constraints}
+                        onChange={(e) => setNewProblem({ ...newProblem, constraints: e.target.value })} />
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--on-surface-variant)" }}>
+                          시간
+                          <input className="input" type="number" min={100} max={10000} value={newProblem.time_limit_ms}
+                            onChange={(e) => setNewProblem({ ...newProblem, time_limit_ms: Number(e.target.value) })}
+                            style={{ width: 90 }} />
+                          ms
+                        </label>
+                        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--on-surface-variant)" }}>
+                          메모리
+                          <input className="input" type="number" min={16} max={1024} value={newProblem.memory_limit_mb}
+                            onChange={(e) => setNewProblem({ ...newProblem, memory_limit_mb: Number(e.target.value) })}
+                            style={{ width: 90 }} />
+                          MB
+                        </label>
+                      </div>
+                      <textarea className="input"
+                        placeholder={'예제 JSON (예: [{"input":"5\\n1 2 3 4 5","output":"15","explanation":"합"}])'}
+                        value={newProblem.examples_text}
+                        onChange={(e) => setNewProblem({ ...newProblem, examples_text: e.target.value })} rows={3}
+                        style={{ resize: "vertical", fontFamily: "JetBrains Mono, monospace", fontSize: 12 }} />
+                      <textarea className="input"
+                        placeholder={'테스트케이스 JSON (예: [{"input":"3\\n1 2 3","expected_output":"6","is_hidden":false}])'}
+                        value={newProblem.test_cases_text}
+                        onChange={(e) => setNewProblem({ ...newProblem, test_cases_text: e.target.value })} rows={3}
+                        style={{ resize: "vertical", fontFamily: "JetBrains Mono, monospace", fontSize: 12 }} />
+                    </>
+                  )}
+
+                  {/* 힌트 (공통) */}
                   <textarea className="input" placeholder="힌트 (줄바꿈으로 구분)" value={newProblem.hints}
                     onChange={(e) => setNewProblem({ ...newProblem, hints: e.target.value })} rows={2}
                     style={{ resize: "vertical", fontFamily: "inherit" }} />
@@ -715,7 +904,15 @@ export default function AssignmentDetail() {
                 {assignment.problems.map((p, i) => (
                   <div key={p.id} style={{ padding: 20, background: "var(--surface-container)", borderRadius: 12 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                      <h3 style={{ margin: "0 0 8px" }}>{i + 1}. {p.title}</h3>
+                      <h3 style={{ margin: "0 0 8px", display: "flex", alignItems: "center", gap: 8 }}>
+                        {i + 1}. {p.title}
+                        {(p as Record<string, unknown>).format === "baekjoon" && (
+                          <span className="badge" style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)", fontSize: 11 }}>백준</span>
+                        )}
+                        {(p as Record<string, unknown>).format === "programmers" && (
+                          <span className="badge" style={{ background: "rgba(99,46,205,0.1)", color: "var(--tertiary)", fontSize: 11 }}>프로그래머스</span>
+                        )}
+                      </h3>
                       <div style={{ display: "flex", gap: 6 }}>
                         <button className="btn btn-ghost" style={{ fontSize: 12, padding: "4px 10px" }}
                           onClick={() => handleEditProblem(p)}>수정</button>
@@ -724,6 +921,98 @@ export default function AssignmentDetail() {
                       </div>
                     </div>
                     <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{p.description}</p>
+                    {/* Algorithm-specific fields */}
+                    {((p as Record<string, unknown>).format === "baekjoon" || (p as Record<string, unknown>).format === "programmers" || assignment.type === "algorithm") && (() => {
+                      const ap = p as Record<string, unknown>;
+                      const fmt = (ap.format as string) || "baekjoon";
+                      const examples = ap.examples as { input: unknown; output: unknown; explanation?: string }[] | undefined;
+                      const testCases = ap.test_cases as { input: unknown; expected_output: unknown; is_hidden: boolean }[] | undefined;
+                      const fmtStr = (v: unknown) => typeof v === "string" ? v : JSON.stringify(v, null, 2);
+                      return (
+                        <div style={{ marginTop: 12, fontSize: 13 }}>
+                          {/* 프로그래머스: 매개변수/반환값 */}
+                          {fmt === "programmers" && (ap.parameters as { name: string; type: string; description: string }[])?.length > 0 && (
+                            <div style={{ marginBottom: 8 }}>
+                              <strong>매개변수</strong>
+                              {(ap.parameters as { name: string; type: string; description: string }[]).map((param, pi) => (
+                                <p key={pi} style={{ margin: "2px 0", color: "var(--on-surface-variant)" }}>
+                                  <code style={{ fontWeight: 600 }}>{param.name}</code> ({param.type}) — {param.description}
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                          {fmt === "programmers" && ap.return_type && (
+                            <div style={{ marginBottom: 8 }}>
+                              <strong>반환값</strong>
+                              <p style={{ margin: "4px 0", color: "var(--on-surface-variant)" }}>
+                                <code style={{ fontWeight: 600 }}>{ap.return_type as string}</code>
+                                {ap.return_description && ` — ${ap.return_description as string}`}
+                              </p>
+                            </div>
+                          )}
+                          {/* 백준: 입출력 형식 */}
+                          {fmt !== "programmers" && ap.input_description && (
+                            <div style={{ marginBottom: 8 }}>
+                              <strong>입력 형식</strong>
+                              <p style={{ margin: "4px 0", color: "var(--on-surface-variant)" }}>{ap.input_description as string}</p>
+                            </div>
+                          )}
+                          {fmt !== "programmers" && ap.output_description && (
+                            <div style={{ marginBottom: 8 }}>
+                              <strong>출력 형식</strong>
+                              <p style={{ margin: "4px 0", color: "var(--on-surface-variant)" }}>{ap.output_description as string}</p>
+                            </div>
+                          )}
+                          {ap.constraints && (
+                            <div style={{ marginBottom: 8 }}>
+                              <strong>제약 조건</strong>
+                              <p style={{ margin: "4px 0", color: "var(--warning)" }}>{ap.constraints as string}</p>
+                            </div>
+                          )}
+                          {ap.time_limit_ms && (
+                            <span className="badge" style={{ marginRight: 6 }}>시간 제한: {ap.time_limit_ms as number}ms</span>
+                          )}
+                          {ap.memory_limit_mb && (
+                            <span className="badge">메모리 제한: {ap.memory_limit_mb as number}MB</span>
+                          )}
+                          {examples && examples.length > 0 && (
+                            <details style={{ marginTop: 10 }} open>
+                              <summary style={{ cursor: "pointer", fontWeight: 600, color: "var(--primary)" }}>예제 ({examples.length}개)</summary>
+                              {examples.map((ex, ei) => (
+                                <div key={ei} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8, background: "var(--surface-container-high)", borderRadius: 8, padding: 10 }}>
+                                  <div>
+                                    <div style={{ fontSize: 11, color: "var(--on-surface-variant)", marginBottom: 2 }}>입력</div>
+                                    <pre style={{ background: "var(--editor-bg)", color: "#d4d4d4", padding: 8, borderRadius: 6, margin: 0, fontSize: 12, fontFamily: "JetBrains Mono, monospace", whiteSpace: "pre-wrap", wordBreak: "break-all", overflow: "auto", maxHeight: 200 }}>{fmtStr(ex.input)}</pre>
+                                  </div>
+                                  <div>
+                                    <div style={{ fontSize: 11, color: "var(--on-surface-variant)", marginBottom: 2 }}>출력</div>
+                                    <pre style={{ background: "var(--editor-bg)", color: "#d4d4d4", padding: 8, borderRadius: 6, margin: 0, fontSize: 12, fontFamily: "JetBrains Mono, monospace", whiteSpace: "pre-wrap", wordBreak: "break-all", overflow: "auto", maxHeight: 200 }}>{fmtStr(ex.output)}</pre>
+                                  </div>
+                                  {ex.explanation && <div style={{ gridColumn: "1 / -1", fontSize: 12, color: "var(--on-surface-variant)" }}>{ex.explanation}</div>}
+                                </div>
+                              ))}
+                            </details>
+                          )}
+                          {testCases && testCases.length > 0 && (
+                            <details style={{ marginTop: 10 }}>
+                              <summary style={{ cursor: "pointer", fontWeight: 600, color: "var(--tertiary)" }}>테스트케이스 ({testCases.length}개)</summary>
+                              {testCases.map((tc, ti) => (
+                                <div key={ti} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8, background: "var(--surface-container-high)", borderRadius: 8, padding: 10 }}>
+                                  <div>
+                                    <div style={{ fontSize: 11, color: "var(--on-surface-variant)", marginBottom: 2 }}>입력 {tc.is_hidden && <span style={{ color: "var(--warning)" }}>(히든)</span>}</div>
+                                    <pre style={{ background: "var(--editor-bg)", color: "#d4d4d4", padding: 8, borderRadius: 6, margin: 0, fontSize: 12, fontFamily: "JetBrains Mono, monospace", whiteSpace: "pre-wrap", wordBreak: "break-all", overflow: "auto", maxHeight: 200 }}>{fmtStr(tc.input)}</pre>
+                                  </div>
+                                  <div>
+                                    <div style={{ fontSize: 11, color: "var(--on-surface-variant)", marginBottom: 2 }}>예상 출력</div>
+                                    <pre style={{ background: "var(--editor-bg)", color: "#d4d4d4", padding: 8, borderRadius: 6, margin: 0, fontSize: 12, fontFamily: "JetBrains Mono, monospace", whiteSpace: "pre-wrap", wordBreak: "break-all", overflow: "auto", maxHeight: 200 }}>{fmtStr(tc.expected_output)}</pre>
+                                  </div>
+                                </div>
+                              ))}
+                            </details>
+                          )}
+                        </div>
+                      );
+                    })()}
                     {p.starter_code && (
                       <pre style={{
                         background: "#1e1e1e", color: "#d4d4d4", padding: 16, borderRadius: 8,
@@ -746,9 +1035,57 @@ export default function AssignmentDetail() {
         )}
 
         {/* Rubric */}
-        {assignment.rubric?.criteria && assignment.rubric.criteria.length > 0 && (
-          <div className="card" style={{ marginBottom: 24 }}>
+        <div className="card" style={{ marginBottom: 24 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <h2 className="section-title">채점 루브릭</h2>
+            {!editingRubric && (
+              <button className="btn btn-ghost" onClick={() => {
+                setRubricCriteria(assignment.rubric?.criteria?.length
+                  ? assignment.rubric.criteria.map((c) => ({ ...c }))
+                  : [{ name: "", weight: 100, description: "" }]);
+                setEditingRubric(true);
+              }}>수정</button>
+            )}
+          </div>
+          {editingRubric ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {rubricCriteria.map((c, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input className="input" placeholder="기준명" value={c.name}
+                    onChange={(e) => { const arr = [...rubricCriteria]; arr[i] = { ...arr[i], name: e.target.value }; setRubricCriteria(arr); }}
+                    style={{ flex: 1 }} />
+                  <input className="input" type="number" min={0} max={100} value={c.weight}
+                    onChange={(e) => { const arr = [...rubricCriteria]; arr[i] = { ...arr[i], weight: Number(e.target.value) }; setRubricCriteria(arr); }}
+                    style={{ width: 70, textAlign: "center" }} />
+                  <span style={{ fontSize: 13, color: "var(--on-surface-variant)" }}>%</span>
+                  <input className="input" placeholder="설명" value={c.description}
+                    onChange={(e) => { const arr = [...rubricCriteria]; arr[i] = { ...arr[i], description: e.target.value }; setRubricCriteria(arr); }}
+                    style={{ flex: 2 }} />
+                  <button className="btn btn-ghost" style={{ color: "var(--error)", padding: "4px 8px", fontSize: 16 }}
+                    onClick={() => setRubricCriteria(rubricCriteria.filter((_, j) => j !== i))}>&times;</button>
+                </div>
+              ))}
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <button className="btn btn-secondary" style={{ fontSize: 13 }}
+                  onClick={() => setRubricCriteria([...rubricCriteria, { name: "", weight: 0, description: "" }])}>
+                  + 기준 추가
+                </button>
+                <span style={{ fontSize: 12, color: rubricCriteria.reduce((s, c) => s + c.weight, 0) === 100 ? "var(--success)" : "var(--warning)" }}>
+                  합계: {rubricCriteria.reduce((s, c) => s + c.weight, 0)}%
+                </span>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="btn btn-primary" onClick={async () => {
+                  const filtered = rubricCriteria.filter((c) => c.name.trim());
+                  const newRubric = { criteria: filtered };
+                  await api.patch(`/courses/${courseId}/assignments/${assignmentId}`, { rubric: newRubric });
+                  setAssignment((prev) => prev ? { ...prev, rubric: newRubric } : null);
+                  setEditingRubric(false);
+                }}>저장</button>
+                <button className="btn btn-secondary" onClick={() => setEditingRubric(false)}>취소</button>
+              </div>
+            </div>
+          ) : assignment.rubric?.criteria && assignment.rubric.criteria.length > 0 ? (
             <table className="table">
               <thead><tr><th>기준</th><th>비중</th><th>설명</th></tr></thead>
               <tbody>
@@ -757,66 +1094,311 @@ export default function AssignmentDetail() {
                 ))}
               </tbody>
             </table>
+          ) : (
+            <div className="empty">루브릭이 없습니다. 수정 버튼으로 추가하세요.</div>
+          )}
+        </div>
+
+        {/* 시험 감독 */}
+        {assignment.exam_mode && (
+          <div className="card" style={{ marginBottom: 24 }}>
+            <h2 className="section-title">시험 감독</h2>
+            <ExamProctorPanel assignmentId={assignment.id} />
           </div>
         )}
 
-        {/* Submissions */}
+        {/* 시험 응시 관리 */}
+        {assignment.exam_mode && (
+          <div className="card" style={{ marginBottom: 24 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h2 className="section-title">시험 응시 관리</h2>
+              {!examStudentsLoaded && (
+                <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={async () => {
+                  try {
+                    const { data } = await api.get(`/exam/students/${assignmentId}`);
+                    setExamStudents(data);
+                    setExamStudentsLoaded(true);
+                  } catch { /* ignore */ }
+                }}>응시 현황 불러오기</button>
+              )}
+            </div>
+            {examStudentsLoaded && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 12 }}>
+                {examStudents.length === 0 ? (
+                  <div className="empty">수강생이 없습니다.</div>
+                ) : examStudents.map((st) => (
+                  <div key={st.student_id} style={{
+                    display: "flex", alignItems: "center", gap: 12, padding: "10px 14px",
+                    background: "var(--surface-container)", borderRadius: 10,
+                  }}>
+                    <span style={{ fontWeight: 600, fontSize: 14, minWidth: 80 }}>{st.name}</span>
+                    <span style={{ fontSize: 12, color: "var(--on-surface-variant)", minWidth: 140 }}>{st.email}</span>
+                    <span className="badge" style={{
+                      background: st.exam_ended ? "rgba(34,197,94,0.12)" : "rgba(245,158,11,0.12)",
+                      color: st.exam_ended ? "#16a34a" : "#d97706", fontWeight: 600,
+                    }}>
+                      {st.exam_ended ? "응시 완료" : "미응시"}
+                    </span>
+                    {st.last_reset && (
+                      <span style={{ fontSize: 11, color: "var(--on-surface-variant)" }}>
+                        리셋: {new Date(st.last_reset.reset_at).toLocaleString("ko-KR")}
+                        {st.last_reset.reason && ` (${st.last_reset.reason})`}
+                      </span>
+                    )}
+                    <div style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" }}>
+                      {st.exam_ended && resettingStudent !== st.student_id && (
+                        <button className="btn btn-ghost" style={{ fontSize: 12, color: "var(--primary)", padding: "4px 10px" }}
+                          onClick={() => { setResettingStudent(st.student_id); setResetReason(""); }}>
+                          미응시로 변경
+                        </button>
+                      )}
+                      {resettingStudent === st.student_id && (
+                        <>
+                          <input className="input" placeholder="사유 입력 (필수)" value={resetReason}
+                            onChange={(e) => setResetReason(e.target.value)}
+                            style={{ width: 180, padding: "4px 8px", fontSize: 12 }} />
+                          <button className="btn btn-primary" style={{ fontSize: 12, padding: "4px 12px" }}
+                            disabled={!resetReason.trim()}
+                            onClick={async () => {
+                              try {
+                                await api.post("/exam/reset", {
+                                  assignment_id: assignmentId,
+                                  student_id: st.student_id,
+                                  reason: resetReason,
+                                });
+                                setExamStudents((prev) => prev.map((s) =>
+                                  s.student_id === st.student_id
+                                    ? { ...s, exam_ended: false, last_reset: { reset_at: new Date().toISOString(), reason: resetReason } }
+                                    : s
+                                ));
+                                setResettingStudent(null);
+                              } catch { /* ignore */ }
+                            }}>확인</button>
+                          <button className="btn btn-ghost" style={{ fontSize: 12, padding: "4px 8px" }}
+                            onClick={() => setResettingStudent(null)}>취소</button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Submissions — grouped by student */}
         <div className="card">
           <h2 className="section-title">제출 현황 ({submissions.length}건)</h2>
           {submissions.length === 0 ? (
             <div className="empty">아직 제출물이 없습니다.</div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {submissions.map((s) => {
-                const analysis = Array.isArray(s.ai_analyses) ? s.ai_analyses[0] : null;
-                const subPastes = getPastesForSubmission(s);
-                const pasteCount = subPastes.length;
-                const isWritingSub = isWriting && s.content;
-                return (
-                  <div key={s.id}
-                    className="card course-card"
-                    onClick={() => { setSelectedSub(s); setViewMode("content"); }}
-                    style={{ margin: 0, cursor: "pointer" }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <span style={{ fontWeight: 600 }}>{s.users?.name || "학생"}</span>
-                        <span style={{ fontSize: 12, color: "var(--on-surface-variant)" }}>
-                          {new Date(s.submitted_at).toLocaleString("ko-KR")}
-                        </span>
-                        {!isWritingSub && s.problem_index !== undefined && (
-                          <span className="badge">문제 {(s.problem_index || 0) + 1}</span>
-                        )}
-                        {isWritingSub && <span className="badge" style={{ background: "rgba(99,46,205,0.1)", color: "var(--tertiary)" }}>글쓰기</span>}
-                        {pasteCount > 0 && (
-                          <span className="badge" style={{ background: "rgba(220,38,38,0.1)", color: "#dc2626", fontWeight: 600 }}>
-                            복붙 {pasteCount}회
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        {analysis && (
-                          analysis.final_score != null ? (
-                            <span className="badge" style={{ background: "rgba(34,197,94,0.12)", color: "#16a34a", fontWeight: 700 }}>
-                              확정 {analysis.final_score}점
+          ) : (() => {
+            // Helper: best score for a submission
+            const getScore = (s: SubmissionWithAnalysis) => {
+              const a = Array.isArray(s.ai_analyses) ? s.ai_analyses[0] : null;
+              if (!a) return null;
+              return a.final_score ?? a.score ?? null;
+            };
+
+            // Group by student
+            const grouped = new Map<string, SubmissionWithAnalysis[]>();
+            for (const s of submissions) {
+              if (!grouped.has(s.student_id)) grouped.set(s.student_id, []);
+              grouped.get(s.student_id)!.push(s);
+            }
+            const studentEntries = Array.from(grouped.entries()).sort((a, b) =>
+              (a[1][0]?.users?.name || "").localeCompare(b[1][0]?.users?.name || "", "ko")
+            );
+
+            return (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {studentEntries.map(([studentId, subs]) => {
+                  const studentName = subs[0]?.users?.name || "학생";
+                  const studentEmail = subs[0]?.users?.email || "";
+                  const totalPastes = subs.reduce((sum, s) => sum + getPastesForSubmission(s).length, 0);
+                  const isStudentExpanded = expandedStudents.has(studentId);
+
+                  // Group by problem index
+                  const byProblem = new Map<number, SubmissionWithAnalysis[]>();
+                  for (const s of subs) {
+                    const pIdx = s.problem_index ?? 0;
+                    if (!byProblem.has(pIdx)) byProblem.set(pIdx, []);
+                    byProblem.get(pIdx)!.push(s);
+                  }
+                  const problemEntries = Array.from(byProblem.entries()).sort((a, b) => a[0] - b[0]);
+
+                  // Per-problem best score (highest among all submissions)
+                  const problemBestScores: (number | null)[] = problemEntries.map(([, psubs]) => {
+                    let best: number | null = null;
+                    for (const s of psubs) {
+                      const sc = getScore(s);
+                      if (sc !== null && (best === null || sc > best)) best = sc;
+                    }
+                    return best;
+                  });
+
+                  // Student avg = average of per-problem best scores
+                  const validScores = problemBestScores.filter((s): s is number => s !== null);
+                  const studentAvg = validScores.length > 0 ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length) : null;
+
+                  return (
+                    <div key={studentId} style={{
+                      background: "var(--surface-container)", borderRadius: 12, overflow: "hidden",
+                    }}>
+                      {/* ── Student header ── */}
+                      <div
+                        onClick={() => setExpandedStudents((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(studentId)) next.delete(studentId); else next.add(studentId);
+                          return next;
+                        })}
+                        style={{
+                          padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center",
+                          cursor: "pointer", transition: "background 0.15s",
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-container-high)")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <span style={{
+                            display: "inline-block", transition: "transform 0.2s",
+                            transform: isStudentExpanded ? "rotate(90deg)" : "rotate(0deg)",
+                            fontSize: 13, color: "var(--on-surface-variant)",
+                          }}>&#9654;</span>
+                          <span style={{ fontWeight: 700, fontSize: 15 }}>{studentName}</span>
+                          <span style={{ fontSize: 12, color: "var(--on-surface-variant)" }}>{studentEmail}</span>
+                          <span className="badge">{subs.length}건 제출</span>
+                          {totalPastes > 0 && (
+                            <span className="badge" style={{ background: "rgba(220,38,38,0.1)", color: "#dc2626", fontWeight: 600 }}>
+                              복붙 {totalPastes}회
                             </span>
-                          ) : (
-                            <span className="badge" style={{ background: "rgba(99,46,205,0.1)", color: "var(--tertiary)" }}>
-                              AI 추천 {analysis.score ?? "-"}점
+                          )}
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          {studentAvg !== null && (
+                            <span className="badge" style={{
+                              background: studentAvg >= 80 ? "rgba(34,197,94,0.12)" : studentAvg >= 50 ? "rgba(245,158,11,0.12)" : "rgba(220,38,38,0.1)",
+                              color: studentAvg >= 80 ? "#16a34a" : studentAvg >= 50 ? "#d97706" : "#dc2626",
+                              fontWeight: 700,
+                            }}>
+                              평균 {studentAvg}점
                             </span>
-                          )
-                        )}
-                        <button className="btn btn-ghost" style={{
-                          fontSize: 11, padding: "2px 8px", color: "var(--error)", opacity: 0.7,
-                        }} onClick={(e) => { e.stopPropagation(); handleDeleteSubmission(s); }}>삭제</button>
-                        <span style={{ color: "var(--on-surface-variant)", fontSize: 13 }}>&#9654;</span>
+                          )}
+                        </div>
                       </div>
+
+                      {/* ── Problem groups under student ── */}
+                      {isStudentExpanded && (
+                        <div style={{ borderTop: "1px solid var(--outline-variant)" }}>
+                          {problemEntries.map(([pIdx, psubs], pi) => {
+                            const problemKey = `${studentId}-p${pIdx}`;
+                            const isProblemExpanded = expandedProblems.has(problemKey);
+                            const bestScore = problemBestScores[pi];
+                            const problemTitle = isWriting && psubs[0]?.content
+                              ? "글쓰기"
+                              : `문제 ${pIdx + 1}${assignment.problems?.[pIdx]?.title ? ` — ${assignment.problems[pIdx].title}` : ""}`;
+
+                            return (
+                              <div key={problemKey}>
+                                {/* Problem header */}
+                                <div
+                                  onClick={() => setExpandedProblems((prev) => {
+                                    const next = new Set(prev);
+                                    if (next.has(problemKey)) next.delete(problemKey); else next.add(problemKey);
+                                    return next;
+                                  })}
+                                  style={{
+                                    padding: "8px 16px 8px 40px", display: "flex", justifyContent: "space-between",
+                                    alignItems: "center", cursor: "pointer", transition: "background 0.15s",
+                                    borderBottom: "1px solid var(--outline-variant)",
+                                  }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-container-high)")}
+                                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                                >
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    <span style={{
+                                      display: "inline-block", transition: "transform 0.2s",
+                                      transform: isProblemExpanded ? "rotate(90deg)" : "rotate(0deg)",
+                                      fontSize: 11, color: "var(--on-surface-variant)",
+                                    }}>&#9654;</span>
+                                    <span style={{ fontWeight: 600, fontSize: 13 }}>{problemTitle}</span>
+                                    <span style={{ fontSize: 11, color: "var(--on-surface-variant)" }}>{psubs.length}건</span>
+                                  </div>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                    {bestScore !== null && (
+                                      <span className="badge" style={{
+                                        fontSize: 11,
+                                        background: bestScore >= 80 ? "rgba(34,197,94,0.12)" : bestScore >= 50 ? "rgba(245,158,11,0.12)" : "rgba(220,38,38,0.1)",
+                                        color: bestScore >= 80 ? "#16a34a" : bestScore >= 50 ? "#d97706" : "#dc2626",
+                                        fontWeight: 700,
+                                      }}>
+                                        최고 {bestScore}점
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Individual submissions */}
+                                {isProblemExpanded && psubs
+                                  .sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime())
+                                  .map((s) => {
+                                    const analysis = Array.isArray(s.ai_analyses) ? s.ai_analyses[0] : null;
+                                    const subPastes = getPastesForSubmission(s);
+                                    const pasteCount = subPastes.length;
+                                    return (
+                                      <div key={s.id}
+                                        onClick={() => { setSelectedSub(s); setViewMode("content"); }}
+                                        style={{
+                                          padding: "8px 16px 8px 64px", cursor: "pointer",
+                                          borderBottom: "1px solid var(--outline-variant)",
+                                          transition: "background 0.15s",
+                                        }}
+                                        onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-container-high)")}
+                                        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                                      >
+                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                            <span style={{ fontSize: 12, color: "var(--on-surface-variant)" }}>
+                                              {new Date(s.submitted_at).toLocaleString("ko-KR")}
+                                            </span>
+                                            {pasteCount > 0 && (
+                                              <span className="badge" style={{ background: "rgba(220,38,38,0.1)", color: "#dc2626", fontWeight: 600, fontSize: 11 }}>
+                                                복붙 {pasteCount}회
+                                              </span>
+                                            )}
+                                          </div>
+                                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                            {analysis && (
+                                              analysis.final_score != null ? (
+                                                <span className="badge" style={{ background: "rgba(34,197,94,0.12)", color: "#16a34a", fontWeight: 700, fontSize: 11 }}>
+                                                  확정 {analysis.final_score}점
+                                                </span>
+                                              ) : (
+                                                <span className="badge" style={{ background: "rgba(99,46,205,0.1)", color: "var(--tertiary)", fontSize: 11 }}>
+                                                  AI {analysis.score ?? "-"}점
+                                                </span>
+                                              )
+                                            )}
+                                            <button className="btn btn-ghost" style={{
+                                              fontSize: 11, padding: "2px 8px", color: "var(--error)", opacity: 0.7,
+                                            }} onClick={(e) => { e.stopPropagation(); handleDeleteSubmission(s); }}>삭제</button>
+                                            <span style={{ color: "var(--on-surface-variant)", fontSize: 13 }}>&#9654;</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })
+                                }
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
 
         {renderQaToolbox()}

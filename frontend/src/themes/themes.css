@@ -1,0 +1,583 @@
+/* ===== Spring (봄) — Sakura pink + cream ===== */
+html[data-theme="spring"] {
+  --primary: #D4618C;
+  --primary-light: #FFE8EF;
+  --primary-container: #E8849F;
+  --primary-hover: #BF4D78;
+  --primary-fixed: #FFD0DD;
+  --secondary: #8B6F65;
+  --secondary-light: #F5EBE8;
+  --tertiary: #8B5E3C;
+  --tertiary-light: #FFF0E5;
+  --tertiary-container: rgba(139, 94, 60, 0.08);
+  --on-tertiary-container: #6B4423;
+  --success: #4CAF82;
+  --success-light: #EDF8F2;
+  --warning: #E8A030;
+  --warning-light: #FFF8EB;
+  --error: #E05B5B;
+  --error-light: #FFF0F0;
+  --surface: #FFF8F5;
+  --surface-container-lowest: #FFFFFF;
+  --surface-container-low: #FFF3EF;
+  --surface-container: #FFEDE8;
+  --surface-container-high: #FFE5DE;
+  --surface-container-highest: #FFFFFF;
+  --on-surface: #3D2B1F;
+  --on-surface-variant: #6B5549;
+  --outline-variant: rgba(107, 85, 73, 0.15);
+  --editor-bg: #2D1520;
+  --shadow-sm: 0 2px 8px rgba(212, 97, 140, 0.06);
+  --shadow: 0 4px 20px rgba(212, 97, 140, 0.08);
+  --shadow-lg: 0 8px 40px rgba(212, 97, 140, 0.10);
+  --shadow-ai: 0 4px 24px rgba(139, 94, 60, 0.10);
+  --shadow-primary: 0 4px 20px rgba(212, 97, 140, 0.15);
+  --shadow-float: 0 8px 40px rgba(212, 97, 140, 0.08), 0 2px 8px rgba(212, 97, 140, 0.04);
+}
+
+/* ===== Summer (여름) — Ocean blue + cyan ===== */
+html[data-theme="summer"] {
+  --primary: #0891B2;
+  --primary-light: #DFFBFF;
+  --primary-container: #22B8CF;
+  --primary-hover: #0E7490;
+  --primary-fixed: #A5F3FC;
+  --secondary: #4B6B77;
+  --secondary-light: #E6F2F5;
+  --tertiary: #0D9488;
+  --tertiary-light: #E6FFF9;
+  --tertiary-container: rgba(13, 148, 136, 0.08);
+  --on-tertiary-container: #0F766E;
+  --success: #059669;
+  --success-light: #ECFDF5;
+  --warning: #D97706;
+  --warning-light: #FFFBEB;
+  --error: #DC2626;
+  --error-light: #FEF2F2;
+  --surface: #F0FDFA;
+  --surface-container-lowest: #FFFFFF;
+  --surface-container-low: #E6FAF6;
+  --surface-container: #D5F5F0;
+  --surface-container-high: #C4F0EA;
+  --surface-container-highest: #FFFFFF;
+  --on-surface: #134E4A;
+  --on-surface-variant: #3B6B65;
+  --outline-variant: rgba(59, 107, 101, 0.15);
+  --editor-bg: #042F2E;
+  --shadow-sm: 0 2px 8px rgba(8, 145, 178, 0.06);
+  --shadow: 0 4px 20px rgba(8, 145, 178, 0.08);
+  --shadow-lg: 0 8px 40px rgba(8, 145, 178, 0.10);
+  --shadow-ai: 0 4px 24px rgba(13, 148, 136, 0.10);
+  --shadow-primary: 0 4px 20px rgba(8, 145, 178, 0.15);
+  --shadow-float: 0 8px 40px rgba(8, 145, 178, 0.08), 0 2px 8px rgba(8, 145, 178, 0.04);
+}
+
+/* ===== Fall (가을) — Amber + maple red ===== */
+html[data-theme="fall"] {
+  --primary: #C2410C;
+  --primary-light: #FFF0E5;
+  --primary-container: #EA580C;
+  --primary-hover: #9A3412;
+  --primary-fixed: #FFCFAA;
+  --secondary: #78716C;
+  --secondary-light: #F0EEEC;
+  --tertiary: #92400E;
+  --tertiary-light: #FFF8EB;
+  --tertiary-container: rgba(146, 64, 14, 0.08);
+  --on-tertiary-container: #78350F;
+  --success: #16A34A;
+  --success-light: #F0FDF4;
+  --warning: #CA8A04;
+  --warning-light: #FEFCE8;
+  --error: #DC2626;
+  --error-light: #FEF2F2;
+  --surface: #FFFBF5;
+  --surface-container-lowest: #FFFFFF;
+  --surface-container-low: #FFF7EE;
+  --surface-container: #FFF2E5;
+  --surface-container-high: #FFEDDA;
+  --surface-container-highest: #FFFFFF;
+  --on-surface: #431407;
+  --on-surface-variant: #6B4423;
+  --outline-variant: rgba(107, 68, 35, 0.15);
+  --editor-bg: #27150A;
+  --shadow-sm: 0 2px 8px rgba(194, 65, 12, 0.06);
+  --shadow: 0 4px 20px rgba(194, 65, 12, 0.08);
+  --shadow-lg: 0 8px 40px rgba(194, 65, 12, 0.10);
+  --shadow-ai: 0 4px 24px rgba(146, 64, 14, 0.10);
+  --shadow-primary: 0 4px 20px rgba(194, 65, 12, 0.15);
+  --shadow-float: 0 8px 40px rgba(194, 65, 12, 0.08), 0 2px 8px rgba(194, 65, 12, 0.04);
+}
+
+/* ===== Winter (겨울) — Indigo + icy ===== */
+html[data-theme="winter"] {
+  --primary: #6366F1;
+  --primary-light: #E8E8FF;
+  --primary-container: #818CF8;
+  --primary-hover: #4F46E5;
+  --primary-fixed: #C7D2FE;
+  --secondary: #6B7280;
+  --secondary-light: #F0F1F3;
+  --tertiary: #818CF8;
+  --tertiary-light: #EEF0FF;
+  --tertiary-container: rgba(129, 140, 248, 0.08);
+  --on-tertiary-container: #4338CA;
+  --success: #10B981;
+  --success-light: #ECFDF5;
+  --warning: #F59E0B;
+  --warning-light: #FFFBEB;
+  --error: #EF4444;
+  --error-light: #FEF2F2;
+  --surface: #F5F7FF;
+  --surface-container-lowest: #FFFFFF;
+  --surface-container-low: #EEF0FC;
+  --surface-container: #E5E8F8;
+  --surface-container-high: #DDDFF4;
+  --surface-container-highest: #FFFFFF;
+  --on-surface: #1E1B4B;
+  --on-surface-variant: #4338CA;
+  --outline-variant: rgba(67, 56, 202, 0.12);
+  --editor-bg: #0F0D2E;
+  --shadow-sm: 0 2px 8px rgba(99, 102, 241, 0.06);
+  --shadow: 0 4px 20px rgba(99, 102, 241, 0.08);
+  --shadow-lg: 0 8px 40px rgba(99, 102, 241, 0.10);
+  --shadow-ai: 0 4px 24px rgba(129, 140, 248, 0.10);
+  --shadow-primary: 0 4px 20px rgba(99, 102, 241, 0.15);
+  --shadow-float: 0 8px 40px rgba(99, 102, 241, 0.08), 0 2px 8px rgba(99, 102, 241, 0.04);
+}
+
+/* ===== Retro (복고) — Sepia + warm brown ===== */
+html[data-theme="retro"] {
+  --primary: #8B6914;
+  --primary-light: #FFF5DC;
+  --primary-container: #A67C1A;
+  --primary-hover: #725510;
+  --primary-fixed: #F0D68A;
+  --secondary: #7C7062;
+  --secondary-light: #F2EDE8;
+  --tertiary: #6B4423;
+  --tertiary-light: #FFF0E0;
+  --tertiary-container: rgba(107, 68, 35, 0.08);
+  --on-tertiary-container: #5C3A1E;
+  --success: #5D8C3E;
+  --success-light: #F0F7EB;
+  --warning: #C89520;
+  --warning-light: #FFF9E8;
+  --error: #C75050;
+  --error-light: #FFF0F0;
+  --surface: #FAF6EE;
+  --surface-container-lowest: #FEFCF7;
+  --surface-container-low: #F7F2E8;
+  --surface-container: #F0E9DB;
+  --surface-container-high: #E8E0D0;
+  --surface-container-highest: #FEFCF7;
+  --on-surface: #3C2415;
+  --on-surface-variant: #6B5B48;
+  --outline-variant: rgba(107, 91, 72, 0.15);
+  --editor-bg: #1E180E;
+  --shadow-sm: 0 2px 8px rgba(139, 105, 20, 0.06);
+  --shadow: 0 4px 20px rgba(139, 105, 20, 0.08);
+  --shadow-lg: 0 8px 40px rgba(139, 105, 20, 0.10);
+  --shadow-ai: 0 4px 24px rgba(107, 68, 35, 0.10);
+  --shadow-primary: 0 4px 20px rgba(139, 105, 20, 0.15);
+  --shadow-float: 0 8px 40px rgba(139, 105, 20, 0.08), 0 2px 8px rgba(139, 105, 20, 0.04);
+}
+
+/* ===== Cyberpunk (사이버틱) — Dark neon ===== */
+html[data-theme="cyberpunk"] {
+  --primary: #E040FB;
+  --primary-light: #2A0E30;
+  --primary-container: #AB47BC;
+  --primary-hover: #CE34E8;
+  --primary-fixed: #F48FB1;
+  --secondary: #78909C;
+  --secondary-light: #1A2530;
+  --tertiary: #00E5FF;
+  --tertiary-light: #0A2A30;
+  --tertiary-container: rgba(0, 229, 255, 0.10);
+  --on-tertiary-container: #00BCD4;
+  --success: #00E676;
+  --success-light: #0A2A18;
+  --warning: #FFD600;
+  --warning-light: #2A2500;
+  --error: #FF1744;
+  --error-light: #2A0A10;
+  --surface: #0D0D1A;
+  --surface-container-lowest: #08080F;
+  --surface-container-low: #121225;
+  --surface-container: #1A1A35;
+  --surface-container-high: #222245;
+  --surface-container-highest: #12121F;
+  --on-surface: #E0E0FF;
+  --on-surface-variant: #A0A0CC;
+  --outline-variant: rgba(160, 160, 204, 0.15);
+  --editor-bg: #08080F;
+  --shadow-sm: 0 2px 8px rgba(224, 64, 251, 0.15);
+  --shadow: 0 4px 20px rgba(224, 64, 251, 0.20);
+  --shadow-lg: 0 8px 40px rgba(224, 64, 251, 0.25);
+  --shadow-ai: 0 4px 24px rgba(0, 229, 255, 0.20);
+  --shadow-primary: 0 4px 20px rgba(224, 64, 251, 0.30);
+  --shadow-float: 0 8px 40px rgba(224, 64, 251, 0.20), 0 2px 8px rgba(0, 229, 255, 0.10);
+}
+
+/* ===== Playful (발랄) — Orange + yellow ===== */
+html[data-theme="playful"] {
+  --primary: #F97316;
+  --primary-light: #FFF4E8;
+  --primary-container: #FB923C;
+  --primary-hover: #EA580C;
+  --primary-fixed: #FDBA74;
+  --secondary: #78716C;
+  --secondary-light: #F5F0EC;
+  --tertiary: #EAB308;
+  --tertiary-light: #FFFDE8;
+  --tertiary-container: rgba(234, 179, 8, 0.08);
+  --on-tertiary-container: #A16207;
+  --success: #22C55E;
+  --success-light: #F0FDF4;
+  --warning: #F59E0B;
+  --warning-light: #FFFBEB;
+  --error: #EF4444;
+  --error-light: #FEF2F2;
+  --surface: #FFFDF7;
+  --surface-container-lowest: #FFFFFF;
+  --surface-container-low: #FFFBF0;
+  --surface-container: #FFF8E5;
+  --surface-container-high: #FFF3D5;
+  --surface-container-highest: #FFFFFF;
+  --on-surface: #422006;
+  --on-surface-variant: #6B5030;
+  --outline-variant: rgba(107, 80, 48, 0.15);
+  --editor-bg: #1C1008;
+  --shadow-sm: 0 2px 8px rgba(249, 115, 22, 0.06);
+  --shadow: 0 4px 20px rgba(249, 115, 22, 0.08);
+  --shadow-lg: 0 8px 40px rgba(249, 115, 22, 0.10);
+  --shadow-ai: 0 4px 24px rgba(234, 179, 8, 0.10);
+  --shadow-primary: 0 4px 20px rgba(249, 115, 22, 0.15);
+  --shadow-float: 0 8px 40px rgba(249, 115, 22, 0.08), 0 2px 8px rgba(249, 115, 22, 0.04);
+}
+
+/* ===== Flower (꽃) — Rose + lavender ===== */
+html[data-theme="flower"] {
+  --primary: #BE185D;
+  --primary-light: #FFE4EE;
+  --primary-container: #DB2777;
+  --primary-hover: #9D174D;
+  --primary-fixed: #FBB6CE;
+  --secondary: #7C6B75;
+  --secondary-light: #F5EEF2;
+  --tertiary: #A855F7;
+  --tertiary-light: #F5E8FF;
+  --tertiary-container: rgba(168, 85, 247, 0.08);
+  --on-tertiary-container: #7C3AED;
+  --success: #10B981;
+  --success-light: #ECFDF5;
+  --warning: #F59E0B;
+  --warning-light: #FFFBEB;
+  --error: #E11D48;
+  --error-light: #FFF1F2;
+  --surface: #FFF5F7;
+  --surface-container-lowest: #FFFFFF;
+  --surface-container-low: #FFF0F3;
+  --surface-container: #FFE8ED;
+  --surface-container-high: #FFDDE5;
+  --surface-container-highest: #FFFFFF;
+  --on-surface: #4A1D2E;
+  --on-surface-variant: #7C4A60;
+  --outline-variant: rgba(124, 74, 96, 0.15);
+  --editor-bg: #200A18;
+  --shadow-sm: 0 2px 8px rgba(190, 24, 93, 0.06);
+  --shadow: 0 4px 20px rgba(190, 24, 93, 0.08);
+  --shadow-lg: 0 8px 40px rgba(190, 24, 93, 0.10);
+  --shadow-ai: 0 4px 24px rgba(168, 85, 247, 0.10);
+  --shadow-primary: 0 4px 20px rgba(190, 24, 93, 0.15);
+  --shadow-float: 0 8px 40px rgba(190, 24, 93, 0.08), 0 2px 8px rgba(190, 24, 93, 0.04);
+}
+
+/* ===== Coding (코딩) — Dark mode + green ===== */
+html[data-theme="coding"] {
+  --primary: #10B981;
+  --primary-light: #0A2A18;
+  --primary-container: #34D399;
+  --primary-hover: #059669;
+  --primary-fixed: #6EE7B7;
+  --secondary: #94A3B8;
+  --secondary-light: #1E293B;
+  --tertiary: #3B82F6;
+  --tertiary-light: #0C1A30;
+  --tertiary-container: rgba(59, 130, 246, 0.10);
+  --on-tertiary-container: #60A5FA;
+  --success: #22C55E;
+  --success-light: #0A2A15;
+  --warning: #FBBF24;
+  --warning-light: #2A2005;
+  --error: #F87171;
+  --error-light: #2A0A0A;
+  --surface: #0F172A;
+  --surface-container-lowest: #020617;
+  --surface-container-low: #1E293B;
+  --surface-container: #243348;
+  --surface-container-high: #334155;
+  --surface-container-highest: #1A2332;
+  --on-surface: #E2E8F0;
+  --on-surface-variant: #94A3B8;
+  --outline-variant: rgba(148, 163, 184, 0.15);
+  --editor-bg: #020617;
+  --shadow-sm: 0 2px 8px rgba(16, 185, 129, 0.10);
+  --shadow: 0 4px 20px rgba(16, 185, 129, 0.15);
+  --shadow-lg: 0 8px 40px rgba(16, 185, 129, 0.20);
+  --shadow-ai: 0 4px 24px rgba(59, 130, 246, 0.15);
+  --shadow-primary: 0 4px 20px rgba(16, 185, 129, 0.25);
+  --shadow-float: 0 8px 40px rgba(16, 185, 129, 0.15), 0 2px 8px rgba(59, 130, 246, 0.08);
+}
+
+/* ===== Anime (애니메) — Vivid purple/pink ===== */
+html[data-theme="anime"] {
+  --primary: #8B5CF6;
+  --primary-light: #F3EEFF;
+  --primary-container: #A78BFA;
+  --primary-hover: #7C3AED;
+  --primary-fixed: #C4B5FD;
+  --secondary: #7C7090;
+  --secondary-light: #F0ECF5;
+  --tertiary: #EC4899;
+  --tertiary-light: #FFF0F6;
+  --tertiary-container: rgba(236, 72, 153, 0.08);
+  --on-tertiary-container: #DB2777;
+  --success: #34D399;
+  --success-light: #F0FDF4;
+  --warning: #FBBF24;
+  --warning-light: #FFFBEB;
+  --error: #F43F5E;
+  --error-light: #FFF1F2;
+  --surface: #FEF5FF;
+  --surface-container-lowest: #FFFFFF;
+  --surface-container-low: #FCF0FE;
+  --surface-container: #F8E8FC;
+  --surface-container-high: #F3DDFA;
+  --surface-container-highest: #FFFFFF;
+  --on-surface: #2E1065;
+  --on-surface-variant: #6B4A8C;
+  --outline-variant: rgba(107, 74, 140, 0.15);
+  --editor-bg: #1A0A2E;
+  --shadow-sm: 0 2px 8px rgba(139, 92, 246, 0.06);
+  --shadow: 0 4px 20px rgba(139, 92, 246, 0.08);
+  --shadow-lg: 0 8px 40px rgba(139, 92, 246, 0.10);
+  --shadow-ai: 0 4px 24px rgba(236, 72, 153, 0.10);
+  --shadow-primary: 0 4px 20px rgba(139, 92, 246, 0.15);
+  --shadow-float: 0 8px 40px rgba(139, 92, 246, 0.08), 0 2px 8px rgba(139, 92, 246, 0.04);
+}
+
+/* ===== Theme Background Animations ===== */
+.theme-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* -- Spring: cherry blossom petals -- */
+.theme-bg-spring {
+  background:
+    radial-gradient(2px 3px ellipse, rgba(212,97,140,0.35) 50%, transparent 50%) 10% 0 / 80px 120px,
+    radial-gradient(3px 2px ellipse, rgba(255,182,206,0.3) 50%, transparent 50%) 30% 0 / 100px 90px,
+    radial-gradient(2px 3px ellipse, rgba(212,97,140,0.25) 50%, transparent 50%) 55% 0 / 70px 150px,
+    radial-gradient(3px 4px ellipse, rgba(255,208,221,0.35) 50%, transparent 50%) 75% 0 / 110px 100px,
+    radial-gradient(2px 2px ellipse, rgba(212,97,140,0.2) 50%, transparent 50%) 90% 0 / 60px 130px;
+  animation: petals-fall 8s linear infinite;
+}
+@keyframes petals-fall {
+  0%   { background-position-y: -20px, -40px, -10px, -30px, -50px; }
+  100% { background-position-y: 100vh, 100vh, 100vh, 100vh, 100vh; }
+}
+
+/* -- Summer: ocean waves -- */
+.theme-bg-summer::before,
+.theme-bg-summer::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: -50%;
+  width: 200%;
+  height: 80px;
+  border-radius: 50% 50% 0 0;
+}
+.theme-bg-summer::before {
+  background: rgba(8,145,178,0.06);
+  animation: wave1 6s ease-in-out infinite;
+}
+.theme-bg-summer::after {
+  background: rgba(13,148,136,0.04);
+  animation: wave2 8s ease-in-out infinite;
+  bottom: -10px;
+}
+@keyframes wave1 {
+  0%, 100% { transform: translateX(-5%) translateY(0); }
+  50%      { transform: translateX(5%) translateY(-15px); }
+}
+@keyframes wave2 {
+  0%, 100% { transform: translateX(5%) translateY(0); }
+  50%      { transform: translateX(-5%) translateY(-10px); }
+}
+
+/* -- Fall: falling leaves -- */
+.theme-bg-fall {
+  background:
+    radial-gradient(4px 3px ellipse, rgba(194,65,12,0.3) 50%, transparent 50%) 15% 0 / 90px 110px,
+    radial-gradient(3px 4px ellipse, rgba(234,88,12,0.25) 50%, transparent 50%) 40% 0 / 120px 80px,
+    radial-gradient(5px 3px ellipse, rgba(202,138,4,0.3) 50%, transparent 50%) 65% 0 / 70px 140px,
+    radial-gradient(3px 3px ellipse, rgba(194,65,12,0.2) 50%, transparent 50%) 85% 0 / 100px 100px;
+  animation: leaves-fall 10s linear infinite;
+}
+@keyframes leaves-fall {
+  0%   { background-position-y: -30px, -60px, -15px, -45px; transform: translateX(0); }
+  25%  { transform: translateX(8px); }
+  50%  { transform: translateX(-5px); }
+  75%  { transform: translateX(6px); }
+  100% { background-position-y: 100vh, 100vh, 100vh, 100vh; transform: translateX(0); }
+}
+
+/* -- Winter: snowflakes -- */
+.theme-bg-winter {
+  background:
+    radial-gradient(2px 2px, rgba(255,255,255,0.7) 50%, transparent 50%) 10% 0 / 60px 80px,
+    radial-gradient(3px 3px, rgba(199,210,254,0.5) 50%, transparent 50%) 25% 0 / 90px 120px,
+    radial-gradient(1.5px 1.5px, rgba(255,255,255,0.6) 50%, transparent 50%) 45% 0 / 50px 70px,
+    radial-gradient(2.5px 2.5px, rgba(199,210,254,0.4) 50%, transparent 50%) 65% 0 / 110px 100px,
+    radial-gradient(2px 2px, rgba(255,255,255,0.5) 50%, transparent 50%) 80% 0 / 70px 90px,
+    radial-gradient(1px 1px, rgba(255,255,255,0.5) 50%, transparent 50%) 95% 0 / 40px 60px;
+  animation: snow-fall 12s linear infinite;
+}
+@keyframes snow-fall {
+  0%   { background-position-y: -10px, -30px, -20px, -50px, -15px, -40px; }
+  100% { background-position-y: 100vh, 100vh, 100vh, 100vh, 100vh, 100vh; }
+}
+
+/* -- Retro: floating dust/grain -- */
+.theme-bg-retro {
+  background:
+    radial-gradient(1px 1px, rgba(139,105,20,0.15) 50%, transparent 50%) 0 0 / 30px 30px,
+    radial-gradient(1px 1px, rgba(107,68,35,0.1) 50%, transparent 50%) 15px 15px / 30px 30px;
+  animation: retro-drift 20s linear infinite;
+}
+@keyframes retro-drift {
+  0%   { transform: translate(0, 0); }
+  50%  { transform: translate(-15px, 10px); }
+  100% { transform: translate(0, 0); }
+}
+
+/* -- Cyberpunk: vertical neon lines -- */
+.theme-bg-cyberpunk::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0,
+    transparent 98px,
+    rgba(224,64,251,0.03) 98px,
+    rgba(224,64,251,0.03) 100px
+  );
+  animation: cyber-scan 4s linear infinite;
+}
+.theme-bg-cyberpunk::after {
+  content: "";
+  position: absolute;
+  top: -100%;
+  left: 0;
+  right: 0;
+  height: 200%;
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(0,229,255,0.03) 50%,
+    transparent 100%
+  );
+  animation: cyber-line 3s linear infinite;
+}
+@keyframes cyber-scan {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(100px); }
+}
+@keyframes cyber-line {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(50%); }
+}
+
+/* -- Playful: floating bubbles -- */
+.theme-bg-playful {
+  background:
+    radial-gradient(circle 6px, rgba(249,115,22,0.12) 50%, transparent 50%) 10% 20% / 200px 200px,
+    radial-gradient(circle 4px, rgba(234,179,8,0.1) 50%, transparent 50%) 40% 60% / 160px 160px,
+    radial-gradient(circle 8px, rgba(249,115,22,0.08) 50%, transparent 50%) 70% 30% / 240px 240px,
+    radial-gradient(circle 5px, rgba(234,179,8,0.1) 50%, transparent 50%) 85% 75% / 180px 180px;
+  animation: bubbles-float 15s ease-in-out infinite;
+}
+@keyframes bubbles-float {
+  0%, 100% { transform: translateY(0); }
+  33%      { transform: translateY(-20px); }
+  66%      { transform: translateY(10px); }
+}
+
+/* -- Flower: floating petals (rose/lavender) -- */
+.theme-bg-flower {
+  background:
+    radial-gradient(3px 4px ellipse, rgba(190,24,93,0.2) 50%, transparent 50%) 12% 0 / 80px 100px,
+    radial-gradient(4px 3px ellipse, rgba(168,85,247,0.15) 50%, transparent 50%) 35% 0 / 110px 130px,
+    radial-gradient(3px 3px ellipse, rgba(219,39,119,0.2) 50%, transparent 50%) 58% 0 / 70px 90px,
+    radial-gradient(4px 4px ellipse, rgba(168,85,247,0.15) 50%, transparent 50%) 82% 0 / 100px 120px;
+  animation: flower-drift 9s linear infinite;
+}
+@keyframes flower-drift {
+  0%   { background-position-y: -20px, -50px, -10px, -40px; transform: translateX(0); }
+  50%  { transform: translateX(10px); }
+  100% { background-position-y: 100vh, 100vh, 100vh, 100vh; transform: translateX(0); }
+}
+
+/* -- Coding: matrix rain -- */
+.theme-bg-coding::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      transparent 0,
+      transparent 18px,
+      rgba(16,185,129,0.04) 18px,
+      rgba(16,185,129,0.04) 20px
+    );
+}
+.theme-bg-coding::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(1px 8px, rgba(16,185,129,0.2) 50%, transparent 50%) 5% 0 / 40px 60px,
+    radial-gradient(1px 6px, rgba(52,211,153,0.15) 50%, transparent 50%) 20% 0 / 55px 45px,
+    radial-gradient(1px 10px, rgba(16,185,129,0.18) 50%, transparent 50%) 38% 0 / 35px 70px,
+    radial-gradient(1px 7px, rgba(52,211,153,0.12) 50%, transparent 50%) 55% 0 / 50px 50px,
+    radial-gradient(1px 5px, rgba(16,185,129,0.2) 50%, transparent 50%) 72% 0 / 45px 65px,
+    radial-gradient(1px 9px, rgba(52,211,153,0.15) 50%, transparent 50%) 88% 0 / 30px 55px;
+  animation: matrix-rain 5s linear infinite;
+}
+@keyframes matrix-rain {
+  0%   { background-position-y: -20px, -40px, -10px, -35px, -25px, -50px; }
+  100% { background-position-y: 100vh, 100vh, 100vh, 100vh, 100vh, 100vh; }
+}
+
+/* -- Anime: sparkle stars -- */
+.theme-bg-anime {
+  background:
+    radial-gradient(2px 2px, rgba(139,92,246,0.4) 50%, transparent 50%) 8% 15% / 150px 150px,
+    radial-gradient(3px 3px, rgba(236,72,153,0.3) 50%, transparent 50%) 25% 45% / 200px 200px,
+    radial-gradient(2px 2px, rgba(168,85,247,0.35) 50%, transparent 50%) 50% 25% / 120px 120px,
+    radial-gradient(3px 3px, rgba(236,72,153,0.25) 50%, transparent 50%) 70% 65% / 180px 180px,
+    radial-gradient(2px 2px, rgba(139,92,246,0.3) 50%, transparent 50%) 90% 35% / 100px 100px;
+  animation: sparkle 3s ease-in-out infinite alternate;
+}
+@keyframes sparkle {
+  0%   { opacity: 0.4; }
+  50%  { opacity: 1; }
+  100% { opacity: 0.4; }
+}

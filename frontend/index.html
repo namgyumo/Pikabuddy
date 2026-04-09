@@ -8,6 +8,27 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <script>
+      (function() {
+        var t = localStorage.getItem('pikabuddy-theme');
+        if (t && t !== 'default') {
+          if (t.startsWith('custom-')) {
+            try {
+              var customs = JSON.parse(localStorage.getItem('pikabuddy-custom-themes') || '[]');
+              var found = customs.find(function(c) { return c.id === t; });
+              if (found && found.variables) {
+                var el = document.documentElement;
+                Object.keys(found.variables).forEach(function(k) {
+                  if (k.startsWith('--')) el.style.setProperty(k, found.variables[k]);
+                });
+              }
+            } catch(e) {}
+          } else {
+            document.documentElement.setAttribute('data-theme', t);
+          }
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
