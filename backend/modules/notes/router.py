@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from common.supabase_client import get_supabase
 from common.gemini_client import get_gemini_model
-from middleware.auth import get_current_user, require_student
+from middleware.auth import get_current_user, require_student_or_personal
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ class AskRequest(BaseModel):
 
 @router.post("/courses/{course_id}/notes", status_code=201)
 async def create_note(
-    course_id: str, body: NoteCreateRequest, user: dict = Depends(require_student)
+    course_id: str, body: NoteCreateRequest, user: dict = Depends(require_student_or_personal)
 ):
     """노트 생성"""
     supabase = get_supabase()
@@ -69,7 +69,7 @@ async def list_notes(course_id: str, user: dict = Depends(get_current_user)):
 
 @router.patch("/notes/{note_id}")
 async def update_note(
-    note_id: str, body: NoteUpdateRequest, user: dict = Depends(require_student)
+    note_id: str, body: NoteUpdateRequest, user: dict = Depends(require_student_or_personal)
 ):
     """노트 수정"""
     supabase = get_supabase()
@@ -93,7 +93,7 @@ async def update_note(
 
 
 @router.delete("/notes/{note_id}", status_code=204)
-async def delete_note(note_id: str, user: dict = Depends(require_student)):
+async def delete_note(note_id: str, user: dict = Depends(require_student_or_personal)):
     """노트 삭제"""
     supabase = get_supabase()
 
@@ -185,7 +185,7 @@ async def get_tags(note_id: str, user: dict = Depends(get_current_user)):
 
 
 @router.post("/notes/{note_id}/tags", status_code=201)
-async def add_tag(note_id: str, body: TagRequest, user: dict = Depends(require_student)):
+async def add_tag(note_id: str, body: TagRequest, user: dict = Depends(require_student_or_personal)):
     supabase = get_supabase()
     # 소유 확인
     note = supabase.table("notes").select("student_id").eq("id", note_id).single().execute()
@@ -209,7 +209,7 @@ async def add_tag(note_id: str, body: TagRequest, user: dict = Depends(require_s
 
 
 @router.delete("/notes/{note_id}/tags/{tag_id}", status_code=204)
-async def remove_tag(note_id: str, tag_id: str, user: dict = Depends(require_student)):
+async def remove_tag(note_id: str, tag_id: str, user: dict = Depends(require_student_or_personal)):
     supabase = get_supabase()
     note = supabase.table("notes").select("student_id").eq("id", note_id).single().execute()
     if not note.data or note.data["student_id"] != user["id"]:
@@ -296,7 +296,7 @@ async def get_recommendations(note_id: str, user: dict = Depends(get_current_use
 ## ── 학습 경로 추천 ───────────────────────────────────
 
 @router.get("/courses/{course_id}/study-path")
-async def get_study_path(course_id: str, user: dict = Depends(require_student)):
+async def get_study_path(course_id: str, user: dict = Depends(require_student_or_personal)):
     """이해도 낮은 순서로 복습 경로 추천"""
     supabase = get_supabase()
     result = (
@@ -344,7 +344,7 @@ async def get_study_path(course_id: str, user: dict = Depends(require_student)):
 ## ── 주간 리포트 ──────────────────────────────────────
 
 @router.get("/courses/{course_id}/weekly-report")
-async def get_weekly_report(course_id: str, user: dict = Depends(require_student)):
+async def get_weekly_report(course_id: str, user: dict = Depends(require_student_or_personal)):
     """주간 학습 리포트 생성"""
     from datetime import datetime, timedelta
 
@@ -438,7 +438,7 @@ async def get_ai_comments(note_id: str, user: dict = Depends(get_current_user)):
 
 
 @router.post("/notes/ask")
-async def ask_ai_helper(body: AskRequest, user: dict = Depends(require_student)):
+async def ask_ai_helper(body: AskRequest, user: dict = Depends(require_student_or_personal)):
     """노트 작성 중 AI 도우미 — 특정 질문·개념에만 집중해서 답변"""
     note_context = ""
     if body.note_content:
@@ -544,7 +544,7 @@ def _tiptap_to_markdown(node: dict, _depth: int = 0) -> str:
 
 @router.post("/notes/{note_id}/polish")
 async def polish_note(
-    note_id: str, body: NotePolishRequest, user: dict = Depends(require_student)
+    note_id: str, body: NotePolishRequest, user: dict = Depends(require_student_or_personal)
 ):
     """노트 AI 다듬기 — 내용 보존, 구조·형식 정리 후 Markdown 반환"""
     supabase = get_supabase()
