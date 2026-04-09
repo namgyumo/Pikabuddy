@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from common.supabase_client import get_supabase
 from common.r2_client import get_r2_client, generate_download_url
 from config import get_settings
-from middleware.auth import get_current_user, require_professor
+from middleware.auth import get_current_user, require_professor_or_personal
 
 router = APIRouter(tags=["시험 감독"])
 
@@ -147,7 +147,7 @@ async def get_exam_config(assignment_id: str, user: dict = Depends(get_current_u
 
 @router.patch("/exam/config/{assignment_id}")
 async def update_exam_config(
-    assignment_id: str, body: ExamConfigRequest, user: dict = Depends(require_professor)
+    assignment_id: str, body: ExamConfigRequest, user: dict = Depends(require_professor_or_personal)
 ):
     """과제의 시험 모드 설정 변경 (교수 전용)"""
     supabase = get_supabase()
@@ -169,7 +169,7 @@ async def update_exam_config(
 async def get_screenshots(
     assignment_id: str,
     student_id: str = Query(None, description="특정 학생만 조회"),
-    user: dict = Depends(require_professor),
+    user: dict = Depends(require_professor_or_personal),
 ):
     """과제의 스크린샷 목록 조회 (교수 전용). student_id로 특정 학생 필터링 가능."""
     supabase = get_supabase()
@@ -199,7 +199,7 @@ async def get_screenshots(
 async def get_violations(
     assignment_id: str,
     student_id: str = Query(None),
-    user: dict = Depends(require_professor),
+    user: dict = Depends(require_professor_or_personal),
 ):
     """과제의 위반 기록 조회 (교수 전용)"""
     supabase = get_supabase()
@@ -217,7 +217,7 @@ async def get_violations(
 # ── 교수용: 학생별 요약 ──
 
 @router.get("/exam/summary/{assignment_id}")
-async def get_exam_summary(assignment_id: str, user: dict = Depends(require_professor)):
+async def get_exam_summary(assignment_id: str, user: dict = Depends(require_professor_or_personal)):
     """학생별 스크린샷 수, 위반 수 요약 (교수 전용)"""
     supabase = get_supabase()
 
@@ -269,7 +269,7 @@ async def get_exam_summary(assignment_id: str, user: dict = Depends(require_prof
 # ── 교수용: 학생별 시험 응시 상태 조회 ──
 
 @router.get("/exam/students/{assignment_id}")
-async def get_exam_students(assignment_id: str, user: dict = Depends(require_professor)):
+async def get_exam_students(assignment_id: str, user: dict = Depends(require_professor_or_personal)):
     """학생별 시험 응시 상태 (응시완료/미응시) 조회 (교수 전용)"""
     supabase = get_supabase()
 
@@ -318,7 +318,7 @@ async def get_exam_students(assignment_id: str, user: dict = Depends(require_pro
 # ── 교수용: 학생 시험 응시 상태 리셋 (재응시 허용) ──
 
 @router.post("/exam/reset", status_code=200)
-async def reset_exam_status(body: ExamResetRequest, user: dict = Depends(require_professor)):
+async def reset_exam_status(body: ExamResetRequest, user: dict = Depends(require_professor_or_personal)):
     """학생의 시험 종료 상태를 리셋하여 재응시 허용 (교수 전용). 로그 기록."""
     supabase = get_supabase()
 

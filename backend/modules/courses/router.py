@@ -2,7 +2,7 @@ import secrets
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from common.supabase_client import get_supabase
-from middleware.auth import get_current_user, require_professor, require_student
+from middleware.auth import get_current_user, require_professor_or_personal, require_student_or_personal
 
 router = APIRouter(prefix="/courses", tags=["강의"])
 
@@ -18,7 +18,7 @@ class JoinCourseRequest(BaseModel):
 
 
 @router.post("", status_code=201)
-async def create_course(body: CourseCreateRequest, user: dict = Depends(require_professor)):
+async def create_course(body: CourseCreateRequest, user: dict = Depends(require_professor_or_personal)):
     """교수가 강의를 생성한다."""
     supabase = get_supabase()
     invite_code = secrets.token_urlsafe(6)[:8].upper()
@@ -100,7 +100,7 @@ async def get_course_by_invite(invite_code: str):
 # /join MUST come before /{course_id} to avoid "join" being treated as a course_id
 @router.post("/join")
 async def join_course_by_code(
-    body: JoinCourseRequest, user: dict = Depends(require_student)
+    body: JoinCourseRequest, user: dict = Depends(require_student_or_personal)
 ):
     """초대 코드만으로 강의 참여"""
     supabase = get_supabase()

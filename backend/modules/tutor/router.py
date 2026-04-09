@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 from common.gemini_client import get_gemini_model
-from middleware.auth import require_student
+from middleware.auth import require_student_or_personal
 
 router = APIRouter(prefix="/tutor", tags=["AI 튜터"])
 
@@ -19,7 +19,7 @@ class TutorChatRequest(BaseModel):
 
 
 @router.post("/chat")
-async def tutor_chat(body: TutorChatRequest, user: dict = Depends(require_student)):
+async def tutor_chat(body: TutorChatRequest, user: dict = Depends(require_student_or_personal)):
     """AI 소크라테스 튜터 - SSE 스트리밍"""
 
     history_text = ""

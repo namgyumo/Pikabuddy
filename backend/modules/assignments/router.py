@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from common.supabase_client import get_supabase
 from common.gemini_client import get_gemini_model
 from google.generativeai.types import RequestOptions
-from middleware.auth import get_current_user, require_professor
+from middleware.auth import get_current_user, require_professor_or_personal
 
 
 def _extract_json(text: str) -> dict | list:
@@ -712,7 +712,7 @@ async def list_assignments(course_id: str, user: dict = Depends(get_current_user
 async def delete_assignment(
     course_id: str,
     assignment_id: str,
-    user: dict = Depends(require_professor),
+    user: dict = Depends(require_professor_or_personal),
 ):
     """과제 삭제 (관련 제출물, 스냅샷, 분석 모두 cascade 삭제)"""
     supabase = get_supabase()
@@ -725,7 +725,7 @@ async def delete_submission(
     course_id: str,
     assignment_id: str,
     submission_id: str,
-    user: dict = Depends(require_professor),
+    user: dict = Depends(require_professor_or_personal),
 ):
     """제출물 삭제 (관련 AI 분석도 cascade 삭제)"""
     supabase = get_supabase()
@@ -753,7 +753,7 @@ async def update_assignment(
     course_id: str,
     assignment_id: str,
     body: AssignmentUpdateRequest,
-    user: dict = Depends(require_professor),
+    user: dict = Depends(require_professor_or_personal),
 ):
     """과제 기본 정보 수정"""
     supabase = get_supabase()
@@ -770,7 +770,7 @@ async def update_assignment(
 async def publish_assignment(
     course_id: str,
     assignment_id: str,
-    user: dict = Depends(require_professor),
+    user: dict = Depends(require_professor_or_personal),
 ):
     """과제를 학생에게 공개"""
     supabase = get_supabase()
@@ -784,7 +784,7 @@ async def publish_assignment(
 async def unpublish_assignment(
     course_id: str,
     assignment_id: str,
-    user: dict = Depends(require_professor),
+    user: dict = Depends(require_professor_or_personal),
 ):
     """과제를 비공개로 전환"""
     supabase = get_supabase()
@@ -799,7 +799,7 @@ async def update_policy(
     course_id: str,
     assignment_id: str,
     body: PolicyUpdateRequest,
-    user: dict = Depends(require_professor),
+    user: dict = Depends(require_professor_or_personal),
 ):
     """AI 정책 설정 변경"""
     if body.ai_policy not in ("free", "normal", "strict", "exam"):
@@ -818,7 +818,7 @@ async def update_writing_prompt(
     course_id: str,
     assignment_id: str,
     body: WritingPromptUpdateRequest,
-    user: dict = Depends(require_professor),
+    user: dict = Depends(require_professor_or_personal),
 ):
     """글쓰기 지시문 수정"""
     supabase = get_supabase()
@@ -835,7 +835,7 @@ async def add_problem(
     course_id: str,
     assignment_id: str,
     body: ProblemAddRequest,
-    user: dict = Depends(require_professor),
+    user: dict = Depends(require_professor_or_personal),
 ):
     """문제 추가"""
     supabase = get_supabase()
@@ -900,7 +900,7 @@ async def update_problem(
     assignment_id: str,
     problem_id: int,
     body: ProblemUpdateRequest,
-    user: dict = Depends(require_professor),
+    user: dict = Depends(require_professor_or_personal),
 ):
     """문제 수정"""
     supabase = get_supabase()
@@ -944,7 +944,7 @@ async def delete_problem(
     course_id: str,
     assignment_id: str,
     problem_id: int,
-    user: dict = Depends(require_professor),
+    user: dict = Depends(require_professor_or_personal),
 ):
     """문제 삭제"""
     supabase = get_supabase()
@@ -974,7 +974,7 @@ async def delete_problem(
 async def list_submissions(
     course_id: str,
     assignment_id: str,
-    user: dict = Depends(require_professor),
+    user: dict = Depends(require_professor_or_personal),
 ):
     """과제의 모든 제출물 조회 (교수용)"""
     supabase = get_supabase()
@@ -992,7 +992,7 @@ async def list_submissions(
 async def get_paste_logs(
     course_id: str,
     assignment_id: str,
-    user: dict = Depends(require_professor),
+    user: dict = Depends(require_professor_or_personal),
 ):
     """과제의 모든 복붙 로그 조회 (교수용)"""
     supabase = get_supabase()
@@ -1017,7 +1017,7 @@ async def set_final_score(
     assignment_id: str,
     analysis_id: str,
     body: FinalScoreRequest,
-    user: dict = Depends(require_professor),
+    user: dict = Depends(require_professor_or_personal),
 ):
     """교수가 최종 점수를 확정"""
     if body.final_score < 0 or body.final_score > 100:

@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 from common.supabase_client import get_supabase
-from middleware.auth import get_current_user, require_professor
+from middleware.auth import get_current_user, require_professor_or_personal
 
 router = APIRouter(tags=["강의자료"])
 
@@ -90,7 +90,7 @@ async def upload_material(
 
 @router.delete("/courses/{course_id}/materials/{material_id}", status_code=204)
 async def delete_material(
-    course_id: str, material_id: str, user: dict = Depends(require_professor)
+    course_id: str, material_id: str, user: dict = Depends(require_professor_or_personal)
 ):
     """교수가 강의자료 삭제"""
     supabase = get_supabase()

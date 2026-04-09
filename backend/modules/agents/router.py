@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 from common.gemini_client import get_gemini_model
-from middleware.auth import get_current_user, require_student, require_professor
+from middleware.auth import get_current_user, require_student_or_personal, require_professor_or_personal
 from .session_manager import get_session_manager, AgentType
 
 router = APIRouter(prefix="/agents", tags=["AI 에이전트"])
@@ -63,7 +63,7 @@ STUDENT_AGENT_PROMPT = """당신은 학생을 위한 AI 학습 도우미입니�
 
 
 @router.post("/student/chat")
-async def student_chat(body: ChatRequest, user: dict = Depends(require_student)):
+async def student_chat(body: ChatRequest, user: dict = Depends(require_student_or_personal)):
     """학생용 AI 에이전트 채팅 (세션 기반, SSE 스트리밍)"""
     session_manager = get_session_manager()
     user_id = str(user["id"])
@@ -168,7 +168,7 @@ PROFESSOR_AGENT_PROMPT = """당신은 교수를 위한 AI 교육 어시스턴트
 
 
 @router.post("/professor/chat")
-async def professor_chat(body: ChatRequest, user: dict = Depends(require_professor)):
+async def professor_chat(body: ChatRequest, user: dict = Depends(require_professor_or_personal)):
     """교수용 AI 에이전트 채팅 (세션 기반, SSE 스트리밍)"""
     session_manager = get_session_manager()
     user_id = str(user["id"])

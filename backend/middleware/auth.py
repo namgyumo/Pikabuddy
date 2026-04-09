@@ -61,6 +61,17 @@ async def require_professor(user: dict = Depends(get_current_user)) -> dict:
     return user
 
 
+async def require_professor_or_personal(user: dict = Depends(get_current_user)) -> dict:
+    """교수 또는 개인 권한을 요구한다. 어드민은 통과."""
+    is_admin = user.get("email", "").endswith("@pikabuddy.admin")
+    if user.get("role") not in ("professor", "personal") and not is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="교수 또는 개인 권한이 필요합니다.",
+        )
+    return user
+
+
 async def require_student(user: dict = Depends(get_current_user)) -> dict:
     """학생 권한을 요구한다."""
     if user.get("role") != "student":
