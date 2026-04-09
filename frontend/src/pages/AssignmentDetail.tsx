@@ -627,10 +627,10 @@ export default function AssignmentDetail() {
               {assignment.topic && <p className="page-subtitle">주제: {assignment.topic}</p>}
               <div className="course-meta" style={{ marginTop: 12 }}>
                 <span className="badge" style={{
-                  background: assignment.type === "writing" ? "rgba(99,46,205,0.1)" : assignment.type === "both" ? "rgba(0,74,198,0.1)" : assignment.type === "algorithm" ? "rgba(16,185,129,0.1)" : undefined,
-                  color: assignment.type === "writing" ? "var(--tertiary)" : assignment.type === "both" ? "var(--primary)" : assignment.type === "algorithm" ? "var(--success)" : undefined,
+                  background: assignment.type === "writing" ? "rgba(99,46,205,0.1)" : assignment.type === "both" ? "rgba(0,74,198,0.1)" : assignment.type === "algorithm" ? "rgba(16,185,129,0.1)" : assignment.type === "quiz" ? "rgba(245,158,11,0.1)" : undefined,
+                  color: assignment.type === "writing" ? "var(--tertiary)" : assignment.type === "both" ? "var(--primary)" : assignment.type === "algorithm" ? "var(--success)" : assignment.type === "quiz" ? "var(--warning)" : undefined,
                 }}>
-                  {assignment.type === "writing" ? "글쓰기" : assignment.type === "both" ? "코딩+글쓰기" : assignment.type === "algorithm" ? "알고리즘" : "코딩"}
+                  {assignment.type === "writing" ? "글쓰기" : assignment.type === "both" ? "코딩+글쓰기" : assignment.type === "algorithm" ? "알고리즘" : assignment.type === "quiz" ? "퀴즈" : "코딩"}
                 </span>
                 <span className="badge badge-policy">{policyLabels[assignment.ai_policy] || assignment.ai_policy}</span>
                 {assignment.type !== "writing" && <span className="badge">{assignment.language}</span>}
@@ -638,10 +638,14 @@ export default function AssignmentDetail() {
                 {(() => {
                   const bjCount = assignment.problems?.filter((p: Record<string, unknown>) => (p as Record<string, unknown>).format === "baekjoon").length || 0;
                   const pgCount = assignment.problems?.filter((p: Record<string, unknown>) => (p as Record<string, unknown>).format === "programmers").length || 0;
+                  const quizCount = assignment.problems?.filter((p: Record<string, unknown>) => (p as Record<string, unknown>).format === "quiz").length || 0;
+                  const blockCount = assignment.problems?.filter((p: Record<string, unknown>) => (p as Record<string, unknown>).format === "block").length || 0;
                   return (
                     <>
-                      {bjCount > 0 && <span className="badge" style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)" }}>백준 {bjCount}</span>}
-                      {pgCount > 0 && <span className="badge" style={{ background: "rgba(99,46,205,0.1)", color: "var(--tertiary)" }}>프로그래머스 {pgCount}</span>}
+                      {bjCount > 0 && <span className="badge" style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)" }}>표준 입출력 {bjCount}</span>}
+                      {pgCount > 0 && <span className="badge" style={{ background: "rgba(99,46,205,0.1)", color: "var(--tertiary)" }}>함수 구현 {pgCount}</span>}
+                      {quizCount > 0 && <span className="badge" style={{ background: "rgba(245,158,11,0.1)", color: "var(--warning)" }}>퀴즈 {quizCount}</span>}
+                      {blockCount > 0 && <span className="badge" style={{ background: "rgba(59,130,246,0.1)", color: "var(--primary)" }}>블록 코딩 {blockCount}</span>}
                     </>
                   );
                 })()}
@@ -782,6 +786,78 @@ export default function AssignmentDetail() {
         )}
 
         {/* Problems */}
+        {assignment.type === "quiz" && (
+          <div className="card" style={{ marginBottom: 24 }}>
+            <h2 className="section-title">퀴즈 문제 목록</h2>
+            {!assignment.problems || assignment.problems.length === 0 ? (
+              <div className="empty">퀴즈 문제가 아직 생성되지 않았습니다.</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {assignment.problems
+                  .filter((p) => (p as Record<string, unknown>).format === "quiz")
+                  .map((p, i) => {
+                    const qp = p as Record<string, unknown>;
+                    const qType = qp.type as string || "multiple_choice";
+                    const typeLabel = qType === "multiple_choice" ? "객관식" : qType === "short_answer" ? "주관식" : "서술형";
+                    const typeColor = qType === "multiple_choice" ? "var(--primary)" : qType === "short_answer" ? "var(--success)" : "var(--tertiary)";
+                    const typeBg = qType === "multiple_choice" ? "rgba(0,74,198,0.1)" : qType === "short_answer" ? "rgba(16,185,129,0.1)" : "rgba(99,46,205,0.1)";
+                    const options = qp.options as string[] | undefined;
+                    const correctAnswer = qp.correct_answer as string | undefined;
+                    const acceptableAnswers = qp.acceptable_answers as string[] | undefined;
+                    const points = qp.points as number | undefined;
+                    return (
+                      <div key={qp.id as number || i} style={{ padding: 20, background: "var(--surface-container)", borderRadius: 12 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                          <h3 style={{ margin: "0 0 8px", display: "flex", alignItems: "center", gap: 8 }}>
+                            {i + 1}. {qp.question as string || qp.title as string || ""}
+                            <span className="badge" style={{ background: typeBg, color: typeColor, fontSize: 11 }}>{typeLabel}</span>
+                            {points && <span className="badge" style={{ fontSize: 11 }}>{points}점</span>}
+                          </h3>
+                        </div>
+                        {qType === "multiple_choice" && options && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
+                            {options.map((opt, oi) => (
+                              <div key={oi} style={{
+                                padding: "8px 12px", borderRadius: 8, fontSize: 14,
+                                background: opt === correctAnswer ? "rgba(16,185,129,0.1)" : "var(--surface-container-high)",
+                                border: opt === correctAnswer ? "1px solid var(--success)" : "1px solid transparent",
+                                display: "flex", alignItems: "center", gap: 8,
+                              }}>
+                                <span style={{ fontWeight: 600, color: "var(--on-surface-variant)", minWidth: 20 }}>{String.fromCharCode(65 + oi)}.</span>
+                                {opt}
+                                {opt === correctAnswer && <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--success)", fontWeight: 600 }}>정답</span>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {qType === "short_answer" && correctAnswer && (
+                          <div style={{ marginTop: 8, fontSize: 13 }}>
+                            <strong>정답:</strong> <code style={{ background: "var(--surface-container-high)", padding: "2px 6px", borderRadius: 4 }}>{correctAnswer}</code>
+                            {acceptableAnswers && acceptableAnswers.length > 0 && (
+                              <span style={{ color: "var(--on-surface-variant)", marginLeft: 8 }}>
+                                (허용: {acceptableAnswers.join(", ")})
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {qType === "essay" && correctAnswer && (
+                          <div style={{ marginTop: 8, fontSize: 13, color: "var(--on-surface-variant)", fontStyle: "italic" }}>
+                            <strong style={{ fontStyle: "normal" }}>모범 답안:</strong> {correctAnswer}
+                          </div>
+                        )}
+                        {qp.explanation && (
+                          <div style={{ marginTop: 8, fontSize: 13, color: "var(--on-surface-variant)" }}>
+                            <strong>해설:</strong> {qp.explanation as string}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+          </div>
+        )}
+
         {(assignment.type === "coding" || assignment.type === "both" || assignment.type === "algorithm") && (
           <div className="card" style={{ marginBottom: 24 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -798,7 +874,7 @@ export default function AssignmentDetail() {
                       <button key={f} type="button"
                         className={`type-chip${newProblemFormat === f ? " active" : ""}`}
                         onClick={() => setNewProblemFormat(f)}>
-                        {f === "regular" ? "일반 코딩" : f === "baekjoon" ? "백준 형식" : "프로그래머스 형식"}
+                        {f === "regular" ? "일반 코딩" : f === "baekjoon" ? "표준 입출력형" : "함수 구현형"}
                       </button>
                     ))}
                   </div>
@@ -821,7 +897,7 @@ export default function AssignmentDetail() {
                     </>
                   )}
 
-                  {/* 프로그래머스: 전체 코드 틀 (solution 비워둠) */}
+                  {/* 함수 구현형: 전체 코드 틀 (solution 비워둠) */}
                   {newProblemFormat === "programmers" && (
                     <>
                       <textarea className="input" placeholder="시작 코드 (전체 구조 — solution 함수 body만 비워두기)" value={newProblem.starter_code}
@@ -842,7 +918,7 @@ export default function AssignmentDetail() {
                     </>
                   )}
 
-                  {/* 백준 / 프로그래머스 공통: 입출력 형식 + 제약 + 테스트케이스 */}
+                  {/* 표준 입출력 / 함수 구현 공통: 입출력 형식 + 제약 + 테스트케이스 */}
                   {(newProblemFormat === "baekjoon" || newProblemFormat === "programmers") && (
                     <>
                       {newProblemFormat === "baekjoon" && (
@@ -907,10 +983,13 @@ export default function AssignmentDetail() {
                       <h3 style={{ margin: "0 0 8px", display: "flex", alignItems: "center", gap: 8 }}>
                         {i + 1}. {p.title}
                         {(p as Record<string, unknown>).format === "baekjoon" && (
-                          <span className="badge" style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)", fontSize: 11 }}>백준</span>
+                          <span className="badge" style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)", fontSize: 11 }}>표준 입출력</span>
                         )}
                         {(p as Record<string, unknown>).format === "programmers" && (
-                          <span className="badge" style={{ background: "rgba(99,46,205,0.1)", color: "var(--tertiary)", fontSize: 11 }}>프로그래머스</span>
+                          <span className="badge" style={{ background: "rgba(99,46,205,0.1)", color: "var(--tertiary)", fontSize: 11 }}>함수 구현</span>
+                        )}
+                        {(p as Record<string, unknown>).format === "block" && (
+                          <span className="badge" style={{ background: "rgba(59,130,246,0.1)", color: "var(--primary)", fontSize: 11 }}>블록 코딩</span>
                         )}
                       </h3>
                       <div style={{ display: "flex", gap: 6 }}>
@@ -930,7 +1009,7 @@ export default function AssignmentDetail() {
                       const fmtStr = (v: unknown) => typeof v === "string" ? v : JSON.stringify(v, null, 2);
                       return (
                         <div style={{ marginTop: 12, fontSize: 13 }}>
-                          {/* 프로그래머스: 매개변수/반환값 */}
+                          {/* 함수 구현형: 매개변수/반환값 */}
                           {fmt === "programmers" && (ap.parameters as { name: string; type: string; description: string }[])?.length > 0 && (
                             <div style={{ marginBottom: 8 }}>
                               <strong>매개변수</strong>
@@ -950,7 +1029,7 @@ export default function AssignmentDetail() {
                               </p>
                             </div>
                           )}
-                          {/* 백준: 입출력 형식 */}
+                          {/* 표준 입출력형: 입출력 형식 */}
                           {fmt !== "programmers" && ap.input_description && (
                             <div style={{ marginBottom: 8 }}>
                               <strong>입력 형식</strong>

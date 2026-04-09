@@ -6,6 +6,7 @@ import { useTutorialStore } from "../store/tutorialStore";
 import { getTutorialKey } from "../lib/tutorials";
 import api from "../lib/api";
 import AppShell from "../components/common/AppShell";
+import { toast } from "../lib/toast";
 import { SkeletonList } from "../components/common/Skeleton";
 
 export default function StudentHome() {
@@ -41,7 +42,7 @@ export default function StudentHome() {
       setInviteCode("");
       fetchCourses();
     } catch {
-      alert("참여에 실패했습니다. 초대 코드를 확인해주세요.");
+      toast.error("참여에 실패했습니다. 초대 코드를 확인해주세요.");
     } finally {
       setJoining(false);
     }

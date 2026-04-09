@@ -13,6 +13,7 @@ export interface CustomTheme {
   preview: [string, string, string, string];
   customCSS?: string;
   animation?: string;
+  effects?: Record<string, { enabled: boolean; params: Record<string, string | number> }>;
 }
 
 /** Allowed CSS variable names for custom themes (whitelist) */
@@ -57,6 +58,12 @@ export const ALLOWED_CSS_VARIABLES = [
   "--radius-full",
   "--font-display",
   "--font-body",
+  "--border-card",
+  "--border-card-color",
+  "--border-inner",
+  "--border-inner-color",
+  "--border-text",
+  "--border-text-color",
 ] as const;
 
 /** Template JSON for custom theme files */
@@ -82,6 +89,12 @@ export const CUSTOM_THEME_TEMPLATE = {
     "--success": "#10b981",
     "--warning": "#f59e0b",
     "--error": "#ef4444",
+    "--border-card": "1px",
+    "--border-card-color": "rgba(68, 71, 79, 0.15)",
+    "--border-inner": "1px",
+    "--border-inner-color": "rgba(68, 71, 79, 0.15)",
+    "--border-text": "0px",
+    "--border-text-color": "transparent",
   },
 };
 
@@ -163,6 +176,18 @@ export const VARIABLE_GROUPS: VariableGroup[] = [
       { key: "--radius-md", label: "Medium", type: "slider", min: 0, max: 28, unit: "px" },
       { key: "--radius-lg", label: "Large", type: "slider", min: 0, max: 36, unit: "px" },
       { key: "--radius-xl", label: "XL", type: "slider", min: 0, max: 48, unit: "px" },
+    ],
+  },
+  {
+    id: "border",
+    label: "테두리",
+    variables: [
+      { key: "--border-card", label: "카드 외곽", type: "slider", min: 0, max: 5, unit: "px" },
+      { key: "--border-card-color", label: "카드 외곽 색", type: "color" },
+      { key: "--border-inner", label: "내부 요소", type: "slider", min: 0, max: 5, unit: "px" },
+      { key: "--border-inner-color", label: "내부 요소 색", type: "color" },
+      { key: "--border-text", label: "텍스트 장식", type: "slider", min: 0, max: 3, unit: "px" },
+      { key: "--border-text-color", label: "텍스트 장식 색", type: "color" },
     ],
   },
   {

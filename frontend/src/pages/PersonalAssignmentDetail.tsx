@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { renderMarkdown } from "../lib/markdown";
 import api from "../lib/api";
+import { toast } from "../lib/toast";
 import AppShell from "../components/common/AppShell";
 import type { Assignment, Problem } from "../types";
 
@@ -78,7 +79,7 @@ export default function PersonalAssignmentDetail() {
       setAssignment((prev) => prev ? { ...prev, title: editTitle, topic: editTopic } : prev);
       setEditing(false);
     } catch {
-      alert("수정에 실패했습니다.");
+      toast.error("수정에 실패했습니다.");
     } finally {
       setSaving(false);
     }
@@ -135,7 +136,7 @@ export default function PersonalAssignmentDetail() {
   if (!assignment) return <AppShell><div className="page-center">챌린지를 찾을 수 없습니다.</div></AppShell>;
 
   const problems = assignment.problems || [];
-  const typeLabel: Record<string, string> = { coding: "코딩", writing: "글쓰기", both: "코딩+글쓰기", algorithm: "알고리즘" };
+  const typeLabel: Record<string, string> = { coding: "코딩", writing: "글쓰기", both: "코딩+글쓰기", algorithm: "알고리즘", quiz: "퀴즈" };
   const policyLabel: Record<string, string> = { free: "자유", normal: "보통", strict: "엄격", exam: "시험" };
 
   // Group submissions by problem index
@@ -191,7 +192,11 @@ export default function PersonalAssignmentDetail() {
             {!editing && (
               <>
                 <button className="btn btn-primary"
-                  onClick={() => navigate(`/assignments/${assignmentId}/code`)}>
+                  onClick={() => navigate(
+                    assignment.type === "quiz" ? `/assignments/${assignmentId}/quiz`
+                    : assignment.type === "writing" ? `/assignments/${assignmentId}/write`
+                    : `/assignments/${assignmentId}/code`
+                  )}>
                   풀기
                 </button>
                 <button className="btn btn-secondary" onClick={() => setEditing(true)}>수정</button>
@@ -232,133 +237,199 @@ export default function PersonalAssignmentDetail() {
         </div>
 
         {/* Problems */}
-        <h2 className="section-title">문제 목록</h2>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 32 }}>
-          {problems.map((p, idx) => {
-            const pSubs = subsByProblem.get(idx) || [];
-            const pScores = pSubs.map(getScore).filter((s): s is number => s !== null);
-            const pBest = pScores.length > 0 ? Math.max(...pScores) : null;
-            const isExpanded = expandedProblems.has(idx);
-            const isEditing = editingProblem === p.id;
+        <h2 className="section-title">{assignment.type === "quiz" ? "퀴즈 문제" : "문제 목록"}</h2>
 
-            return (
-              <div key={p.id} className="card" style={{ padding: 0, overflow: "hidden" }}>
-                {/* Problem header */}
-                <div
-                  style={{
-                    display: "flex", alignItems: "center", gap: 12, padding: "14px 20px",
-                    cursor: "pointer", background: isExpanded ? "var(--surface-container-low)" : "transparent",
-                    transition: "background 0.15s",
-                  }}
-                  onClick={() => toggleProblem(idx)}
-                >
-                  <span style={{
-                    fontSize: 12, color: "var(--on-surface-variant)",
-                    transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)",
-                    transition: "transform 0.2s", display: "inline-block",
-                  }}>&#9654;</span>
+        {/* Quiz problems — dedicated display */}
+        {assignment.type === "quiz" ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 32 }}>
+            {problems.map((p: any, idx: number) => (
+              <div key={p.id} className="card" style={{ padding: "18px 24px" }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
                   <span style={{
                     width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 13, fontWeight: 700,
-                    background: pBest != null && pBest >= 80 ? "var(--success-light)" : pBest != null ? "var(--primary-light)" : "var(--surface-container)",
-                    color: pBest != null && pBest >= 80 ? "var(--success)" : pBest != null ? "var(--primary)" : "var(--on-surface-variant)",
-                  }}>
-                    {idx + 1}
-                  </span>
-                  <span style={{ flex: 1, fontWeight: 600, fontSize: 14 }}>{p.title}</span>
-                  {pBest != null && (
-                    <span style={{ fontSize: 13, fontWeight: 600, color: pBest >= 80 ? "var(--success)" : "var(--primary)" }}>
-                      {pBest}점
-                    </span>
-                  )}
-                  <span style={{ fontSize: 12, color: "var(--on-surface-variant)" }}>
-                    {pSubs.length}회 제출
-                  </span>
-                  <button className="btn btn-ghost" style={{ fontSize: 12, padding: "2px 8px" }}
-                    onClick={(e) => { e.stopPropagation(); navigate(`/assignments/${assignmentId}/code`); }}>
-                    풀기
-                  </button>
-                </div>
-
-                {/* Expanded: problem detail + submissions */}
-                {isExpanded && (
-                  <div style={{ padding: "0 20px 16px", borderTop: "1px solid var(--outline-variant)" }}>
-                    {/* Problem description */}
-                    {isEditing ? (
-                      <div style={{ padding: "12px 0", display: "flex", flexDirection: "column", gap: 8 }}>
-                        <input className="form-input" value={editForm.title ?? p.title}
-                          onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} placeholder="문제 제목" />
-                        <textarea className="form-input" rows={4} value={editForm.description ?? p.description}
-                          onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} placeholder="문제 설명" />
-                        <textarea className="form-input" rows={3} value={editForm.starter_code ?? p.starter_code}
-                          onChange={(e) => setEditForm({ ...editForm, starter_code: e.target.value })} placeholder="시작 코드"
-                          style={{ fontFamily: "monospace", fontSize: 13 }} />
-                        <div style={{ display: "flex", gap: 8 }}>
-                          <button className="btn btn-primary" style={{ fontSize: 13 }} onClick={handleSaveProblem}>저장</button>
-                          <button className="btn btn-ghost" style={{ fontSize: 13 }}
-                            onClick={() => { setEditingProblem(null); setEditForm({}); }}>취소</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{ padding: "12px 0" }}>
-                        <div className="markdown-body" style={{ fontSize: 13, marginBottom: 12 }}
-                          dangerouslySetInnerHTML={{ __html: renderMarkdown(p.description || "") }} />
-                        <div style={{ display: "flex", gap: 8 }}>
-                          <button className="btn btn-ghost" style={{ fontSize: 12, padding: "2px 8px" }}
-                            onClick={() => { setEditingProblem(p.id); setEditForm({ title: p.title, description: p.description, starter_code: p.starter_code }); }}>
-                            문제 수정
-                          </button>
-                          <button className="btn btn-ghost" style={{ fontSize: 12, padding: "2px 8px", color: "var(--error)" }}
-                            onClick={() => handleDeleteProblem(p.id)}>
-                            문제 삭제
-                          </button>
-                        </div>
+                    fontSize: 13, fontWeight: 700, background: "var(--primary-light)", color: "var(--primary)", flexShrink: 0,
+                  }}>{idx + 1}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                      <span className="badge" style={{
+                        fontSize: 11, padding: "2px 8px",
+                        background: p.type === "multiple_choice" ? "rgba(0,74,198,0.1)" : p.type === "short_answer" ? "rgba(16,185,129,0.1)" : "rgba(99,46,205,0.1)",
+                        color: p.type === "multiple_choice" ? "var(--primary)" : p.type === "short_answer" ? "var(--success)" : "var(--tertiary)",
+                      }}>
+                        {p.type === "multiple_choice" ? "객관식" : p.type === "short_answer" ? "주관식" : "서술형"}
+                      </span>
+                      <span style={{ fontSize: 12, color: "var(--on-surface-variant)" }}>{p.points || 10}점</span>
+                    </div>
+                    <p style={{ fontSize: 14, lineHeight: 1.6, marginBottom: 8 }}>{p.question}</p>
+                    {p.type === "multiple_choice" && p.options && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        {p.options.map((opt: string, oi: number) => (
+                          <div key={oi} style={{
+                            padding: "6px 12px", borderRadius: 8, fontSize: 13,
+                            background: oi === p.correct_answer ? "rgba(16,185,129,0.08)" : "var(--surface-container)",
+                            border: oi === p.correct_answer ? "1px solid var(--success)" : "1px solid transparent",
+                          }}>
+                            {String.fromCharCode(9312 + oi)} {opt}
+                            {oi === p.correct_answer && <span style={{ marginLeft: 8, fontSize: 11, color: "var(--success)", fontWeight: 600 }}>정답</span>}
+                          </div>
+                        ))}
                       </div>
                     )}
-
-                    {/* Submissions for this problem */}
-                    {pSubs.length > 0 && (
-                      <div style={{ marginTop: 8 }}>
-                        <h4 style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: "var(--on-surface-variant)" }}>
-                          제출 기록
-                        </h4>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                          {pSubs.map((s, si) => {
-                            const sc = getScore(s);
-                            return (
-                              <div key={s.id} style={{
-                                display: "flex", alignItems: "center", gap: 12, padding: "8px 12px",
-                                borderRadius: 8, background: "var(--surface-container)",
-                                fontSize: 13, cursor: "pointer",
-                              }}
-                                onClick={() => setViewingSub(s)}
-                              >
-                                <span style={{ color: "var(--on-surface-variant)", minWidth: 24 }}>#{pSubs.length - si}</span>
-                                <span style={{ flex: 1, color: "var(--on-surface-variant)" }}>
-                                  {new Date(s.submitted_at).toLocaleString("ko-KR")}
-                                </span>
-                                {sc != null ? (
-                                  <span style={{ fontWeight: 600, color: sc >= 80 ? "var(--success)" : sc >= 60 ? "var(--primary)" : "var(--error)" }}>
-                                    {sc}점
-                                  </span>
-                                ) : (
-                                  <span style={{ color: "var(--on-surface-variant)", fontSize: 12 }}>
-                                    {s.status === "analyzing" ? "분석 중..." : "미채점"}
-                                  </span>
-                                )}
-                                <span style={{ fontSize: 12, color: "var(--primary)" }}>코드 보기 &rarr;</span>
-                              </div>
-                            );
-                          })}
-                        </div>
+                    {p.type === "short_answer" && (
+                      <div style={{ fontSize: 13, color: "var(--success)", fontWeight: 600 }}>
+                        정답: {p.correct_answer}
+                        {p.acceptable_answers?.length > 0 && (
+                          <span style={{ fontWeight: 400, color: "var(--on-surface-variant)", marginLeft: 8 }}>
+                            (허용: {p.acceptable_answers.join(", ")})
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {p.type === "essay" && p.correct_answer && (
+                      <div style={{ fontSize: 13, color: "var(--on-surface-variant)", fontStyle: "italic" }}>
+                        모범답안: {p.correct_answer}
                       </div>
                     )}
                   </div>
-                )}
+                </div>
               </div>
-            );
-          })}
-        </div>
+            ))}
+            <div style={{ textAlign: "center", marginTop: 8 }}>
+              <button className="btn btn-primary btn-lg"
+                onClick={() => navigate(`/assignments/${assignmentId}/quiz`)}>
+                퀴즈 풀기
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* Coding problems — existing display */
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 32 }}>
+            {problems.map((p, idx) => {
+              const pSubs = subsByProblem.get(idx) || [];
+              const pScores = pSubs.map(getScore).filter((s): s is number => s !== null);
+              const pBest = pScores.length > 0 ? Math.max(...pScores) : null;
+              const isExpanded = expandedProblems.has(idx);
+              const isEditing = editingProblem === p.id;
+
+              return (
+                <div key={p.id} className="card" style={{ padding: 0, overflow: "hidden" }}>
+                  {/* Problem header */}
+                  <div
+                    style={{
+                      display: "flex", alignItems: "center", gap: 12, padding: "14px 20px",
+                      cursor: "pointer", background: isExpanded ? "var(--surface-container-low)" : "transparent",
+                      transition: "background 0.15s",
+                    }}
+                    onClick={() => toggleProblem(idx)}
+                  >
+                    <span style={{
+                      fontSize: 12, color: "var(--on-surface-variant)",
+                      transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)",
+                      transition: "transform 0.2s", display: "inline-block",
+                    }}>&#9654;</span>
+                    <span style={{
+                      width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 13, fontWeight: 700,
+                      background: pBest != null && pBest >= 80 ? "var(--success-light)" : pBest != null ? "var(--primary-light)" : "var(--surface-container)",
+                      color: pBest != null && pBest >= 80 ? "var(--success)" : pBest != null ? "var(--primary)" : "var(--on-surface-variant)",
+                    }}>
+                      {idx + 1}
+                    </span>
+                    <span style={{ flex: 1, fontWeight: 600, fontSize: 14 }}>{p.title}</span>
+                    {pBest != null && (
+                      <span style={{ fontSize: 13, fontWeight: 600, color: pBest >= 80 ? "var(--success)" : "var(--primary)" }}>
+                        {pBest}점
+                      </span>
+                    )}
+                    <span style={{ fontSize: 12, color: "var(--on-surface-variant)" }}>
+                      {pSubs.length}회 제출
+                    </span>
+                    <button className="btn btn-ghost" style={{ fontSize: 12, padding: "2px 8px" }}
+                      onClick={(e) => { e.stopPropagation(); navigate(`/assignments/${assignmentId}/code`); }}>
+                      풀기
+                    </button>
+                  </div>
+
+                  {/* Expanded: problem detail + submissions */}
+                  {isExpanded && (
+                    <div style={{ padding: "0 20px 16px", borderTop: "1px solid var(--outline-variant)" }}>
+                      {/* Problem description */}
+                      {isEditing ? (
+                        <div style={{ padding: "12px 0", display: "flex", flexDirection: "column", gap: 8 }}>
+                          <input className="form-input" value={editForm.title ?? p.title}
+                            onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} placeholder="문제 제목" />
+                          <textarea className="form-input" rows={4} value={editForm.description ?? p.description}
+                            onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} placeholder="문제 설명" />
+                          <textarea className="form-input" rows={3} value={editForm.starter_code ?? p.starter_code}
+                            onChange={(e) => setEditForm({ ...editForm, starter_code: e.target.value })} placeholder="시작 코드"
+                            style={{ fontFamily: "monospace", fontSize: 13 }} />
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button className="btn btn-primary" style={{ fontSize: 13 }} onClick={handleSaveProblem}>저장</button>
+                            <button className="btn btn-ghost" style={{ fontSize: 13 }}
+                              onClick={() => { setEditingProblem(null); setEditForm({}); }}>취소</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ padding: "12px 0" }}>
+                          <div className="markdown-body" style={{ fontSize: 13, marginBottom: 12 }}
+                            dangerouslySetInnerHTML={{ __html: renderMarkdown(p.description || "") }} />
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button className="btn btn-ghost" style={{ fontSize: 12, padding: "2px 8px" }}
+                              onClick={() => { setEditingProblem(p.id); setEditForm({ title: p.title, description: p.description, starter_code: p.starter_code }); }}>
+                              문제 수정
+                            </button>
+                            <button className="btn btn-ghost" style={{ fontSize: 12, padding: "2px 8px", color: "var(--error)" }}
+                              onClick={() => handleDeleteProblem(p.id)}>
+                              문제 삭제
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Submissions for this problem */}
+                      {pSubs.length > 0 && (
+                        <div style={{ marginTop: 8 }}>
+                          <h4 style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: "var(--on-surface-variant)" }}>
+                            제출 기록
+                          </h4>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                            {pSubs.map((s, si) => {
+                              const sc = getScore(s);
+                              return (
+                                <div key={s.id} style={{
+                                  display: "flex", alignItems: "center", gap: 12, padding: "8px 12px",
+                                  borderRadius: 8, background: "var(--surface-container)",
+                                  fontSize: 13, cursor: "pointer",
+                                }}
+                                  onClick={() => setViewingSub(s)}
+                                >
+                                  <span style={{ color: "var(--on-surface-variant)", minWidth: 24 }}>#{pSubs.length - si}</span>
+                                  <span style={{ flex: 1, color: "var(--on-surface-variant)" }}>
+                                    {new Date(s.submitted_at).toLocaleString("ko-KR")}
+                                  </span>
+                                  {sc != null ? (
+                                    <span style={{ fontWeight: 600, color: sc >= 80 ? "var(--success)" : sc >= 60 ? "var(--primary)" : "var(--error)" }}>
+                                      {sc}점
+                                    </span>
+                                  ) : (
+                                    <span style={{ color: "var(--on-surface-variant)", fontSize: 12 }}>
+                                      {s.status === "analyzing" ? "분석 중..." : "미채점"}
+                                    </span>
+                                  )}
+                                  <span style={{ fontSize: 12, color: "var(--primary)" }}>코드 보기 &rarr;</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Writing prompt (if applicable) */}
         {assignment.type !== "coding" && assignment.writing_prompt && (

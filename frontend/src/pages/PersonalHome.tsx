@@ -5,6 +5,7 @@ import {
   ResponsiveContainer, BarChart, Bar,
 } from "recharts";
 import AppShell from "../components/common/AppShell";
+import { toast } from "../lib/toast";
 import { useAuthStore } from "../store/authStore";
 import { useTutorialStore } from "../store/tutorialStore";
 import { getTutorialKey } from "../lib/tutorials";
@@ -61,12 +62,16 @@ export default function PersonalHome() {
   const [showModal, setShowModal] = useState(false);
   const [title, setTitle] = useState("");
   const [topic, setTopic] = useState("");
-  const [assignType, setAssignType] = useState<"coding" | "writing" | "both">("coding");
+  const [assignType, setAssignType] = useState<"coding" | "writing" | "both" | "quiz">("coding");
   const [difficulty, setDifficulty] = useState("medium");
   const [language, setLanguage] = useState("python");
   const [problemCount, setProblemCount] = useState(5);
   const [baekjoonCount, setBaekjoonCount] = useState(0);
   const [programmersCount, setProgrammersCount] = useState(0);
+  const [blockCount, setBlockCount] = useState(0);
+  const [mcCount, setMcCount] = useState(5);
+  const [saCount, setSaCount] = useState(3);
+  const [essayCount, setEssayCount] = useState(2);
   const [creating, setCreating] = useState(false);
 
   // Upload material modal
@@ -189,16 +194,23 @@ export default function PersonalHome() {
     try {
       const { data } = await api.post(`/courses/${course.id}/assignments`, {
         title, topic, difficulty, language,
-        problem_count: assignType !== "writing" ? problemCount : 0,
-        baekjoon_count: assignType !== "writing" ? baekjoonCount : 0,
-        programmers_count: assignType !== "writing" ? programmersCount : 0,
+        problem_count: assignType !== "writing" && assignType !== "quiz" ? problemCount : 0,
+        baekjoon_count: assignType !== "writing" && assignType !== "quiz" ? baekjoonCount : 0,
+        programmers_count: assignType !== "writing" && assignType !== "quiz" ? programmersCount : 0,
+        block_count: assignType !== "writing" && assignType !== "quiz" ? blockCount : 0,
+        ...(assignType === "quiz" ? {
+          quiz_count: mcCount + saCount + essayCount,
+          mc_count: mcCount,
+          sa_count: saCount,
+          essay_count: essayCount,
+        } : {}),
         type: assignType, ai_policy: "free",
       });
       setAssignments((prev) => [data, ...prev]);
       setShowModal(false);
       setTitle(""); setTopic("");
       if (data.generation_status === "generating") startPolling();
-    } catch { alert("챌린지 생성에 실패했습니다."); }
+    } catch { toast.error("챌린지 생성에 실패했습니다."); }
     finally { setCreating(false); }
   };
 
@@ -207,7 +219,7 @@ export default function PersonalHome() {
     try {
       await api.delete(`/courses/${course.id}/assignments/${assignmentId}`);
       setAssignments((prev) => prev.filter((a) => a.id !== assignmentId));
-    } catch { alert("삭제에 실패했습니다."); }
+    } catch { toast.error("삭제에 실패했습니다."); }
   };
 
   const handleUpload = async () => {
@@ -222,7 +234,7 @@ export default function PersonalHome() {
       });
       setMaterials((prev) => [data, ...prev]);
       setShowUpload(false); setUploadTitle(""); setUploadFile(null);
-    } catch { alert("업로드에 실패했습니다."); }
+    } catch { toast.error("업로드에 실패했습니다."); }
     finally { setUploading(false); }
   };
 
@@ -231,7 +243,7 @@ export default function PersonalHome() {
     try {
       await api.delete(`/courses/${course.id}/materials/${materialId}`);
       setMaterials((prev) => prev.filter((m) => m.id !== materialId));
-    } catch { alert("삭제에 실패했습니다."); }
+    } catch { toast.error("삭제에 실패했습니다."); }
   };
 
   useEffect(() => {
@@ -248,6 +260,7 @@ export default function PersonalHome() {
     if (t === "writing") return "글쓰기";
     if (t === "both") return "코딩+글쓰기";
     if (t === "algorithm") return "알고리즘";
+    if (t === "quiz") return "퀴즈";
     return t;
   };
 
@@ -478,7 +491,7 @@ export default function PersonalHome() {
                         </div>
                         <div style={{ display: "flex", gap: 8 }} onClick={(e) => e.stopPropagation()}>
                           <button className="btn btn-primary" style={{ fontSize: 13, padding: "6px 16px" }}
-                            onClick={() => navigate(`/assignments/${a.id}/code`)}>
+                            onClick={() => navigate(a.type === "quiz" ? `/assignments/${a.id}/quiz` : a.type === "writing" ? `/assignments/${a.id}/write` : `/assignments/${a.id}/code`)}>
                             풀기
                           </button>
                           <button className="btn btn-ghost" style={{ fontSize: 13, padding: "6px 12px", color: "var(--error)" }}
@@ -546,7 +559,7 @@ export default function PersonalHome() {
               <div>
                 <label className="form-label">챌린지 유형</label>
                 <div className="type-chips">
-                  {(["coding", "writing", "both"] as const).map((t) => (
+                  {(["coding", "writing", "both", "quiz"] as const).map((t) => (
                     <button key={t} className={`type-chip${assignType === t ? " active" : ""}`} onClick={() => setAssignType(t)}>
                       {typeLabel(t)}
                     </button>
@@ -572,7 +585,7 @@ export default function PersonalHome() {
                   </select>
                 </div>
               </div>
-              {assignType !== "writing" && (
+              {assignType !== "writing" && assignType !== "quiz" && (
                 <div className="problem-counts-section">
                   <label className="form-label">문제 구성</label>
                   <div className="problem-counts-grid">
@@ -581,16 +594,54 @@ export default function PersonalHome() {
                       <input className="form-input" type="number" min={0} max={10} value={problemCount} onChange={(e) => setProblemCount(Number(e.target.value))} />
                     </div>
                     <div className="problem-count-item">
-                      <label className="problem-count-label">백준 형식<span className="problem-count-tag bj">stdin/stdout</span></label>
+                      <label className="problem-count-label">표준 입출력형<span className="problem-count-tag bj">stdin/stdout</span></label>
                       <input className="form-input" type="number" min={0} max={10} value={baekjoonCount} onChange={(e) => setBaekjoonCount(Number(e.target.value))} />
                     </div>
                     <div className="problem-count-item">
-                      <label className="problem-count-label">프로그래머스 형식<span className="problem-count-tag pg">함수 기반</span></label>
+                      <label className="problem-count-label">함수 구현형<span className="problem-count-tag pg">함수 기반</span></label>
                       <input className="form-input" type="number" min={0} max={10} value={programmersCount} onChange={(e) => setProgrammersCount(Number(e.target.value))} />
+                    </div>
+                    <div className="problem-count-item">
+                      <label className="problem-count-label">블록 코딩<span className="problem-count-tag" style={{ background: "rgba(245,158,11,0.12)", color: "#d97706" }}>Blockly</span></label>
+                      <input className="form-input" type="number" min={0} max={10} value={blockCount} onChange={(e) => setBlockCount(Number(e.target.value))} />
                     </div>
                   </div>
                   <div style={{ fontSize: 12, color: "var(--on-surface-variant)", marginTop: 6 }}>
-                    총 {problemCount + baekjoonCount + programmersCount}문제
+                    총 {problemCount + baekjoonCount + programmersCount + blockCount}문제
+                  </div>
+                </div>
+              )}
+              {assignType === "quiz" && (
+                <div className="problem-counts-section">
+                  <label className="form-label">퀴즈 유형별 문제 수</label>
+                  <div className="problem-counts-grid">
+                    <div className="problem-count-item">
+                      <label className="problem-count-label">
+                        <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--primary)", marginRight: 6 }} />
+                        객관식
+                      </label>
+                      <input className="input problem-count-input" type="number" min={0} max={20}
+                        value={mcCount} onChange={(e) => setMcCount(Math.max(0, Number(e.target.value)))} />
+                    </div>
+                    <div className="problem-count-item">
+                      <label className="problem-count-label">
+                        <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--success)", marginRight: 6 }} />
+                        주관식
+                      </label>
+                      <input className="input problem-count-input" type="number" min={0} max={20}
+                        value={saCount} onChange={(e) => setSaCount(Math.max(0, Number(e.target.value)))} />
+                    </div>
+                    <div className="problem-count-item">
+                      <label className="problem-count-label">
+                        <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--tertiary)", marginRight: 6 }} />
+                        서술형
+                      </label>
+                      <input className="input problem-count-input" type="number" min={0} max={10}
+                        value={essayCount} onChange={(e) => setEssayCount(Math.max(0, Number(e.target.value)))} />
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--on-surface-variant)", marginTop: 6 }}>
+                    총 {mcCount + saCount + essayCount}문제
                   </div>
                 </div>
               )}

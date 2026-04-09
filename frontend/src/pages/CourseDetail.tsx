@@ -4,6 +4,7 @@ import { QRCodeSVG } from "qrcode.react";
 import api from "../lib/api";
 import { useAuthStore } from "../store/authStore";
 import AppShell from "../components/common/AppShell";
+import { toast } from "../lib/toast";
 import type { Course, Assignment, CourseMaterial } from "../types";
 
 export default function CourseDetail() {
@@ -18,15 +19,19 @@ export default function CourseDetail() {
   const [showCreate, setShowCreate] = useState(false);
   const [title, setTitle] = useState("");
   const [topic, setTopic] = useState("");
-  const [assignType, setAssignType] = useState<"coding" | "writing" | "both">("coding");
+  const [assignType, setAssignType] = useState<"coding" | "writing" | "both" | "quiz">("coding");
   const [language, setLanguage] = useState("python");
   const [aiPolicy, setAiPolicy] = useState("normal");
   const [problemCount, setProblemCount] = useState(5);
   const [baekjoonCount, setBaekjoonCount] = useState(0);
   const [programmersCount, setProgrammersCount] = useState(0);
+  const [blockCount, setBlockCount] = useState(0);
   const [dueDate, setDueDate] = useState("");
   const [gradingStrictness, setGradingStrictness] = useState("normal");
   const [gradingNote, setGradingNote] = useState("");
+  const [mcCount, setMcCount] = useState(5);
+  const [saCount, setSaCount] = useState(3);
+  const [essayCount, setEssayCount] = useState(2);
   const [creating, setCreating] = useState(false);
   const [qaTarget, setQaTarget] = useState("");
   const [qaMessage, setQaMessage] = useState("");
@@ -102,11 +107,18 @@ export default function CourseDetail() {
         topic,
         type: assignType,
         difficulty: "medium",
-        problem_count: assignType !== "writing" ? problemCount : 0,
-        baekjoon_count: assignType !== "writing" ? baekjoonCount : 0,
-        programmers_count: assignType !== "writing" ? programmersCount : 0,
+        problem_count: assignType !== "writing" && assignType !== "quiz" ? problemCount : 0,
+        baekjoon_count: assignType !== "writing" && assignType !== "quiz" ? baekjoonCount : 0,
+        programmers_count: assignType !== "writing" && assignType !== "quiz" ? programmersCount : 0,
+        block_count: assignType !== "writing" && assignType !== "quiz" ? blockCount : 0,
+        ...(assignType === "quiz" ? {
+          quiz_count: mcCount + saCount + essayCount,
+          mc_count: mcCount,
+          sa_count: saCount,
+          essay_count: essayCount,
+        } : {}),
         ai_policy: aiPolicy,
-        language: assignType !== "writing" ? language : "text",
+        language: assignType !== "writing" && assignType !== "quiz" ? language : "text",
         grading_strictness: gradingStrictness,
         ...(gradingNote.trim() ? { grading_note: gradingNote.trim() } : {}),
         ...(dueDate ? { due_date: new Date(dueDate).toISOString() } : {}),
@@ -208,14 +220,14 @@ export default function CourseDetail() {
 
             {/* 과제 유형 선택 */}
             <div className="type-chips">
-              {(["coding", "writing", "both"] as const).map((t) => (
+              {(["coding", "writing", "both", "quiz"] as const).map((t) => (
                 <button
                   key={t}
                   className={`type-chip${assignType === t ? " active" : ""}`}
                   onClick={() => setAssignType(t)}
                   type="button"
                 >
-                  {t === "coding" ? "코딩" : t === "writing" ? "글쓰기" : "코딩+글쓰기"}
+                  {t === "coding" ? "코딩" : t === "writing" ? "글쓰기" : t === "both" ? "코딩+글쓰기" : "퀴즈"}
                 </button>
               ))}
             </div>
@@ -278,7 +290,7 @@ export default function CourseDetail() {
                   </div>
                   <div className="problem-count-item">
                     <label className="problem-count-label">
-                      백준 형식
+                      표준 입출력형
                       <span className="problem-count-tag bj">stdin/stdout</span>
                     </label>
                     <input
@@ -292,7 +304,7 @@ export default function CourseDetail() {
                   </div>
                   <div className="problem-count-item">
                     <label className="problem-count-label">
-                      프로그래머스 형식
+                      함수 구현형
                       <span className="problem-count-tag pg">함수 기반</span>
                     </label>
                     <input
@@ -304,9 +316,60 @@ export default function CourseDetail() {
                       onChange={(e) => setProgrammersCount(Number(e.target.value))}
                     />
                   </div>
+                  <div className="problem-count-item">
+                    <label className="problem-count-label">
+                      블록 코딩
+                      <span className="problem-count-tag" style={{ background: "rgba(245,158,11,0.12)", color: "#d97706" }}>Blockly</span>
+                    </label>
+                    <input
+                      className="input"
+                      type="number"
+                      min={0}
+                      max={10}
+                      value={blockCount}
+                      onChange={(e) => setBlockCount(Number(e.target.value))}
+                    />
+                  </div>
                 </div>
                 <div style={{ fontSize: 12, color: "var(--on-surface-variant)", marginTop: 6 }}>
-                  총 {problemCount + baekjoonCount + programmersCount}문제
+                  총 {problemCount + baekjoonCount + programmersCount + blockCount}문제
+                </div>
+              </div>
+            )}
+            {/* 퀴즈 설정 */}
+            {assignType === "quiz" && (
+              <div className="problem-counts-section">
+                <label style={{ fontSize: 13, color: "var(--on-surface-variant)", marginBottom: 8, display: "block" }}>
+                  퀴즈 유형별 문제 수
+                </label>
+                <div className="problem-counts-grid">
+                  <div className="problem-count-item">
+                    <label className="problem-count-label">
+                      <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--primary)", marginRight: 6 }} />
+                      객관식
+                    </label>
+                    <input className="input problem-count-input" type="number" min={0} max={20}
+                      value={mcCount} onChange={(e) => setMcCount(Math.max(0, Number(e.target.value)))} />
+                  </div>
+                  <div className="problem-count-item">
+                    <label className="problem-count-label">
+                      <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--success)", marginRight: 6 }} />
+                      주관식
+                    </label>
+                    <input className="input problem-count-input" type="number" min={0} max={20}
+                      value={saCount} onChange={(e) => setSaCount(Math.max(0, Number(e.target.value)))} />
+                  </div>
+                  <div className="problem-count-item">
+                    <label className="problem-count-label">
+                      <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--tertiary)", marginRight: 6 }} />
+                      서술형
+                    </label>
+                    <input className="input problem-count-input" type="number" min={0} max={10}
+                      value={essayCount} onChange={(e) => setEssayCount(Math.max(0, Number(e.target.value)))} />
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, color: "var(--on-surface-variant)", marginTop: 6 }}>
+                  총 {mcCount + saCount + essayCount}문제
                 </div>
               </div>
             )}
@@ -407,6 +470,8 @@ export default function CourseDetail() {
                       navigate(`/personal/courses/${courseId}/assignments/${a.id}`);
                     } else if (isProfessor) {
                       navigate(`/courses/${courseId}/assignments/${a.id}`);
+                    } else if (a.type === "quiz") {
+                      navigate(`/assignments/${a.id}/quiz`);
                     } else if (a.type === "writing") {
                       navigate(`/assignments/${a.id}/write`);
                     } else if (a.type === "both") {
@@ -435,10 +500,10 @@ export default function CourseDetail() {
                   <p>{a.topic || "주제 없음"}</p>
                   <div className="course-meta">
                     <span className="badge" style={{
-                      background: a.type === "writing" ? "rgba(99,46,205,0.1)" : a.type === "both" ? "rgba(0,74,198,0.1)" : a.type === "algorithm" ? "rgba(16,185,129,0.1)" : undefined,
-                      color: a.type === "writing" ? "var(--tertiary)" : a.type === "both" ? "var(--primary)" : a.type === "algorithm" ? "var(--success)" : undefined,
+                      background: a.type === "writing" ? "rgba(99,46,205,0.1)" : a.type === "both" ? "rgba(0,74,198,0.1)" : a.type === "algorithm" ? "rgba(16,185,129,0.1)" : a.type === "quiz" ? "rgba(245,158,11,0.1)" : undefined,
+                      color: a.type === "writing" ? "var(--tertiary)" : a.type === "both" ? "var(--primary)" : a.type === "algorithm" ? "var(--success)" : a.type === "quiz" ? "var(--warning)" : undefined,
                     }}>
-                      {a.type === "writing" ? "글쓰기" : a.type === "both" ? "코딩+글쓰기" : a.type === "algorithm" ? "알고리즘" : "코딩"}
+                      {a.type === "writing" ? "글쓰기" : a.type === "both" ? "코딩+글쓰기" : a.type === "algorithm" ? "알고리즘" : a.type === "quiz" ? "퀴즈" : "코딩"}
                     </span>
                     <span className="badge badge-policy">
                       {policyLabels[a.ai_policy] || a.ai_policy}
@@ -452,8 +517,8 @@ export default function CourseDetail() {
                       const pgCount = a.problems?.filter((p: Record<string, unknown>) => p.format === "programmers").length || 0;
                       return (
                         <>
-                          {bjCount > 0 && <span className="badge" style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)" }}>백준 {bjCount}</span>}
-                          {pgCount > 0 && <span className="badge" style={{ background: "rgba(99,46,205,0.1)", color: "var(--tertiary)" }}>프로그래머스 {pgCount}</span>}
+                          {bjCount > 0 && <span className="badge" style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)" }}>표준 입출력 {bjCount}</span>}
+                          {pgCount > 0 && <span className="badge" style={{ background: "rgba(99,46,205,0.1)", color: "var(--tertiary)" }}>함수 구현 {pgCount}</span>}
                         </>
                       );
                     })()}
@@ -525,7 +590,7 @@ export default function CourseDetail() {
                       if (uploaded.length > 0) {
                         setMaterials((prev) => [...uploaded, ...prev]);
                       }
-                      alert(`업로드 실패. ${uploaded.length}/${uploadFiles.length}개 완료됨.`);
+                      toast.error(`업로드 실패. ${uploaded.length}/${uploadFiles.length}개 완료됨.`);
                     } finally {
                       setUploading(false);
                       setUploadProgress("");

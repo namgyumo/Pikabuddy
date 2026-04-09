@@ -20,6 +20,7 @@ import Workspace from "./pages/Workspace";
 import NoteGraph from "./pages/NoteGraph";
 import PersonalHome from "./pages/PersonalHome";
 import PersonalAssignmentDetail from "./pages/PersonalAssignmentDetail";
+import QuizEditor from "./pages/QuizEditor";
 import Profile from "./pages/Profile";
 import TutorialProvider from "./components/common/TutorialProvider";
 import "./App.css";
@@ -101,6 +102,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <CodeEditor />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/assignments/:assignmentId/quiz"
+          element={
+            <ProtectedRoute>
+              <QuizEditor />
             </ProtectedRoute>
           }
         />

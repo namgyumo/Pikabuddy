@@ -1,8 +1,11 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Editor from "@monaco-editor/react";
 import { renderMarkdown } from "../lib/markdown";
 import api from "../lib/api";
+import { toast } from "../lib/toast";
+
+const BlockEditorLazy = lazy(() => import("../components/BlockEditor"));
 import { supabase } from "../lib/supabase";
 import { getAdminToken } from "../store/authStore";
 import { useExamMode } from "../lib/useExamMode";
@@ -73,6 +76,7 @@ export default function CodeEditor() {
     total_time_ms: number; max_memory_mb: number;
   } | null>(null);
   const [runTab, setRunTab] = useState<"output" | "judge">("output");
+  const [editorMode, setEditorMode] = useState<"code" | "block">("code");
   const [problemIdx, setProblemIdx] = useState(0);
   const problemIdxRef = useRef(0);
   const codeLoadedRef = useRef(false);
@@ -281,6 +285,13 @@ export default function CodeEditor() {
   const currentProblem = assignment?.problems?.[problemIdx] as Record<string, unknown> | undefined;
   const problemFormat = (currentProblem?.format as string) || "regular";
   const isAlgorithm = problemFormat === "baekjoon" || problemFormat === "programmers" || assignment?.type === "algorithm";
+  const isBlockProblem = problemFormat === "block";
+  const showBlockToggle = isBlockProblem || (assignment?.language === "python" || assignment?.language === "javascript");
+
+  // Auto-switch to block mode for block problems
+  useEffect(() => {
+    if (isBlockProblem) setEditorMode("block");
+  }, [isBlockProblem]);
 
   const handleJudge = async () => {
     if (judging || !currentProblem) return;
@@ -344,24 +355,28 @@ export default function CodeEditor() {
 
       if (reader) {
         let buffer = "";
+        const processLine = (line: string) => {
+          if (line.startsWith("data: ")) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.type === "chunk") {
+                setFeedback((prev) => prev + data.text);
+              } else if (data.type === "error") {
+                setFeedback((prev) => prev || `오류: ${data.text}`);
+              }
+            } catch { /* SSE parse error */ }
+          }
+        };
         while (true) {
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done) {
+            if (buffer.trim()) processLine(buffer);
+            break;
+          }
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split("\n");
           buffer = lines.pop() || "";
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                if (data.type === "chunk") {
-                  setFeedback((prev) => prev + data.text);
-                } else if (data.type === "error") {
-                  setFeedback((prev) => prev || `오류: ${data.text}`);
-                }
-              } catch { /* SSE parse error */ }
-            }
-          }
+          for (const line of lines) processLine(line);
         }
       }
     } catch (err) {
@@ -483,7 +498,7 @@ export default function CodeEditor() {
             onClick={async () => {
               const ok = await examMode.startExam();
               if (ok) setExamStarted(true);
-              else alert("화면 공유를 허용해야 시험을 시작할 수 있습니다.");
+              else toast.warning("화면 공유를 허용해야 시험을 시작할 수 있습니다.");
             }}
           >
             시험 시작
@@ -581,28 +596,69 @@ export default function CodeEditor() {
       <div className="editor-layout">
         <div className="editor-main-wrapper">
           <div className="editor-main">
-            <Editor
-              height="100%"
-              language={assignment?.language || "python"}
-              theme="vs-dark"
-              value={code}
-              onChange={handleCodeChange}
-              onMount={handleEditorMount}
-              options={{
-                fontSize: 14,
-                fontFamily: "JetBrains Mono, Fira Code, monospace",
-                minimap: { enabled: false },
-                automaticLayout: true,
-                padding: { top: 16 },
-                scrollBeyondLastLine: false,
-                smoothScrolling: true,
-                cursorBlinking: "smooth",
-                cursorSmoothCaretAnimation: "on",
-                renderLineHighlight: "all",
-              }}
-            />
+            {/* Block/Code toggle */}
+            {showBlockToggle && (
+              <div style={{
+                display: "flex", gap: 0, position: "absolute", top: 8, right: 12, zIndex: 10,
+              }}>
+                <button
+                  onClick={() => setEditorMode("code")}
+                  style={{
+                    padding: "4px 12px", fontSize: 12, fontWeight: 600, border: "1px solid var(--outline-variant)",
+                    borderRadius: "6px 0 0 6px", cursor: "pointer",
+                    background: editorMode === "code" ? "var(--primary)" : "var(--surface-container)",
+                    color: editorMode === "code" ? "#fff" : "var(--on-surface-variant)",
+                  }}
+                >
+                  코드
+                </button>
+                <button
+                  onClick={() => setEditorMode("block")}
+                  style={{
+                    padding: "4px 12px", fontSize: 12, fontWeight: 600, border: "1px solid var(--outline-variant)",
+                    borderLeft: "none", borderRadius: "0 6px 6px 0", cursor: "pointer",
+                    background: editorMode === "block" ? "var(--primary)" : "var(--surface-container)",
+                    color: editorMode === "block" ? "#fff" : "var(--on-surface-variant)",
+                  }}
+                >
+                  블록
+                </button>
+              </div>
+            )}
+            {editorMode === "block" ? (
+              <Suspense fallback={<div style={{ padding: 20, color: "#aaa" }}>블록 에디터 로딩 중...</div>}>
+                <BlockEditorLazy
+                  language={assignment?.language || "python"}
+                  onCodeChange={(generated) => {
+                    setCode(generated);
+                    codeMapRef.current[problemIdx] = generated;
+                  }}
+                />
+              </Suspense>
+            ) : (
+              <Editor
+                height="100%"
+                language={assignment?.language || "python"}
+                theme="vs-dark"
+                value={code}
+                onChange={handleCodeChange}
+                onMount={handleEditorMount}
+                options={{
+                  fontSize: 14,
+                  fontFamily: "JetBrains Mono, Fira Code, monospace",
+                  minimap: { enabled: false },
+                  automaticLayout: true,
+                  padding: { top: 16 },
+                  scrollBeyondLastLine: false,
+                  smoothScrolling: true,
+                  cursorBlinking: "smooth",
+                  cursorSmoothCaretAnimation: "on",
+                  renderLineHighlight: "all",
+                }}
+              />
+            )}
           </div>
-          <div className="run-panel">
+          <div className="run-panel" style={editorMode === "block" ? { height: 120, minHeight: 120 } : undefined}>
             <div className="run-panel-header">
               <div className="run-panel-tabs">
                 <span className={`run-panel-tab${runTab === "output" ? " active" : ""}`} onClick={() => setRunTab("output")} style={{ cursor: "pointer" }}>출력</span>
@@ -757,7 +813,7 @@ export default function CodeEditor() {
                   borderRadius: 99, background: problemFormat === "programmers" ? "rgba(99,46,205,0.15)" : "rgba(16,185,129,0.15)",
                   color: problemFormat === "programmers" ? "#a78bfa" : "#34d399",
                 }}>
-                  {problemFormat === "programmers" ? "프로그래머스 형식" : "백준 형식"}
+                  {problemFormat === "programmers" ? "함수 구현형" : "표준 입출력형"}
                 </span>
                 {currentProblem.time_limit_ms && (
                   <span className="badge" style={{ fontSize: 11, fontWeight: 600, color: "var(--warning)" }}>
@@ -771,7 +827,7 @@ export default function CodeEditor() {
                 )}
               </div>
             )}
-            {/* 프로그래머스 형식: 함수 시그니처 + 매개변수 */}
+            {/* 함수 구현형: 함수 시그니처 + 매개변수 */}
             {problemFormat === "programmers" && currentProblem && (
               <div style={{ marginTop: 12, fontSize: 13 }}>
                 {(currentProblem.parameters as { name: string; type: string; description: string }[])?.length > 0 && (
@@ -829,7 +885,7 @@ export default function CodeEditor() {
                 )}
               </div>
             )}
-            {/* 백준 형식: 입출력 형식, 제약조건, 예제 */}
+            {/* 표준 입출력형: 입출력 형식, 제약조건, 예제 */}
             {(problemFormat === "baekjoon" || (isAlgorithm && problemFormat !== "programmers")) && currentProblem && (
               <div style={{ marginTop: 12, fontSize: 13 }}>
                 {(currentProblem.input_description as string) && (

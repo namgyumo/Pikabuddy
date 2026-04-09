@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
-import { THEMES, CUSTOM_THEME_TEMPLATE } from "../../themes";
+import { THEMES, CUSTOM_THEME_TEMPLATE, getCurrentVariableValues } from "../../themes";
 import { useThemeStore } from "../../store/themeStore";
-import type { CustomTheme } from "../../themes";
+import type { CustomTheme, ThemeDefinition } from "../../themes";
 import ThemeEditor from "./ThemeEditor";
 
 export default function ThemePicker() {
@@ -59,6 +59,22 @@ export default function ThemePicker() {
     setEditorOpen(true);
   };
 
+  const forkBuiltinTheme = (theme: ThemeDefinition) => {
+    // Apply the built-in theme so we can read its computed CSS variables
+    setTheme(theme.id);
+    requestAnimationFrame(() => {
+      const vars = getCurrentVariableValues();
+      setEditingTheme({
+        id: "", // empty = create new theme (not edit existing)
+        name: `${theme.nameKo} (커스텀)`,
+        version: 1,
+        variables: vars,
+        preview: theme.preview,
+      });
+      setEditorOpen(true);
+    });
+  };
+
   return (
     <div className="theme-picker">
       {/* Built-in Themes */}
@@ -94,6 +110,16 @@ export default function ThemePicker() {
                   </svg>
                 </span>
               )}
+              <span
+                className="builtin-theme-customize"
+                role="button"
+                onClick={(e) => { e.stopPropagation(); forkBuiltinTheme(theme); }}
+                title="이 테마를 기반으로 커스텀 테마 만들기"
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+                </svg>
+              </span>
             </button>
           );
         })}
@@ -136,60 +162,58 @@ export default function ThemePicker() {
           {customThemes.map((theme) => {
             const isActive = currentTheme === theme.id;
             return (
-              <div key={theme.id} className="custom-theme-card-wrap">
-                <button
-                  className={`theme-card${isActive ? " active" : ""}`}
-                  onClick={() => setTheme(theme.id)}
-                  title={theme.name}
-                >
-                  <div className="theme-card-preview">
-                    <div className="theme-preview-sidebar" style={{ background: theme.preview[3] }}>
-                      <div className="theme-preview-dot" style={{ background: theme.preview[0] }} />
-                      <div className="theme-preview-dot" style={{ background: theme.preview[2], opacity: 0.5 }} />
-                      <div className="theme-preview-dot" style={{ background: theme.preview[2], opacity: 0.3 }} />
-                    </div>
-                    <div className="theme-preview-main" style={{ background: theme.preview[1] }}>
-                      <div className="theme-preview-header" style={{ background: theme.preview[0], opacity: 0.9 }} />
-                      <div className="theme-preview-line" style={{ background: theme.preview[3], opacity: 0.15 }} />
-                      <div className="theme-preview-line short" style={{ background: theme.preview[3], opacity: 0.1 }} />
-                      <div className="theme-preview-accent" style={{ background: theme.preview[2], opacity: 0.2 }} />
-                    </div>
+              <button
+                key={theme.id}
+                className={`theme-card${isActive ? " active" : ""}`}
+                onClick={() => setTheme(theme.id)}
+                title={theme.name}
+              >
+                <div className="theme-card-preview">
+                  <div className="theme-preview-sidebar" style={{ background: theme.preview[3] }}>
+                    <div className="theme-preview-dot" style={{ background: theme.preview[0] }} />
+                    <div className="theme-preview-dot" style={{ background: theme.preview[2], opacity: 0.5 }} />
+                    <div className="theme-preview-dot" style={{ background: theme.preview[2], opacity: 0.3 }} />
                   </div>
-                  <span className="theme-card-name">{theme.name}</span>
-                  {isActive && (
-                    <span className="theme-card-check">
-                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                        <circle cx="7" cy="7" r="7" fill="var(--primary)" />
-                        <path d="M4 7l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </span>
-                  )}
-                </button>
-                {/* Edit + Delete buttons */}
-                <button
+                  <div className="theme-preview-main" style={{ background: theme.preview[1] }}>
+                    <div className="theme-preview-header" style={{ background: theme.preview[0], opacity: 0.9 }} />
+                    <div className="theme-preview-line" style={{ background: theme.preview[3], opacity: 0.15 }} />
+                    <div className="theme-preview-line short" style={{ background: theme.preview[3], opacity: 0.1 }} />
+                    <div className="theme-preview-accent" style={{ background: theme.preview[2], opacity: 0.2 }} />
+                  </div>
+                </div>
+                <span className="theme-card-name">{theme.name}</span>
+                {isActive && (
+                  <span className="theme-card-check">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <circle cx="7" cy="7" r="7" fill="var(--primary)" />
+                      <path d="M4 7l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </span>
+                )}
+                <span
                   className="custom-theme-edit"
-                  onClick={() => openEditEditor(theme)}
+                  role="button"
+                  onClick={(e) => { e.stopPropagation(); openEditEditor(theme); }}
                   title="편집"
-                  style={{
-                    position: "absolute", top: 4, right: 24, width: 20, height: 20,
-                    borderRadius: "50%", border: "none", cursor: "pointer",
-                    background: "var(--surface-container-high)", color: "var(--on-surface-variant)",
-                    fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center",
-                    opacity: 0, transition: "opacity 0.15s",
-                  }}
                 >
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                     <path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
                   </svg>
-                </button>
-                <button
+                </span>
+                <span
                   className="custom-theme-delete"
-                  onClick={() => removeCustomTheme(theme.id)}
+                  role="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (window.confirm(`"${theme.name}" 테마를 삭제하시겠습니까?`)) {
+                      removeCustomTheme(theme.id);
+                    }
+                  }}
                   title="삭제"
                 >
                   &times;
-                </button>
-              </div>
+                </span>
+              </button>
             );
           })}
         </div>

@@ -153,10 +153,12 @@ export default function WritingEditor() {
 
     try {
       const content = editor.getJSON();
+      const text = editor.getText();
       const { data: submission } = await api.post(`/assignments/${assignmentId}/submit`, {
-        code: editor.getText(),
+        code: text,
         content,
         problem_index: 0,
+        char_count: text.replace(/\s/g, "").length,
       });
 
       if (!submission?.id) {
@@ -178,21 +180,25 @@ export default function WritingEditor() {
       const decoder = new TextDecoder();
       if (reader) {
         let buffer = "";
+        const processLine = (line: string) => {
+          if (line.startsWith("data: ")) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.type === "chunk") setFeedback((prev) => prev + data.text);
+              else if (data.type === "error") setFeedback((prev) => prev || `오류: ${data.text}`);
+            } catch { /* SSE parse error */ }
+          }
+        };
         while (true) {
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done) {
+            if (buffer.trim()) processLine(buffer);
+            break;
+          }
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split("\n");
           buffer = lines.pop() || "";
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                if (data.type === "chunk") setFeedback((prev) => prev + data.text);
-                else if (data.type === "error") setFeedback((prev) => prev || `오류: ${data.text}`);
-              } catch { /* SSE parse error */ }
-            }
-          }
+          for (const line of lines) processLine(line);
         }
       }
     } catch {

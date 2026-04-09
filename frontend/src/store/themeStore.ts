@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { ALLOWED_CSS_VARIABLES, sanitizeCSS } from "../themes";
 import type { CustomTheme } from "../themes";
+import { effectManager } from "../themes/effects";
 
 const STORAGE_KEY = "pikabuddy-theme";
 const CUSTOM_THEMES_KEY = "pikabuddy-custom-themes";
@@ -18,6 +19,7 @@ interface ThemeState {
     variables: Record<string, string>;
     customCSS?: string;
     animation?: string;
+    effects?: Record<string, { enabled: boolean; params: Record<string, string | number> }>;
   }) => CustomTheme;
 }
 
@@ -64,6 +66,9 @@ function validateThemeJson(json: unknown): {
   name: string;
   version: number;
   variables: Record<string, string>;
+  customCSS?: string;
+  animation?: string;
+  effects?: Record<string, { enabled: boolean; params: Record<string, string | number> }>;
 } {
   if (!json || typeof json !== "object") {
     throw new Error("올바른 JSON 형식이 아닙니다.");
@@ -91,7 +96,6 @@ function validateThemeJson(json: unknown): {
     if (typeof value !== "string") {
       throw new Error(`${key}의 값은 문자열이어야 합니다.`);
     }
-    // Basic injection prevention: no semicolons, no url(), no expression()
     if (/[;{}]|url\s*\(|expression\s*\(/i.test(value)) {
       throw new Error(`${key}에 허용되지 않는 문자가 포함되어 있습니다.`);
     }
@@ -102,7 +106,13 @@ function validateThemeJson(json: unknown): {
     throw new Error("최소 1개 이상의 CSS 변수가 필요합니다.");
   }
 
-  return { name: obj.name as string, version: 1, variables: cleaned };
+  const result: ReturnType<typeof validateThemeJson> = {
+    name: obj.name as string, version: 1, variables: cleaned,
+  };
+  if (typeof obj.customCSS === "string" && obj.customCSS) result.customCSS = obj.customCSS;
+  if (typeof obj.animation === "string" && obj.animation) result.animation = obj.animation;
+  if (obj.effects && typeof obj.effects === "object") result.effects = obj.effects as typeof result.effects;
+  return result;
 }
 
 function extractPreview(
@@ -129,10 +139,19 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
       // Custom theme: remove data-theme, apply inline styles
       document.documentElement.removeAttribute("data-theme");
       applyCustomStyles(custom.variables, custom.customCSS);
+      // Apply effects for this custom theme
+      if (custom.effects) {
+        effectManager.saveState(custom.effects);
+        effectManager.applyState(custom.effects);
+      } else {
+        effectManager.disableAll();
+      }
     } else if (id === "default") {
       document.documentElement.removeAttribute("data-theme");
+      effectManager.disableAll();
     } else {
       document.documentElement.setAttribute("data-theme", id);
+      effectManager.disableAll();
     }
 
     localStorage.setItem(STORAGE_KEY, id);
@@ -146,6 +165,13 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
 
     if (custom) {
       applyCustomStyles(custom.variables, custom.customCSS);
+      // Load effects for custom theme
+      if (custom.effects) {
+        effectManager.applyState(custom.effects);
+      } else {
+        const savedEffects = effectManager.loadState();
+        effectManager.applyState(savedEffects);
+      }
     } else if (saved !== "default") {
       document.documentElement.setAttribute("data-theme", saved);
     }
@@ -162,6 +188,9 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
       version: validated.version,
       variables: validated.variables,
       preview: extractPreview(validated.variables),
+      customCSS: validated.customCSS,
+      animation: validated.animation,
+      effects: validated.effects,
     };
 
     const updated = [...get().customThemes, theme];
@@ -178,6 +207,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
     // If removing the currently active custom theme, reset to default
     if (current === id) {
       clearCustomStyles();
+      effectManager.disableAll();
       document.documentElement.removeAttribute("data-theme");
       localStorage.setItem(STORAGE_KEY, "default");
       set({ customThemes: updated, currentTheme: "default" });
@@ -203,6 +233,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
         variables: data.variables,
         customCSS: data.customCSS,
         animation: data.animation,
+        effects: data.effects,
         preview,
       };
       const list = get().customThemes.map((t) => (t.id === existing.id ? updated : t));
@@ -219,6 +250,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
         variables: data.variables,
         customCSS: data.customCSS,
         animation: data.animation,
+        effects: data.effects,
         preview,
       };
       const list = [...get().customThemes, theme];

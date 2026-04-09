@@ -4,19 +4,23 @@ import {
   VARIABLE_GROUPS,
   FONT_OPTIONS,
   ANIMATION_PRESETS,
+  THEMES,
   sanitizeCSS,
   toHex,
   getCurrentVariableValues,
 } from "../../themes";
 import { useThemeStore } from "../../store/themeStore";
 import type { CustomTheme } from "../../themes";
+import type { EffectsState } from "../../themes/effects";
+import { effectManager } from "../../themes/effects";
+import EffectsPanel from "./EffectsPanel";
 
 interface Props {
   onClose: () => void;
   editingTheme?: CustomTheme | null;
 }
 
-type Tab = "gui" | "json" | "css";
+type Tab = "gui" | "json" | "css" | "effects";
 
 export default function ThemeEditor({ onClose, editingTheme }: Props) {
   const { saveCustomTheme, setTheme } = useThemeStore();
@@ -30,6 +34,9 @@ export default function ThemeEditor({ onClose, editingTheme }: Props) {
   });
   const [customCSS, setCustomCSS] = useState(editingTheme?.customCSS || "");
   const [animation, setAnimation] = useState(editingTheme?.animation || "none");
+  const [effectsState, setEffectsState] = useState<EffectsState>(
+    () => editingTheme?.effects || effectManager.loadState()
+  );
 
   // JSON tab state
   const [jsonText, setJsonText] = useState("");
@@ -38,40 +45,62 @@ export default function ThemeEditor({ onClose, editingTheme }: Props) {
   // GUI accordion
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(["primary", "surface"]));
 
-  // Live preview: apply variables + CSS to document
+  // Live preview: apply variables + CSS to document (debounced with rAF)
+  const rafRef = useRef(0);
   useEffect(() => {
-    const el = document.documentElement;
-    // Remove data-theme so custom styles take effect
-    el.removeAttribute("data-theme");
-    for (const [key, value] of Object.entries(variables)) {
-      if ((ALLOWED_CSS_VARIABLES as readonly string[]).includes(key)) {
-        el.style.setProperty(key, value);
+    cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => {
+      const el = document.documentElement;
+      el.removeAttribute("data-theme");
+      for (const [key, value] of Object.entries(variables)) {
+        if ((ALLOWED_CSS_VARIABLES as readonly string[]).includes(key)) {
+          el.style.setProperty(key, value);
+        }
       }
-    }
-    // Inject custom CSS
-    let styleEl = document.getElementById("pikabuddy-custom-css") as HTMLStyleElement | null;
-    if (customCSS) {
-      if (!styleEl) {
-        styleEl = document.createElement("style");
-        styleEl.id = "pikabuddy-custom-css";
-        document.head.appendChild(styleEl);
+      let styleEl = document.getElementById("pikabuddy-custom-css") as HTMLStyleElement | null;
+      if (customCSS) {
+        if (!styleEl) {
+          styleEl = document.createElement("style");
+          styleEl.id = "pikabuddy-custom-css";
+          document.head.appendChild(styleEl);
+        }
+        styleEl.textContent = sanitizeCSS(customCSS);
+      } else if (styleEl) {
+        styleEl.textContent = "";
       }
-      styleEl.textContent = sanitizeCSS(customCSS);
-    } else if (styleEl) {
-      styleEl.textContent = "";
-    }
+    });
+    return () => cancelAnimationFrame(rafRef.current);
   }, [variables, customCSS]);
 
   // Sync JSON when switching to JSON tab
   useEffect(() => {
     if (tab === "json") {
-      setJsonText(JSON.stringify({ name, version: 1, variables, customCSS: customCSS || undefined, animation: animation !== "none" ? animation : undefined }, null, 2));
+      const hasEffects = Object.values(effectsState).some((c) => c.enabled);
+      setJsonText(JSON.stringify({
+        name, version: 1, variables,
+        customCSS: customCSS || undefined,
+        animation: animation !== "none" ? animation : undefined,
+        effects: hasEffects ? effectsState : undefined,
+      }, null, 2));
       setJsonError(null);
     }
   }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Throttled variable change — apply to DOM immediately, batch React state
+  const pendingRef = useRef<Record<string, string>>({});
+  const flushTimerRef = useRef(0);
   const handleVariableChange = useCallback((key: string, value: string) => {
-    setVariables((prev) => ({ ...prev, [key]: value }));
+    // Immediate DOM update (no React re-render)
+    if ((ALLOWED_CSS_VARIABLES as readonly string[]).includes(key)) {
+      document.documentElement.style.setProperty(key, value);
+    }
+    pendingRef.current[key] = value;
+    cancelAnimationFrame(flushTimerRef.current);
+    flushTimerRef.current = requestAnimationFrame(() => {
+      const batch = { ...pendingRef.current };
+      pendingRef.current = {};
+      setVariables((prev) => ({ ...prev, ...batch }));
+    });
   }, []);
 
   const handleJsonApply = () => {
@@ -89,6 +118,10 @@ export default function ThemeEditor({ onClose, editingTheme }: Props) {
       }
       if (typeof parsed.customCSS === "string") setCustomCSS(parsed.customCSS);
       if (typeof parsed.animation === "string") setAnimation(parsed.animation);
+      if (parsed.effects && typeof parsed.effects === "object") {
+        setEffectsState(parsed.effects);
+        effectManager.applyState(parsed.effects);
+      }
       setJsonError(null);
     } catch {
       setJsonError("JSON 형식이 올바르지 않습니다.");
@@ -96,12 +129,17 @@ export default function ThemeEditor({ onClose, editingTheme }: Props) {
   };
 
   const handleSave = () => {
+    // Save effects state
+    effectManager.saveState(effectsState);
+    effectManager.applyState(effectsState);
+
     const theme = saveCustomTheme({
       id: editingTheme?.id,
       name: name.trim() || "My Theme",
       variables,
       customCSS: customCSS || undefined,
       animation: animation !== "none" ? animation : undefined,
+      effects: Object.keys(effectsState).length > 0 ? effectsState : undefined,
     });
     setTheme(theme.id);
     onClose();
@@ -112,12 +150,22 @@ export default function ThemeEditor({ onClose, editingTheme }: Props) {
     const el = document.documentElement;
     ALLOWED_CSS_VARIABLES.forEach((v) => el.style.removeProperty(v));
     document.getElementById("pikabuddy-custom-css")?.remove();
+    // Restore previous effects state
+    effectManager.disableAll();
+    const prevEffects = effectManager.loadState();
+    effectManager.applyState(prevEffects);
     setTheme(prevThemeRef.current);
     onClose();
   };
 
   const handleExport = () => {
-    const data = { name, version: 1, variables, customCSS: customCSS || undefined, animation: animation !== "none" ? animation : undefined };
+    const hasEffects = Object.values(effectsState).some((c) => c.enabled);
+    const data = {
+      name, version: 1, variables,
+      customCSS: customCSS || undefined,
+      animation: animation !== "none" ? animation : undefined,
+      effects: hasEffects ? effectsState : undefined,
+    };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -125,6 +173,26 @@ export default function ThemeEditor({ onClose, editingTheme }: Props) {
     a.download = `${name.replace(/\s+/g, "-").toLowerCase()}.pikabuddy-theme.json`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const loadBuiltinTheme = (themeId: string, themeName: string) => {
+    const el = document.documentElement;
+    // Clear inline styles so computed values come from the theme stylesheet
+    ALLOWED_CSS_VARIABLES.forEach((v) => el.style.removeProperty(v));
+    if (themeId === "default") {
+      el.removeAttribute("data-theme");
+    } else {
+      el.setAttribute("data-theme", themeId);
+    }
+    // Force reflow so getComputedStyle reads the new theme
+    void el.offsetHeight;
+    const vars = getCurrentVariableValues();
+    // Remove data-theme — the editor's useEffect will re-apply as inline styles
+    el.removeAttribute("data-theme");
+    setVariables(vars);
+    if (name === "My Theme" || name.endsWith("(커스텀)")) {
+      setName(`${themeName} (커스텀)`);
+    }
   };
 
   const toggleGroup = (id: string) => {
@@ -143,6 +211,7 @@ export default function ThemeEditor({ onClose, editingTheme }: Props) {
 
   const tabs: { key: Tab; label: string; desc: string }[] = [
     { key: "gui", label: "GUI 에디터", desc: "시각적 도구" },
+    { key: "effects", label: "이펙트", desc: "55개 효과" },
     { key: "json", label: "JSON 편집", desc: "변수 직접 편집" },
     { key: "css", label: "CSS 주입", desc: "고급 커스텀" },
   ];
@@ -166,7 +235,7 @@ export default function ThemeEditor({ onClose, editingTheme }: Props) {
         }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 16, fontWeight: 700 }}>
-              {editingTheme ? "테마 편집" : "새 커스텀 테마"}
+              {editingTheme?.id ? "테마 편집" : "새 커스텀 테마"}
             </div>
             <div style={{ fontSize: 12, color: "var(--on-surface-variant)", marginTop: 2 }}>
               실시간으로 변경사항이 적용됩니다
@@ -220,6 +289,40 @@ export default function ThemeEditor({ onClose, editingTheme }: Props) {
           {/* ═══ GUI Tab ═══ */}
           {tab === "gui" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              {/* Load from built-in theme */}
+              <div style={{
+                border: "1px solid var(--outline-variant)", borderRadius: 10,
+                padding: "10px 14px", marginBottom: 4,
+              }}>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: "var(--on-surface)" }}>
+                  기본 테마에서 시작
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {THEMES.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => loadBuiltinTheme(t.id, t.nameKo)}
+                      style={{
+                        padding: "5px 12px", borderRadius: 16, cursor: "pointer",
+                        border: "1px solid var(--outline-variant)",
+                        background: "var(--surface-container-low)",
+                        color: "var(--on-surface)", fontSize: 12, fontWeight: 500,
+                        display: "flex", alignItems: "center", gap: 6,
+                        transition: "all 0.15s",
+                      }}
+                      title={t.nameEn}
+                    >
+                      <span style={{
+                        width: 10, height: 10, borderRadius: "50%",
+                        background: t.preview[0], border: "1px solid var(--outline-variant)",
+                        flexShrink: 0,
+                      }} />
+                      {t.nameKo}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {VARIABLE_GROUPS.map((group) => {
                 const isOpen = openGroups.has(group.id);
                 return (
@@ -344,6 +447,11 @@ export default function ThemeEditor({ onClose, editingTheme }: Props) {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* ═══ Effects Tab ═══ */}
+          {tab === "effects" && (
+            <EffectsPanel effectsState={effectsState} onChange={setEffectsState} />
           )}
 
           {/* ═══ JSON Tab ═══ */}

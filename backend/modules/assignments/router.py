@@ -80,11 +80,17 @@ router = APIRouter(prefix="/courses/{course_id}/assignments", tags=["과제"])
 class AssignmentCreateRequest(BaseModel):
     title: str
     topic: str
-    type: str = "coding"  # coding / writing / both
+    type: str = "coding"  # coding / writing / both / quiz
     difficulty: str = "medium"  # easy / medium / hard
     problem_count: int = 5
-    baekjoon_count: int = 0  # 백준 형식 알고리즘 문제 수
-    programmers_count: int = 0  # 프로그래머스 형식 알고리즘 문제 수
+    baekjoon_count: int = 0  # 표준 입출력형 알고리즘 문제 수
+    programmers_count: int = 0  # 함수 구현형 알고리즘 문제 수
+    quiz_count: int = 0  # 퀴즈 문제 수 (총합, 레거시 호환)
+    block_count: int = 0  # 블록 코딩 문제 수
+    quiz_types: list[str] = []  # ["multiple_choice", "short_answer", "essay"]
+    mc_count: int = 0  # 객관식 문제 수
+    sa_count: int = 0  # 주관식 문제 수
+    essay_count: int = 0  # 서술형 문제 수
     ai_policy: str = "normal"  # free / normal / strict / exam
     language: str = "python"
     writing_prompt: str | None = None  # 글쓰기 지시문
@@ -156,7 +162,7 @@ def _generate_writing_prompt(topic: str, difficulty: str) -> str:
 
 
 def _generate_bulk_test_cases_baekjoon(problem: dict) -> list[dict]:
-    """Flash Lite로 백준 형식 문제의 랜덤 테스트케이스를 추가 생성한다."""
+    """Flash Lite로 표준 입출력형 문제의 랜덤 테스트케이스를 추가 생성한다."""
     model = get_gemini_model(model_name="gemini-2.5-flash-lite", json_mode=True)
     prompt = f"""다음 알고리즘 문제에 대한 랜덤 테스트케이스 8개를 생성하세요.
 기존 엣지 케이스와 겹치지 않는 다양한 일반적인 입력을 만드세요.
@@ -182,7 +188,7 @@ def _generate_bulk_test_cases_baekjoon(problem: dict) -> list[dict]:
 
 
 def _generate_bulk_test_cases_programmers(problem: dict) -> list[dict]:
-    """Flash Lite로 프로그래머스 형식 문제의 랜덤 테스트케이스를 추가 생성한다."""
+    """Flash Lite로 함수 구현형 문제의 랜덤 테스트케이스를 추가 생성한다."""
     model = get_gemini_model(model_name="gemini-2.5-flash-lite", json_mode=True)
     params_desc = ", ".join(f"{p['name']}: {p.get('type','')}" for p in problem.get("parameters", []))
     prompt = f"""다음 함수 기반 알고리즘 문제에 대한 랜덤 테스트케이스 8개를 생성하세요.
@@ -208,9 +214,9 @@ def _generate_bulk_test_cases_programmers(problem: dict) -> list[dict]:
 
 
 def _generate_algorithm_problems(topic: str, difficulty: str, count: int, language: str, _model_name: str = "gemini-2.5-flash") -> dict:
-    """Gemini로 백준 형식 알고리즘 문제를 생성한다. (엣지 케이스만 flash, 랜덤은 lite)"""
+    """Gemini로 표준 입출력형 알고리즘 문제를 생성한다. (엣지 케이스만 flash, 랜덤은 lite)"""
     model = get_gemini_model(_model_name, json_mode=True)
-    prompt = f"""백준 스타일 표준입출력 알고리즘 문제 {count}개를 JSON으로 생성하세요.
+    prompt = f"""표준 입출력형(백준 스타일) 알고리즘 문제 {count}개를 JSON으로 생성하세요.
 점진적 난이도 (1번=쉬움 → 마지막=어려움).
 
 주제: {topic} | 난이도: {difficulty} | 언어: {language}
@@ -236,22 +242,22 @@ JSON 형식:
                 bulk_cases = _generate_bulk_test_cases_baekjoon(p)
                 existing = p.get("test_cases", [])
                 p["test_cases"] = existing + bulk_cases
-                print(f"    + 백준 랜덤TC: {p.get('title','?')} ({len(bulk_cases)}개)")
+                print(f"    + 표준 입출력 랜덤TC: {p.get('title','?')} ({len(bulk_cases)}개)")
             except Exception as e:
-                print(f"    ✗ 백준 랜덤TC 실패: {p.get('title','?')} — {e}")
+                print(f"    ✗ 표준 입출력 랜덤TC 실패: {p.get('title','?')} — {e}")
 
         with ThreadPoolExecutor(max_workers=len(problems)) as executor:
             list(executor.map(_add_bulk_baekjoon, problems))
-        print(f"  ✓ 백준 랜덤TC 전체 완료 ({time.time()-t0:.1f}초, {len(problems)}개 문제)")
+        print(f"  ✓ 표준 입출력 랜덤TC 전체 완료 ({time.time()-t0:.1f}초, {len(problems)}개 문제)")
 
     return result
 
 
 def _generate_programmers_problems(topic: str, difficulty: str, count: int, language: str, _model_name: str = "gemini-2.5-flash") -> dict:
-    """Gemini로 프로그래머스 형식 문제를 생성한다. (엣지 케이스만 flash, 랜덤은 lite)"""
+    """Gemini로 함수 구현형 문제를 생성한다. (엣지 케이스만 flash, 랜덤은 lite)"""
     model = get_gemini_model(_model_name, json_mode=True)
 
-    prompt = f"""당신은 프로그래머스(Programmers) 스타일의 알고리즘 문제 출제자입니다.
+    prompt = f"""당신은 함수 구현형(프로그래머스 스타일) 알고리즘 문제 출제자입니다.
 다음 조건에 맞는 함수 기반 알고리즘 문제 {count}개를 JSON으로 생성하세요.
 문제는 점진적으로 난이도가 올라가야 합니다.
 
@@ -259,7 +265,7 @@ def _generate_programmers_problems(topic: str, difficulty: str, count: int, lang
 기본 난이도: {difficulty}
 프로그래밍 언어: {language}
 
-★ 프로그래머스 형식 핵심 규칙:
+★ 함수 구현형 핵심 규칙:
 1. starter_code에는 전체 코드 구조(import, 입출력 처리, 헬퍼 함수 등)가 다 포함되어야 합니다.
 2. 단, 핵심 solution 함수의 내부(body)만 비워두세요 (pass 또는 return 0 등).
 3. 학생은 solution 함수 내부만 채우면 됩니다.
@@ -347,6 +353,158 @@ starter_code는 반드시 {language}로, 전체 코드 틀을 제공하되 solut
             list(executor.map(_add_bulk_programmers, problems))
         print(f"  ✓ PG 랜덤TC 전체 완료 ({time.time()-t0:.1f}초, {len(problems)}개 문제)")
 
+    return result
+
+
+def _generate_quiz_problems(
+    topic: str, difficulty: str, count: int, quiz_types: list[str],
+    mc_count: int = 0, sa_count: int = 0, essay_count: int = 0,
+    _model_name: str = "gemini-2.5-flash",
+) -> dict:
+    """Gemini로 퀴즈 문제를 생성한다."""
+    # 개별 개수가 지정되면 그걸 사용, 아니면 quiz_types + count로 균등 분배
+    if mc_count > 0 or sa_count > 0 or essay_count > 0:
+        distribution = []
+        quiz_types = []
+        if mc_count > 0:
+            distribution.append(f"multiple_choice: {mc_count}개")
+            quiz_types.append("multiple_choice")
+        if sa_count > 0:
+            distribution.append(f"short_answer: {sa_count}개")
+            quiz_types.append("short_answer")
+        if essay_count > 0:
+            distribution.append(f"essay: {essay_count}개")
+            quiz_types.append("essay")
+        count = mc_count + sa_count + essay_count
+    else:
+        if not quiz_types:
+            quiz_types = ["multiple_choice", "short_answer", "essay"]
+        per_type = max(1, count // len(quiz_types))
+        distribution = []
+        for i, t in enumerate(quiz_types):
+            n = per_type if i < len(quiz_types) - 1 else count - per_type * (len(quiz_types) - 1)
+            distribution.append(f"{t}: {n}개")
+
+    type_desc = {
+        "multiple_choice": "객관식 (4지선다, correct_answer는 정답 인덱스 0~3)",
+        "short_answer": "주관식 단답형 (correct_answer + acceptable_answers 배열)",
+        "essay": "서술형 (rubric_criteria 배열로 채점 기준 제공)",
+    }
+    types_prompt = "\n".join(f"- {type_desc[t]}" for t in quiz_types if t in type_desc)
+
+    model = get_gemini_model(_model_name, json_mode=True)
+    prompt = f"""당신은 대학교 교수입니다. 다음 조건으로 퀴즈 문제 {count}개를 JSON으로 생성하세요.
+점진적 난이도 (1번=쉬움 → 마지막=어려움).
+
+주제: {topic} | 난이도: {difficulty}
+문제 유형 분배: {', '.join(distribution)}
+
+포함할 유형:
+{types_prompt}
+
+JSON 형식:
+{{
+  "problems": [
+    {{
+      "id": 1,
+      "type": "multiple_choice",
+      "question": "문제 내용",
+      "options": ["선택지1", "선택지2", "선택지3", "선택지4"],
+      "correct_answer": 0,
+      "explanation": "정답 해설",
+      "points": 10,
+      "difficulty_level": 3
+    }},
+    {{
+      "id": 2,
+      "type": "short_answer",
+      "question": "문제 내용",
+      "correct_answer": "정답",
+      "acceptable_answers": ["정답", "다른 표현"],
+      "explanation": "정답 해설",
+      "points": 10,
+      "difficulty_level": 5
+    }},
+    {{
+      "id": 3,
+      "type": "essay",
+      "question": "서술형 문제 내용",
+      "correct_answer": "모범 답안 요약",
+      "rubric_criteria": [
+        {{"name": "핵심 개념", "weight": 40, "description": "핵심 개념을 정확히 설명했는가"}},
+        {{"name": "논리성", "weight": 30, "description": "논리적으로 서술했는가"}},
+        {{"name": "완성도", "weight": 30, "description": "충분한 분량과 구체적 예시"}}
+      ],
+      "explanation": "정답 해설",
+      "points": 20,
+      "difficulty_level": 7
+    }}
+  ],
+  "rubric": {{
+    "criteria": [
+      {{"name": "정확성", "weight": 60, "description": "정답을 맞혔는가"}},
+      {{"name": "이해도", "weight": 40, "description": "개념을 이해했는가"}}
+    ]
+  }}
+}}"""
+
+    response = model.generate_content(prompt, request_options=RequestOptions(timeout=60))
+    result = _extract_json(response.text or "")
+    problems = result.get("problems", [])
+
+    for i, p in enumerate(problems):
+        p["id"] = i + 1
+        p["format"] = "quiz"
+
+    return {"problems": problems, "rubric": result.get("rubric", {
+        "criteria": [
+            {"name": "정확성", "weight": 60, "description": "정답을 맞혔는가"},
+            {"name": "이해도", "weight": 40, "description": "개념을 이해했는가"},
+        ]
+    })}
+
+
+def _generate_block_problems(topic: str, difficulty: str, count: int, language: str, _model_name: str = "gemini-2.5-flash") -> dict:
+    """Gemini로 블록 코딩용 문제를 생성한다. 초급자 친화적."""
+    model = get_gemini_model(_model_name, json_mode=True)
+    prompt = f"""당신은 프로그래밍 교수입니다. 블록 코딩(Blockly) 환경에 적합한 초급 문제 {count}개를 JSON으로 생성하세요.
+점진적 난이도 (1번=쉬움 → 마지막=어려움).
+
+주제: {topic} | 난이도: {difficulty} | 언어: {language}
+
+규칙:
+- 문제는 시각적 블록으로 풀 수 있어야 합니다 (반복문, 조건문, 변수, 간단한 함수)
+- 복잡한 자료구조(트리, 그래프 등)는 사용하지 마세요
+- starter_code는 비워두세요 (블록으로 시작)
+- expected_output은 명확하게 지정하세요
+
+JSON 형식:
+{{
+  "problems": [
+    {{
+      "id": 1,
+      "title": "문제 제목",
+      "description": "문제 설명 (마크다운)",
+      "starter_code": "",
+      "expected_output": "예상 출력",
+      "hints": ["힌트1"],
+      "difficulty_level": 2
+    }}
+  ],
+  "rubric": {{
+    "criteria": [
+      {{"name": "정확성", "weight": 50, "description": "올바른 출력"}},
+      {{"name": "블록 구조", "weight": 30, "description": "논리적 블록 배치"}},
+      {{"name": "효율성", "weight": 20, "description": "불필요한 블록 없음"}}
+    ]
+  }}
+}}"""
+
+    response = model.generate_content(prompt, request_options=RequestOptions(timeout=60))
+    result = _extract_json(response.text or "")
+    for p in result.get("problems", []):
+        p["format"] = "block"
+        p["starter_code"] = ""
     return result
 
 
@@ -517,14 +675,22 @@ async def _background_generate_problems(
     regular_count: int,
     bj_count: int,
     pg_count: int,
+    quiz_count: int = 0,
+    quiz_types: list[str] | None = None,
+    block_count: int = 0,
+    mc_count: int = 0,
+    sa_count: int = 0,
+    essay_count: int = 0,
 ):
     """백그라운드에서 문제를 병렬 생성하고 DB를 업데이트한다."""
     short_id = assignment_id[:8]
     t_start = time.time()
     counts = []
     if regular_count > 0: counts.append(f"일반 {regular_count}")
-    if bj_count > 0: counts.append(f"백준 {bj_count}")
-    if pg_count > 0: counts.append(f"PG {pg_count}")
+    if bj_count > 0: counts.append(f"표준 입출력 {bj_count}")
+    if pg_count > 0: counts.append(f"함수 구현 {pg_count}")
+    if quiz_count > 0: counts.append(f"퀴즈 {quiz_count}")
+    if block_count > 0: counts.append(f"블록 {block_count}")
     print(f"\n{'='*50}")
     print(f"📝 문제 생성 시작 [{short_id}]")
     print(f"   주제: {topic} | 난이도: {difficulty} | {', '.join(counts)}")
@@ -546,12 +712,12 @@ async def _background_generate_problems(
             return data
 
         # 전용 executor — 기본 executor 워커 고갈로 인한 데드락 방지
-        executor = ThreadPoolExecutor(max_workers=4)
+        executor = ThreadPoolExecutor(max_workers=6)
 
         async def gen_baekjoon():
             if bj_count <= 0:
                 return None
-            print(f"  ▶ 백준 문제 {bj_count}개 생성 중...")
+            print(f"  ▶ 표준 입출력형 문제 {bj_count}개 생성 중...")
             return await asyncio.wait_for(
                 loop.run_in_executor(
                     executor, _generate_with_retry, _generate_algorithm_problems,
@@ -563,7 +729,7 @@ async def _background_generate_problems(
         async def gen_programmers():
             if pg_count <= 0:
                 return None
-            print(f"  ▶ 프로그래머스 문제 {pg_count}개 생성 중...")
+            print(f"  ▶ 함수 구현형 문제 {pg_count}개 생성 중...")
             return await asyncio.wait_for(
                 loop.run_in_executor(
                     executor, _generate_with_retry, _generate_programmers_problems,
@@ -572,16 +738,47 @@ async def _background_generate_problems(
                 timeout=120,
             )
 
+        async def gen_quiz():
+            total_quiz = mc_count + sa_count + essay_count if (mc_count + sa_count + essay_count) > 0 else quiz_count
+            if total_quiz <= 0:
+                return None
+            print(f"  ▶ 퀴즈 문제 {total_quiz}개 생성 중 (객관식{mc_count} 주관식{sa_count} 서술형{essay_count})...")
+            def _gen_quiz_wrapper(_model_name="gemini-2.5-flash"):
+                return _generate_quiz_problems(
+                    topic, difficulty, total_quiz, quiz_types or [],
+                    mc_count=mc_count, sa_count=sa_count, essay_count=essay_count,
+                    _model_name=_model_name,
+                )
+            return await asyncio.wait_for(
+                loop.run_in_executor(
+                    executor, _generate_with_retry, _gen_quiz_wrapper,
+                ),
+                timeout=120,
+            )
+
+        async def gen_block():
+            if block_count <= 0:
+                return None
+            print(f"  ▶ 블록 코딩 문제 {block_count}개 생성 중...")
+            return await asyncio.wait_for(
+                loop.run_in_executor(
+                    executor, _generate_with_retry, _generate_block_problems,
+                    topic, difficulty, block_count, language,
+                ),
+                timeout=120,
+            )
+
         try:
             results = await asyncio.gather(
                 gen_regular(), gen_baekjoon(), gen_programmers(),
+                gen_quiz(), gen_block(),
                 return_exceptions=True,
             )
         finally:
             executor.shutdown(wait=False)
 
         for i, result in enumerate(results):
-            label = ["일반", "백준", "프로그래머스"][i]
+            label = ["일반", "표준 입출력", "함수 구현", "퀴즈", "블록"][i]
             if isinstance(result, Exception):
                 print(f"  ✗ {label} 실패: {result}")
                 continue
@@ -641,8 +838,8 @@ async def create_assignment(
         raise HTTPException(status_code=403, detail="과제 생성 권한이 없습니다.")
     supabase = get_supabase()
 
-    # 코딩 과제 여부에 따라 generation_status 설정
-    needs_generation = body.type in ("coding", "both", "algorithm")
+    # 코딩/퀴즈 과제 여부에 따라 generation_status 설정
+    needs_generation = body.type in ("coding", "both", "algorithm", "quiz")
 
     insert_data = {
         "course_id": course_id,
@@ -685,12 +882,16 @@ async def create_assignment(
         result = supabase.table("assignments").insert(insert_data).execute()
     assignment = result.data[0]
 
-    # 코딩 과제: 백그라운드에서 문제 생성 (즉시 반환)
+    # 코딩/퀴즈 과제: 백그라운드에서 문제 생성 (즉시 반환)
     if needs_generation:
-        # 하위 호환: type이 "algorithm"이면 전부 백준 형식
+        # 하위 호환: type이 "algorithm"이면 전부 표준 입출력형
         if body.type == "algorithm":
             regular_count = 0
             bj_count = body.problem_count
+            pg_count = 0
+        elif body.type == "quiz":
+            regular_count = 0
+            bj_count = 0
             pg_count = 0
         else:
             regular_count = body.problem_count
@@ -706,6 +907,12 @@ async def create_assignment(
             regular_count=regular_count,
             bj_count=bj_count,
             pg_count=pg_count,
+            quiz_count=body.quiz_count if body.type == "quiz" else 0,
+            quiz_types=body.quiz_types if body.type == "quiz" else None,
+            block_count=body.block_count,
+            mc_count=body.mc_count if body.type == "quiz" else 0,
+            sa_count=body.sa_count if body.type == "quiz" else 0,
+            essay_count=body.essay_count if body.type == "quiz" else 0,
         ))
         # 백그라운드 태스크 예외가 서버를 죽이지 않도록 방어
         task.add_done_callback(lambda t: t.exception() if not t.cancelled() and t.exception() else None)

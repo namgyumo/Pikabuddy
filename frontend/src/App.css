@@ -55,6 +55,14 @@
   --font-body: "Plus Jakarta Sans", sans-serif;
   --font-code: "JetBrains Mono", monospace;
 
+  /* Borders (granular control) */
+  --border-card: 1px;
+  --border-card-color: var(--outline-variant);
+  --border-inner: 1px;
+  --border-inner-color: var(--outline-variant);
+  --border-text: 0px;
+  --border-text-color: transparent;
+
   /* Transition */
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -371,7 +379,7 @@ h1, h2, h3, h4 {
 .btn-secondary {
   background: var(--surface-container-high);
   color: var(--on-surface);
-  border: 1px solid var(--outline-variant);
+  border: var(--border-inner) solid var(--border-inner-color);
 }
 .btn-secondary:hover {
   background: var(--surface-container);
@@ -409,7 +417,7 @@ h1, h2, h3, h4 {
   width: 100%;
   padding: 13px 18px;
   background: var(--surface-container-highest);
-  border: 1px solid var(--outline-variant);
+  border: var(--border-inner) solid var(--border-inner-color);
   border-radius: var(--radius-sm);
   font-size: 14px;
   font-family: var(--font-body);
@@ -445,7 +453,7 @@ textarea.input {
   border-radius: var(--radius-xl);
   padding: 28px;
   margin-bottom: 20px;
-  border: 1px solid var(--outline-variant);
+  border: var(--border-card) solid var(--border-card-color);
   transition: all 0.25s var(--ease);
 }
 
@@ -542,7 +550,7 @@ textarea.input {
   font-weight: 600;
   background: var(--surface-container);
   color: var(--on-surface-variant);
-  border: 1px solid var(--outline-variant);
+  border: var(--border-inner) solid var(--border-inner-color);
 }
 .badge-invite {
   background: var(--primary-light);
@@ -1029,6 +1037,7 @@ textarea.input {
   flex: 1;
   overflow: hidden;
   background: var(--editor-bg);
+  position: relative;
 }
 
 .editor-sidebar {
@@ -3475,7 +3484,7 @@ select.form-input {
 .type-chip {
   padding: 8px 16px;
   border-radius: var(--radius-full);
-  border: 1.5px solid var(--outline-variant);
+  border: var(--border-inner) solid var(--border-inner-color);
   background: var(--surface-container-lowest);
   color: var(--on-surface-variant);
   font-size: 13px;
@@ -4453,32 +4462,49 @@ select.form-input {
   color: #fff;
   box-shadow: var(--shadow-primary);
 }
-.custom-theme-card-wrap {
-  position: relative;
-}
-.custom-theme-delete {
+.builtin-theme-customize,
+.custom-theme-delete,
+.custom-theme-edit {
   position: absolute;
-  top: -6px;
-  right: -6px;
   width: 22px;
   height: 22px;
   border-radius: 50%;
   border: 2px solid var(--surface-container-lowest);
-  background: var(--error);
-  color: #fff;
-  font-size: 14px;
-  line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  pointer-events: all;
   opacity: 0;
   transform: scale(0.8);
   transition: all 0.2s var(--ease);
   z-index: 2;
 }
-.custom-theme-card-wrap:hover .custom-theme-delete,
-.custom-theme-card-wrap:hover .custom-theme-edit {
+.builtin-theme-customize {
+  top: -6px;
+  right: -6px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 11px;
+}
+.custom-theme-delete {
+  top: -6px;
+  right: -6px;
+  background: var(--error);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+}
+.custom-theme-edit {
+  top: -6px;
+  right: 18px;
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+  font-size: 11px;
+}
+.theme-card:hover .builtin-theme-customize,
+.theme-card:hover .custom-theme-delete,
+.theme-card:hover .custom-theme-edit {
   opacity: 1;
   transform: scale(1);
 }

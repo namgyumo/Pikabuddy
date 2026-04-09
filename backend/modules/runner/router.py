@@ -15,7 +15,7 @@ router = APIRouter(prefix="/code", tags=["코드 실행"])
 TIMEOUT = 5  # seconds
 MAX_OUTPUT = 5000  # characters
 
-# 언어별 시간 배수 — 백준 기준 (C/C++ 1x, Java/JS 2x, Python 3x)
+# 언어별 시간 배수 — 표준 입출력 기준 (C/C++ 1x, Java/JS 2x, Python 3x)
 _TIME_MULTIPLIER = {
     "c": 1.0,
     "cpp": 1.0,
@@ -25,7 +25,7 @@ _TIME_MULTIPLIER = {
     "python": 3.0,
 }
 
-# Windows: 낮은 우선순위 + 싱글코어로 실행 (백준급 성능 시뮬레이션)
+# Windows: 낮은 우선순위 + 싱글코어로 실행 (온라인 저지급 성능 시뮬레이션)
 import platform
 _IS_WINDOWS = platform.system() == "Windows"
 _LOW_PRIORITY_FLAGS = 0x00004000 if _IS_WINDOWS else 0  # BELOW_NORMAL_PRIORITY_CLASS
@@ -85,7 +85,7 @@ async def judge_code(body: JudgeRequest, user: dict = Depends(get_current_user))
     """알고리즘 문제 채점 — 각 테스트케이스별 실행 및 결과 판정"""
     language = body.language.lower()
     code = body.code
-    # 언어별 시간 보정 — 백준처럼 Python은 3배, Java/JS는 2배
+    # 언어별 시간 보정 — 온라인 저지처럼 Python은 3배, Java/JS는 2배
     multiplier = _TIME_MULTIPLIER.get(language, 1.0)
     time_limit_sec = (body.time_limit_ms / 1000) * multiplier
 
