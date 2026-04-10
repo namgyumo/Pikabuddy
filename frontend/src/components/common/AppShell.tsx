@@ -28,6 +28,13 @@ export default function AppShell({ children, courseTitle }: Props) {
   const fetchUnreadCount = useMessengerStore((s) => s.fetchUnreadCount);
   const unreadPollRef = useRef<ReturnType<typeof setInterval>>();
 
+  const homeLink = isProfessor ? "/professor" : isPersonal ? "/personal" : "/student";
+  const isActive = (path: string) => location.pathname.includes(path);
+
+  // Extract courseId from URL for contextual navigation
+  const courseIdMatch = location.pathname.match(/\/courses\/([^/]+)/);
+  const courseId = courseIdMatch ? courseIdMatch[1] : null;
+
   // 30초 폴링으로 안 읽은 메시지 수 갱신
   useEffect(() => {
     if (unreadPollRef.current) clearInterval(unreadPollRef.current);
@@ -37,13 +44,6 @@ export default function AppShell({ children, courseTitle }: Props) {
     }
     return () => { if (unreadPollRef.current) clearInterval(unreadPollRef.current); };
   }, [courseId, isPersonal, fetchUnreadCount]);
-
-  const homeLink = isProfessor ? "/professor" : isPersonal ? "/personal" : "/student";
-  const isActive = (path: string) => location.pathname.includes(path);
-
-  // Extract courseId from URL for contextual navigation
-  const courseIdMatch = location.pathname.match(/\/courses\/([^/]+)/);
-  const courseId = courseIdMatch ? courseIdMatch[1] : null;
 
   return (
     <div className="app-shell">
