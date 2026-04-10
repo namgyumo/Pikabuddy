@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
 import { useMessengerStore } from "../../store/messengerStore";
 import { useNotificationStore } from "../../store/notificationStore";
+import { useCourseStore } from "../../store/courseStore";
 import TierBadge from "./TierBadge";
 import ThemeBackground from "./ThemeBackground";
 import NotificationBell from "./NotificationBell";
@@ -35,6 +36,11 @@ export default function AppShell({ children, courseTitle }: Props) {
   const fetchTotalUnread = useNotificationStore((s) => s.fetchTotalUnread);
   const fetchMessengerCourse = useNotificationStore((s) => s.fetchMessengerCourse);
 
+  const courses = useCourseStore((s) => s.courses);
+  const fetchCourses = useCourseStore((s) => s.fetchCourses);
+  // 메신저 바로가기: messengerCourseId 우선, 없으면 첫 번째 코스
+  const messengerLink = messengerCourseId || (courses.length > 0 ? courses[0].id : null);
+
   const homeLink = isProfessor ? "/professor" : isPersonal ? "/personal" : "/student";
   const isActive = (path: string) => location.pathname.includes(path);
 
@@ -42,13 +48,14 @@ export default function AppShell({ children, courseTitle }: Props) {
   const courseIdMatch = location.pathname.match(/\/courses\/([^/]+)/);
   const courseId = courseIdMatch ? courseIdMatch[1] : null;
 
-  // 메신저 바로가기용 코스 + 전체 안 읽은 수
+  // 메신저 바로가기용 코스 + 전체 안 읽은 수 + 코스 목록
   useEffect(() => {
     if (!isPersonal) {
       fetchMessengerCourse();
       fetchTotalUnread();
+      if (courses.length === 0) fetchCourses();
     }
-  }, [isPersonal, fetchMessengerCourse, fetchTotalUnread]);
+  }, [isPersonal, fetchMessengerCourse, fetchTotalUnread, fetchCourses, courses.length]);
 
   // 30초 폴링으로 안 읽은 메시지 수 갱신
   useEffect(() => {
@@ -91,9 +98,9 @@ export default function AppShell({ children, courseTitle }: Props) {
                 Classroom
               </Link>
               {/* 메신저 바로가기 (강의 밖에서도 접근) */}
-              {!courseId && messengerCourseId && (
+              {!courseId && messengerLink && (
                 <Link
-                  to={`/courses/${messengerCourseId}/messenger`}
+                  to={`/courses/${messengerLink}/messenger`}
                   className={`sidebar-link ${isActive("messenger") ? "active" : ""}`}
                 >
                   <span className="sidebar-link-icon">&#x1F4AC;</span>
@@ -175,9 +182,9 @@ export default function AppShell({ children, courseTitle }: Props) {
                 Classroom
               </Link>
               {/* 메신저 바로가기 (강의 밖에서도 접근) */}
-              {!courseId && messengerCourseId && (
+              {!courseId && messengerLink && (
                 <Link
-                  to={`/courses/${messengerCourseId}/messenger`}
+                  to={`/courses/${messengerLink}/messenger`}
                   className={`sidebar-link ${isActive("messenger") ? "active" : ""}`}
                 >
                   <span className="sidebar-link-icon">&#x1F4AC;</span>
