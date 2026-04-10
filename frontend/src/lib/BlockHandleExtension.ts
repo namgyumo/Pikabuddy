@@ -114,10 +114,14 @@ export const BlockHandleExtension = Extension.create({
       handle.style.left = `${editorRect.left - 52}px`;
       handle.style.top = `${blockRect.top + 2}px`;
       handle.style.zIndex = "50";
+      handle.style.opacity = "1";
     };
 
     const hideHandle = () => {
-      if (handle) handle.style.display = "none";
+      if (handle) {
+        handle.style.display = "none";
+        handle.style.opacity = "0";
+      }
       currentBlockPos = null;
       currentBlockIndex = null;
     };

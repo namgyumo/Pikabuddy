@@ -5044,7 +5044,14 @@ select.form-input {
   margin-top: 4px;
   text-align: right;
 }
-.chat-read-status.read { color: #4ade80; }
+.chat-read-status {
+  font-size: 12px;
+  color: #9ca3af;
+  transition: color 0.2s;
+}
+.chat-read-status.read {
+  color: #22c55e;
+}
 .chat-input-area {
   display: flex;
   align-items: flex-end;

@@ -58,6 +58,7 @@ export const useNotificationStore = create<NotificationState>((set) => ({
         total: data.total,
         items: data.items,
         loading: false,
+        totalUnreadMessages: data.unread_messages,
       });
     } catch {
       set({ loading: false });

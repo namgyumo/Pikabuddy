@@ -77,7 +77,7 @@ export default function ChatView({ messages, partner, currentUserId, sending, on
                   })}
                   {isMine && (
                     <span className={`chat-read-status${msg.is_read ? " read" : ""}`}>
-                      {msg.is_read ? " ✓✓" : " ✓"}
+                      {" "}✓
                     </span>
                   )}
                 </div>

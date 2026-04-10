@@ -35,6 +35,7 @@ export default function AppShell({ children, courseTitle }: Props) {
   const messengerCourseId = useNotificationStore((s) => s.messengerCourseId);
   const fetchTotalUnread = useNotificationStore((s) => s.fetchTotalUnread);
   const fetchMessengerCourse = useNotificationStore((s) => s.fetchMessengerCourse);
+  const fetchNotifications = useNotificationStore((s) => s.fetchNotifications);
 
   const courses = useCourseStore((s) => s.courses);
   const fetchCourses = useCourseStore((s) => s.fetchCourses);
@@ -48,14 +49,16 @@ export default function AppShell({ children, courseTitle }: Props) {
   const courseIdMatch = location.pathname.match(/\/courses\/([^/]+)/);
   const courseId = courseIdMatch ? courseIdMatch[1] : null;
 
-  // 메신저 바로가기용 코스 + 전체 안 읽은 수 + 코스 목록
+  // 메신저 바로가기용 코스 + 전체 안 읽은 수 + 코스 목록 + 알림
   useEffect(() => {
     if (!isPersonal) {
       fetchMessengerCourse();
       fetchTotalUnread();
+      fetchNotifications(); // 초기 로드 시 알림도 바로 가져옴
       if (courses.length === 0) fetchCourses();
     }
-  }, [isPersonal, fetchMessengerCourse, fetchTotalUnread, fetchCourses, courses.length]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPersonal]);
 
   // 30초 폴링으로 안 읽은 메시지 수 갱신
   useEffect(() => {
