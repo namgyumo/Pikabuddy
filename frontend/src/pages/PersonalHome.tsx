@@ -6,6 +6,7 @@ import {
 } from "recharts";
 import AppShell from "../components/common/AppShell";
 import { toast } from "../lib/toast";
+import { customConfirm } from "../lib/confirm";
 import { useAuthStore } from "../store/authStore";
 import { useTutorialStore } from "../store/tutorialStore";
 import { getTutorialKey } from "../lib/tutorials";
@@ -215,7 +216,8 @@ export default function PersonalHome() {
   };
 
   const handleDeleteAssignment = async (assignmentId: string) => {
-    if (!course || !confirm("이 챌린지를 삭제하시겠습니까?")) return;
+    if (!course) return;
+    if (!(await customConfirm("이 챌린지를 삭제하시겠습니까?", { danger: true, confirmText: "삭제" }))) return;
     try {
       await api.delete(`/courses/${course.id}/assignments/${assignmentId}`);
       setAssignments((prev) => prev.filter((a) => a.id !== assignmentId));
@@ -239,7 +241,8 @@ export default function PersonalHome() {
   };
 
   const handleDeleteMaterial = async (materialId: string) => {
-    if (!course || !confirm("이 자료를 삭제하시겠습니까?")) return;
+    if (!course) return;
+    if (!(await customConfirm("이 자료를 삭제하시겠습니까?", { danger: true, confirmText: "삭제" }))) return;
     try {
       await api.delete(`/courses/${course.id}/materials/${materialId}`);
       setMaterials((prev) => prev.filter((m) => m.id !== materialId));

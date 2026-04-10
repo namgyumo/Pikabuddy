@@ -55,15 +55,15 @@ export const gradientBorderEffect: ThemeEffect = {
     const c1 = p.color1 || "#6C5CE7";
     const c2 = p.color2 || "#00cec9";
     injectEffectStyle("gradientBorder", `
-      .card, [class*="card"] {
+      .card, .assignment-card, .note-card, .course-card, .student-card, .material-card, .quiz-card {
         position: relative !important;
         border: none !important;
       }
-      .card::before, [class*="card"]::before {
+      .card::before, .assignment-card::before, .note-card::before, .course-card::before, .student-card::before, .material-card::before, .quiz-card::before {
         content: "" !important;
         position: absolute !important;
         inset: 0 !important;
-        padding: 2px !important;
+        padding: 1.5px !important;
         border-radius: inherit !important;
         background: linear-gradient(135deg, ${c1}, ${c2}) !important;
         -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
@@ -71,9 +71,7 @@ export const gradientBorderEffect: ThemeEffect = {
         -webkit-mask-composite: xor !important;
         mask-composite: exclude !important;
         pointer-events: none !important;
-      }
-      input:focus, textarea:focus, select:focus {
-        border-image: linear-gradient(135deg, ${c1}, ${c2}) 1 !important;
+        z-index: 0 !important;
       }
     `);
   },
@@ -84,7 +82,7 @@ export const gradientBorderEffect: ThemeEffect = {
 export const cardTiltEffect: ThemeEffect = {
   id: "cardTilt",
   activate(p) {
-    const maxAngle = p.intensity || 10;
+    const maxAngle = p.intensity || 5;
 
     const onMove = (e: MouseEvent) => {
       const el = e.target as HTMLElement;
@@ -187,45 +185,13 @@ export const glitchTextEffect: ThemeEffect = {
     injectEffectStyle("glitchText", `
       h1, h2, .page-title {
         position: relative !important;
-        animation: pkb-glitch 2.5s infinite !important;
-      }
-      h1::before, h2::before, .page-title::before,
-      h1::after, h2::after, .page-title::after {
-        content: attr(data-text) !important;
-        position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 100% !important;
-        height: 100% !important;
-        overflow: hidden !important;
-      }
-      h1::before, h2::before, .page-title::before {
-        color: #ff0040 !important;
-        clip-path: inset(0 0 60% 0) !important;
-        animation: pkb-glitch-top 2.5s infinite !important;
-      }
-      h1::after, h2::after, .page-title::after {
-        color: #00ffff !important;
-        clip-path: inset(60% 0 0 0) !important;
-        animation: pkb-glitch-bottom 2.5s infinite !important;
+        animation: pkb-glitch 6s infinite !important;
       }
       @keyframes pkb-glitch {
-        0%, 90%, 100% { transform: none; }
-        92% { transform: translate(-2px, 1px); }
-        94% { transform: translate(2px, -1px); }
-        96% { transform: translate(-1px, 2px); }
-      }
-      @keyframes pkb-glitch-top {
-        0%, 90%, 100% { transform: none; opacity: 0; }
-        92% { transform: translate(2px, 0); opacity: 0.5; }
-        94% { transform: translate(-2px, 0); opacity: 0.5; }
-        96% { transform: none; opacity: 0; }
-      }
-      @keyframes pkb-glitch-bottom {
-        0%, 90%, 100% { transform: none; opacity: 0; }
-        91% { transform: translate(-3px, 0); opacity: 0.5; }
-        93% { transform: translate(3px, 0); opacity: 0.5; }
-        95% { transform: none; opacity: 0; }
+        0%, 95%, 100% { transform: none; }
+        96% { transform: translate(-1px, 0.5px); }
+        97% { transform: translate(1px, -0.5px); }
+        98% { transform: none; }
       }
     `);
   },
@@ -238,15 +204,15 @@ export const rainbowTextEffect: ThemeEffect = {
   activate() {
     injectEffectStyle("rainbowText", `
       h1, h2, .page-title {
-        background: linear-gradient(90deg, #ff0000, #ff7700, #ffdd00, #00ff00, #0099ff, #6633ff, #ff00ff, #ff0000) !important;
-        background-size: 200% auto !important;
+        background: linear-gradient(90deg, #ff6b6b, #ffa348, #ffd43b, #69db7c, #4dabf7, #9775fa, #e599f7, #ff6b6b) !important;
+        background-size: 300% auto !important;
         -webkit-background-clip: text !important;
         background-clip: text !important;
         -webkit-text-fill-color: transparent !important;
-        animation: pkb-rainbow-flow 3s linear infinite !important;
+        animation: pkb-rainbow-flow 8s linear infinite !important;
       }
       @keyframes pkb-rainbow-flow {
-        to { background-position: 200% center; }
+        to { background-position: 300% center; }
       }
     `);
   },
@@ -300,12 +266,11 @@ export const wavyTextEffect: ThemeEffect = {
     injectEffectStyle("wavyText", `
       h1, h2, .page-title {
         display: inline-flex !important;
-        animation: pkb-wavy 2s ease-in-out infinite !important;
+        animation: pkb-wavy 3s ease-in-out infinite !important;
       }
       @keyframes pkb-wavy {
         0%, 100% { transform: translateY(0); }
-        25% { transform: translateY(-3px); }
-        75% { transform: translateY(3px); }
+        50% { transform: translateY(-2px); }
       }
     `);
   },
@@ -320,16 +285,14 @@ export const neonTextEffect: ThemeEffect = {
     injectEffectStyle("neonText", `
       h1, h2, .page-title {
         text-shadow:
-          0 0 7px ${color},
-          0 0 10px ${color},
-          0 0 21px ${color},
-          0 0 42px ${color}80,
-          0 0 82px ${color}40 !important;
-        animation: pkb-neon-flicker 3s ease-in-out infinite alternate !important;
+          0 0 4px ${color}80,
+          0 0 8px ${color}50,
+          0 0 16px ${color}30 !important;
+        animation: pkb-neon-flicker 4s ease-in-out infinite alternate !important;
       }
       @keyframes pkb-neon-flicker {
         0%, 18%, 22%, 25%, 53%, 57%, 100% { opacity: 1; }
-        20%, 24%, 55% { opacity: 0.85; }
+        20%, 24%, 55% { opacity: 0.92; }
       }
     `);
   },
@@ -389,16 +352,16 @@ export const rippleClickEffect: ThemeEffect = {
 export const magneticButtonEffect: ThemeEffect = {
   id: "magneticButton",
   activate(p) {
-    const strength = p.strength || 0.3;
+    const strength = p.strength || 0.12;
     const onMove = (e: MouseEvent) => {
-      document.querySelectorAll<HTMLElement>("button, .btn, [class*='btn']").forEach((btn) => {
+      document.querySelectorAll<HTMLElement>(".btn-primary, button[class*='primary']").forEach((btn) => {
         const rect = btn.getBoundingClientRect();
         const cx = rect.left + rect.width / 2;
         const cy = rect.top + rect.height / 2;
         const dx = e.clientX - cx;
         const dy = e.clientY - cy;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 100) {
+        if (dist < 60) {
           btn.style.transform = `translate(${dx * strength}px, ${dy * strength}px)`;
           btn.style.transition = "transform 0.2s ease";
         } else {
@@ -412,7 +375,7 @@ export const magneticButtonEffect: ThemeEffect = {
   },
   deactivate() {
     document.removeEventListener("mousemove", (this as any)._onMove);
-    document.querySelectorAll<HTMLElement>("button, .btn, [class*='btn']").forEach((b) => {
+    document.querySelectorAll<HTMLElement>(".btn-primary, button[class*='primary']").forEach((b) => {
       b.style.transform = "";
     });
   },
@@ -427,30 +390,34 @@ export const mouseTrailEffect: ThemeEffect = {
     const shape = p.shape || "dot";
     const color = p.color || "#6C5CE7";
     const particles: HTMLDivElement[] = [];
-    const maxParticles = 20;
+    const maxParticles = 10;
+    let lastTime = 0;
 
     const shapes: Record<string, string> = {
-      dot: `width:6px;height:6px;border-radius:50%;background:${color};`,
-      star: `width:10px;height:10px;background:${color};clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);`,
-      spark: `width:8px;height:8px;background:${color};clip-path:polygon(50% 0%,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0% 50%,40% 40%);`,
+      dot: `width:4px;height:4px;border-radius:50%;background:${color};`,
+      star: `width:8px;height:8px;background:${color};clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);`,
+      spark: `width:6px;height:6px;background:${color};clip-path:polygon(50% 0%,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0% 50%,40% 40%);`,
     };
 
     const onMove = (e: MouseEvent) => {
+      const now = Date.now();
+      if (now - lastTime < 40) return;
+      lastTime = now;
       const dot = document.createElement("div");
       dot.style.cssText = `
         position:fixed;left:${e.clientX}px;top:${e.clientY}px;
         ${shapes[shape] || shapes.dot}
         pointer-events:none;z-index:99999;
-        opacity:0.8;transition:all 0.5s ease;transform:translate(-50%,-50%);
+        opacity:0.6;transition:all 0.4s ease;transform:translate(-50%,-50%);
       `;
       document.body.appendChild(dot);
       particles.push(dot);
 
       requestAnimationFrame(() => {
         dot.style.opacity = "0";
-        dot.style.transform = "translate(-50%,-50%) scale(0.3)";
+        dot.style.transform = "translate(-50%,-50%) scale(0.2)";
       });
-      setTimeout(() => dot.remove(), 500);
+      setTimeout(() => dot.remove(), 400);
       if (particles.length > maxParticles) {
         particles.shift()?.remove();
       }
@@ -471,15 +438,15 @@ export const cursorGlowEffect: ThemeEffect = {
   id: "cursorGlow",
   activate(p) {
     const color = p.color || "#6C5CE7";
-    const size = p.size || 200;
+    const size = p.size || 150;
     const glow = document.createElement("div");
     glow.id = "pikabuddy-fx-cursorGlow";
     glow.style.cssText = `
       position:fixed;width:${size}px;height:${size}px;
       border-radius:50%;pointer-events:none;z-index:99998;
-      background:radial-gradient(circle, ${color}20, ${color}08, transparent 70%);
+      background:radial-gradient(circle, ${color}15, ${color}06, transparent 70%);
       transform:translate(-50%,-50%);
-      transition:left 0.1s ease, top 0.1s ease;
+      transition:left 0.15s ease, top 0.15s ease;
     `;
     document.body.appendChild(glow);
 

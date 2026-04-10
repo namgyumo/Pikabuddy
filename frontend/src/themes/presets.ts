@@ -78,7 +78,7 @@ export const PRESET_THEMES: PresetTheme[] = [
   box-shadow: 0 0 20px rgba(168,85,247,0.3), 0 0 40px rgba(0,229,255,0.1) !important;
 }
 h1, h2, h3, .page-title {
-  text-shadow: 0 0 20px rgba(168,85,247,0.4);
+  text-shadow: 0 0 8px rgba(168,85,247,0.3);
 }
 .btn-primary, button[class*="primary"] {
   box-shadow: 0 0 15px rgba(168,85,247,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
@@ -89,10 +89,8 @@ h1, h2, h3, .page-title {
 `,
     animation: "gradient",
     effects: {
-      starfield: { enabled: true, params: { speed: 0.75, density: 120 }, layer: 0 },
+      starfield: { enabled: true, params: { speed: 0.5, density: 80 }, layer: 0 },
       aurora: { enabled: true, params: { color1: "#A855F7", color2: "#6366F1", color3: "#00E5FF" }, layer: 1 },
-      neonText: { enabled: true, params: { color: "#A855F7" }, layer: 3 },
-      glow: { enabled: true, params: { color: "#A855F7", intensity: 0.6 }, layer: 2 },
       gradientBorder: { enabled: true, params: { color1: "#A855F7", color2: "#00E5FF" }, layer: 2 },
     },
     triggers: {
@@ -185,10 +183,9 @@ h1, h2, h3, .page-title {
 `,
     animation: "particles",
     effects: {
-      bubbles: { enabled: true, params: { color: "#0EA5E9", count: 25 }, layer: 0 },
-      glassMorphism: { enabled: true, params: {}, layer: 2 },
-      fogMist: { enabled: true, params: { color: "#0EA5E9" }, layer: 1 },
-      cursorGlow: { enabled: true, params: { color: "#06B6D4", size: 200 }, layer: 3 },
+      bubbles: { enabled: true, params: { color: "#0EA5E9", count: 15 }, layer: 0 },
+      glassMorphism: { enabled: true, params: { blur: 12, opacity: 0.12 }, layer: 2 },
+      fogMist: { enabled: true, params: { color: "#0EA5E9", density: 0.4 }, layer: 1 },
     },
     triggers: {
       onCorrect: ["rippleClick", "correctBounce"],
@@ -283,9 +280,8 @@ h1, h2, .page-title {
     animation: "sparkle",
     effects: {
       cherryBlossom: { enabled: true, params: {}, layer: 0 },
-      softShadow: { enabled: true, params: {}, layer: 2 },
+      softShadow: { enabled: true, params: { depth: 3 }, layer: 2 },
       fadeInScroll: { enabled: true, params: {}, layer: 1 },
-      mouseTrail: { enabled: true, params: { color: "#EC4899", length: 10 }, layer: 3 },
     },
     triggers: {
       onCorrect: ["confetti", "correctBounce"],
@@ -363,11 +359,9 @@ h1, h2, .page-title {
   box-shadow: 0 0 20px rgba(34, 197, 94, 0.15), inset 0 0 20px rgba(34, 197, 94, 0.03) !important;
 }
 h1, h2, h3, .page-title {
-  text-shadow: 0 0 10px rgba(34, 197, 94, 0.6), 0 0 20px rgba(34, 197, 94, 0.3);
-  letter-spacing: 2px;
-  text-transform: uppercase;
+  text-shadow: 0 0 6px rgba(34, 197, 94, 0.4), 0 0 12px rgba(34, 197, 94, 0.15);
+  letter-spacing: 1px;
 }
-h1::before, h2::before { content: "> "; opacity: 0.5; }
 .btn-primary, button[class*="primary"] {
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -380,15 +374,14 @@ h1::before, h2::before { content: "> "; opacity: 0.5; }
     animation: "none",
     effects: {
       matrixRain: { enabled: true, params: { color: "#22C55E" }, layer: 0 },
-      glitchText: { enabled: true, params: {}, layer: 2 },
       typewriterTitle: { enabled: true, params: {}, layer: 1 },
-      cursorGlow: { enabled: true, params: { color: "#22C55E", size: 150 }, layer: 3 },
+      cursorGlow: { enabled: true, params: { color: "#22C55E", size: 120 }, layer: 2 },
     },
     triggers: {
       onCorrect: ["correctBounce", "xpGain"],
-      onWrong: ["wrongShake", "glitchText"],
+      onWrong: ["wrongShake"],
       onLevelUp: ["levelUpCelebration"],
-      onCombo: ["comboCounter", "streakFire"],
+      onCombo: ["comboCounter"],
     },
   },
 
@@ -456,7 +449,7 @@ h1::before, h2::before { content: "> "; opacity: 0.5; }
 }
 .card:hover, .assignment-card:hover {
   box-shadow: 0 8px 30px rgba(234, 88, 12, 0.12) !important;
-  transform: translateY(-2px) scale(1.01);
+  transform: translateY(-2px);
   transition: all 0.3s ease;
 }
 h1, h2, .page-title {
@@ -478,10 +471,9 @@ h1, h2, .page-title {
 `,
     animation: "particles",
     effects: {
-      particles: { enabled: true, params: { color: "#F59E0B", count: 20 }, layer: 0 },
-      cardTilt: { enabled: true, params: {}, layer: 2 },
-      parallaxScroll: { enabled: true, params: {}, layer: 1 },
-      softShadow: { enabled: true, params: {}, layer: 2 },
+      particles: { enabled: true, params: { color: "#F59E0B", count: 15 }, layer: 0 },
+      softShadow: { enabled: true, params: { depth: 4 }, layer: 1 },
+      fadeInScroll: { enabled: true, params: {}, layer: 2 },
     },
     triggers: {
       onCorrect: ["confetti", "correctBounce"],
@@ -576,8 +568,7 @@ h1, h2, .page-title {
     animation: "snow",
     effects: {
       aurora: { enabled: true, params: { color1: "#6366F1", color2: "#818CF8", color3: "#06B6D4" }, layer: 0 },
-      glassMorphism: { enabled: true, params: {}, layer: 2 },
-      chromaticAberration: { enabled: true, params: {}, layer: 3 },
+      glassMorphism: { enabled: true, params: { blur: 16, opacity: 0.12 }, layer: 2 },
       fadeInScroll: { enabled: true, params: {}, layer: 1 },
     },
     triggers: {
@@ -654,8 +645,8 @@ h1, h2, .page-title {
 .card:hover, .assignment-card:hover {
   border-color: rgba(224, 64, 251, 0.4) !important;
   box-shadow: 0 0 0 4px rgba(224, 64, 251, 0.08), 0 8px 30px rgba(224, 64, 251, 0.15) !important;
-  transform: translateY(-4px) rotate(-0.5deg);
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: translateY(-3px);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 h1, h2, .page-title {
   background: linear-gradient(135deg, #E040FB, #FF6D00, #00BFA5);
@@ -676,21 +667,300 @@ h1, h2, .page-title {
 `,
     animation: "sparkle",
     effects: {
-      rainbowText: { enabled: true, params: {}, layer: 2 },
-      magneticButton: { enabled: true, params: {}, layer: 1 },
-      dotGrid: { enabled: true, params: {}, layer: 0 },
+      dotGrid: { enabled: true, params: { color: "#E040FB", spacing: 24 }, layer: 0 },
+      rippleClick: { enabled: true, params: { color: "#E040FB" }, layer: 1 },
+      softShadow: { enabled: true, params: { depth: 3 }, layer: 2 },
     },
     triggers: {
-      onCorrect: ["confetti", "clickExplosion", "correctBounce"],
+      onCorrect: ["confetti", "correctBounce"],
       onWrong: ["wrongShake"],
-      onLevelUp: ["levelUpCelebration", "confetti"],
+      onLevelUp: ["levelUpCelebration"],
       onBadge: ["badgeUnlock"],
-      onStreak: ["streakFire", "comboCounter"],
+      onStreak: ["comboCounter"],
     },
   },
 
   /* ═══════════════════════════════════════════════════════════
-   * 8. Midnight Studio (미드나잇 스튜디오)
+   * 8. Forest Zen (포레스트 젠)
+   *    Calm natural green with minimal, mindful aesthetic
+   * ═══════════════════════════════════════════════════════════ */
+  {
+    name: "Forest Zen",
+    version: 1,
+    preview: ["#059669", "#F0FDF4", "#34D399", "#064E3B"],
+    variables: {
+      "--primary": "#059669",
+      "--primary-light": "#D1FAE5",
+      "--primary-container": "#10B981",
+      "--primary-hover": "#047857",
+      "--primary-fixed": "#A7F3D0",
+      "--secondary": "#6B7280",
+      "--secondary-light": "#F3F4F6",
+      "--tertiary": "#0D9488",
+      "--tertiary-light": "#CCFBF1",
+      "--tertiary-container": "rgba(13, 148, 136, 0.08)",
+      "--on-tertiary-container": "#0F766E",
+      "--success": "#22C55E",
+      "--success-light": "#F0FDF4",
+      "--warning": "#EAB308",
+      "--warning-light": "#FEFCE8",
+      "--error": "#DC2626",
+      "--error-light": "#FEF2F2",
+      "--surface": "#F0FDF4",
+      "--surface-container-lowest": "#FFFFFF",
+      "--surface-container-low": "#ECFDF5",
+      "--surface-container": "#D1FAE5",
+      "--surface-container-high": "#A7F3D0",
+      "--surface-container-highest": "#FFFFFF",
+      "--on-surface": "#064E3B",
+      "--on-surface-variant": "#047857",
+      "--outline-variant": "rgba(4, 120, 87, 0.1)",
+      "--editor-bg": "#022C22",
+      "--shadow-sm": "0 2px 8px rgba(5, 150, 105, 0.06)",
+      "--shadow": "0 4px 20px rgba(5, 150, 105, 0.08)",
+      "--shadow-lg": "0 8px 40px rgba(5, 150, 105, 0.1)",
+      "--shadow-ai": "0 4px 20px rgba(13, 148, 136, 0.1)",
+      "--shadow-primary": "0 4px 16px rgba(5, 150, 105, 0.12)",
+      "--shadow-float": "0 8px 30px rgba(5, 150, 105, 0.06), 0 2px 8px rgba(5, 150, 105, 0.03)",
+      "--radius-sm": "8px",
+      "--radius-md": "12px",
+      "--radius-lg": "16px",
+      "--radius-xl": "20px",
+      "--radius-full": "9999px",
+      "--font-display": "'Noto Sans KR', sans-serif",
+      "--font-body": "'Pretendard Variable', Pretendard, sans-serif",
+      "--border-card": "1px",
+      "--border-card-color": "rgba(5, 150, 105, 0.1)",
+      "--border-inner": "0px",
+      "--border-inner-color": "transparent",
+      "--border-text": "0px",
+      "--border-text-color": "transparent",
+    },
+    customCSS: `
+/* Forest Zen — natural, calm aesthetic */
+.card, .assignment-card, .note-card {
+  background: linear-gradient(160deg, #FFFFFF, #F0FDF4) !important;
+  border: 1px solid rgba(5, 150, 105, 0.08) !important;
+}
+.card:hover, .assignment-card:hover {
+  border-color: rgba(5, 150, 105, 0.2) !important;
+  box-shadow: 0 8px 24px rgba(5, 150, 105, 0.08) !important;
+  transform: translateY(-2px);
+  transition: all 0.35s ease;
+}
+h1, h2, .page-title {
+  color: #064E3B !important;
+}
+.btn-primary, button[class*="primary"] {
+  background: linear-gradient(135deg, #059669, #10B981) !important;
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #059669, #34D399) !important;
+  border-radius: 8px;
+}
+`,
+    animation: "particles",
+    effects: {
+      particles: { enabled: true, params: { color: "#34D399", count: 10 }, layer: 0 },
+      softShadow: { enabled: true, params: { depth: 2 }, layer: 1 },
+      fadeInScroll: { enabled: true, params: {}, layer: 2 },
+    },
+    triggers: {
+      onCorrect: ["confetti", "correctBounce"],
+      onWrong: ["wrongShake"],
+      onLevelUp: ["levelUpCelebration"],
+    },
+  },
+
+  /* ═══════════════════════════════════════════════════════════
+   * 9. Rose Gold (로즈 골드)
+   *    Elegant warm pink-gold with refined luxury feel
+   * ═══════════════════════════════════════════════════════════ */
+  {
+    name: "Rose Gold",
+    version: 1,
+    preview: ["#B45309", "#FFF7ED", "#D97706", "#451A03"],
+    variables: {
+      "--primary": "#B45309",
+      "--primary-light": "#FEF3C7",
+      "--primary-container": "#D97706",
+      "--primary-hover": "#92400E",
+      "--primary-fixed": "#FDE68A",
+      "--secondary": "#9CA3AF",
+      "--secondary-light": "#F9FAFB",
+      "--tertiary": "#DB2777",
+      "--tertiary-light": "#FCE7F3",
+      "--tertiary-container": "rgba(219, 39, 119, 0.08)",
+      "--on-tertiary-container": "#BE185D",
+      "--success": "#059669",
+      "--success-light": "#ECFDF5",
+      "--warning": "#F59E0B",
+      "--warning-light": "#FFFBEB",
+      "--error": "#DC2626",
+      "--error-light": "#FEF2F2",
+      "--surface": "#FFF7ED",
+      "--surface-container-lowest": "#FFFFFF",
+      "--surface-container-low": "#FFFBF5",
+      "--surface-container": "#FEF3E2",
+      "--surface-container-high": "#FDECD0",
+      "--surface-container-highest": "#FFFFFF",
+      "--on-surface": "#451A03",
+      "--on-surface-variant": "#78350F",
+      "--outline-variant": "rgba(120, 53, 15, 0.1)",
+      "--editor-bg": "#1C0F02",
+      "--shadow-sm": "0 2px 8px rgba(180, 83, 9, 0.06)",
+      "--shadow": "0 4px 20px rgba(180, 83, 9, 0.08)",
+      "--shadow-lg": "0 8px 36px rgba(180, 83, 9, 0.1)",
+      "--shadow-ai": "0 4px 20px rgba(219, 39, 119, 0.08)",
+      "--shadow-primary": "0 4px 16px rgba(180, 83, 9, 0.12)",
+      "--shadow-float": "0 8px 30px rgba(180, 83, 9, 0.06), 0 2px 8px rgba(219, 39, 119, 0.04)",
+      "--radius-sm": "6px",
+      "--radius-md": "10px",
+      "--radius-lg": "14px",
+      "--radius-xl": "18px",
+      "--radius-full": "9999px",
+      "--font-display": "'Nanum Myeongjo', serif",
+      "--font-body": "'Pretendard Variable', Pretendard, sans-serif",
+      "--border-card": "1px",
+      "--border-card-color": "rgba(180, 83, 9, 0.08)",
+      "--border-inner": "0px",
+      "--border-inner-color": "transparent",
+      "--border-text": "0px",
+      "--border-text-color": "transparent",
+    },
+    customCSS: `
+/* Rose Gold — elegant luxury with warm metallic tones */
+.card, .assignment-card, .note-card {
+  background: linear-gradient(150deg, #FFFFFF, #FFF7ED) !important;
+}
+.card:hover, .assignment-card:hover {
+  box-shadow: 0 8px 28px rgba(180, 83, 9, 0.1) !important;
+  transform: translateY(-2px);
+  transition: all 0.3s ease;
+}
+h1, h2, .page-title {
+  background: linear-gradient(135deg, #B45309, #D97706);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.btn-primary, button[class*="primary"] {
+  background: linear-gradient(135deg, #B45309, #D97706) !important;
+  box-shadow: 0 4px 12px rgba(180, 83, 9, 0.2);
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #B45309, #D97706) !important;
+}
+`,
+    animation: "sparkle",
+    effects: {
+      softShadow: { enabled: true, params: { depth: 3 }, layer: 0 },
+      drawBorder: { enabled: true, params: {}, layer: 1 },
+    },
+    triggers: {
+      onCorrect: ["confetti", "correctBounce"],
+      onWrong: ["wrongShake"],
+      onLevelUp: ["levelUpCelebration"],
+    },
+  },
+
+  /* ═══════════════════════════════════════════════════════════
+   * 10. Lavender Dream (라벤더 드림)
+   *     Soft purple pastel with dreamy, gentle vibes
+   * ═══════════════════════════════════════════════════════════ */
+  {
+    name: "Lavender Dream",
+    version: 1,
+    preview: ["#7C3AED", "#FAF5FF", "#A78BFA", "#4C1D95"],
+    variables: {
+      "--primary": "#7C3AED",
+      "--primary-light": "#EDE9FE",
+      "--primary-container": "#8B5CF6",
+      "--primary-hover": "#6D28D9",
+      "--primary-fixed": "#DDD6FE",
+      "--secondary": "#8B5CF6",
+      "--secondary-light": "#F5F3FF",
+      "--tertiary": "#EC4899",
+      "--tertiary-light": "#FCE7F3",
+      "--tertiary-container": "rgba(236, 72, 153, 0.08)",
+      "--on-tertiary-container": "#DB2777",
+      "--success": "#34D399",
+      "--success-light": "#ECFDF5",
+      "--warning": "#FBBF24",
+      "--warning-light": "#FFFBEB",
+      "--error": "#F43F5E",
+      "--error-light": "#FFF1F2",
+      "--surface": "#FAF5FF",
+      "--surface-container-lowest": "#FFFFFF",
+      "--surface-container-low": "#F5EFFF",
+      "--surface-container": "#EDE5FE",
+      "--surface-container-high": "#E4D9FD",
+      "--surface-container-highest": "#FFFFFF",
+      "--on-surface": "#4C1D95",
+      "--on-surface-variant": "#6D28D9",
+      "--outline-variant": "rgba(109, 40, 217, 0.1)",
+      "--editor-bg": "#1E0A3E",
+      "--shadow-sm": "0 2px 8px rgba(124, 58, 237, 0.06)",
+      "--shadow": "0 4px 20px rgba(124, 58, 237, 0.08)",
+      "--shadow-lg": "0 8px 36px rgba(124, 58, 237, 0.1)",
+      "--shadow-ai": "0 4px 20px rgba(236, 72, 153, 0.08)",
+      "--shadow-primary": "0 4px 16px rgba(124, 58, 237, 0.12)",
+      "--shadow-float": "0 8px 30px rgba(124, 58, 237, 0.06), 0 2px 8px rgba(139, 92, 246, 0.04)",
+      "--radius-sm": "10px",
+      "--radius-md": "14px",
+      "--radius-lg": "20px",
+      "--radius-xl": "26px",
+      "--radius-full": "9999px",
+      "--font-display": "'Nanum Gothic', sans-serif",
+      "--font-body": "'Pretendard Variable', Pretendard, sans-serif",
+      "--border-card": "1px",
+      "--border-card-color": "rgba(124, 58, 237, 0.1)",
+      "--border-inner": "1px",
+      "--border-inner-color": "rgba(124, 58, 237, 0.06)",
+      "--border-text": "0px",
+      "--border-text-color": "transparent",
+    },
+    customCSS: `
+/* Lavender Dream — soft, dreamy pastel */
+.card, .assignment-card, .note-card {
+  background: linear-gradient(145deg, #FFFFFF, #FAF5FF) !important;
+  border-radius: 18px !important;
+}
+.card:hover, .assignment-card:hover {
+  box-shadow: 0 8px 28px rgba(124, 58, 237, 0.1) !important;
+  transform: translateY(-2px);
+  transition: all 0.35s ease;
+}
+h1, h2, .page-title {
+  background: linear-gradient(135deg, #7C3AED, #EC4899);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.btn-primary, button[class*="primary"] {
+  background: linear-gradient(135deg, #7C3AED, #8B5CF6) !important;
+  border-radius: 14px !important;
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #8B5CF6, #A78BFA) !important;
+  border-radius: 10px;
+}
+`,
+    animation: "sparkle",
+    effects: {
+      softShadow: { enabled: true, params: { depth: 2 }, layer: 0 },
+      fadeInScroll: { enabled: true, params: {}, layer: 1 },
+      rippleClick: { enabled: true, params: { color: "#8B5CF6" }, layer: 2 },
+    },
+    triggers: {
+      onCorrect: ["confetti", "correctBounce"],
+      onWrong: ["wrongShake"],
+      onLevelUp: ["levelUpCelebration"],
+    },
+  },
+
+  /* ═══════════════════════════════════════════════════════════
+   * 11. Midnight Studio (미드나잇 스튜디오)
    *    Professional dark with refined blue accents
    * ═══════════════════════════════════════════════════════════ */
   {

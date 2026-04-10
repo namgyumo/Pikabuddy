@@ -4,6 +4,7 @@ import Editor from "@monaco-editor/react";
 import { renderMarkdown } from "../lib/markdown";
 import api from "../lib/api";
 import { toast } from "../lib/toast";
+import { customConfirm } from "../lib/confirm";
 
 const BlockEditorLazy = lazy(() => import("../components/BlockEditor"));
 import { supabase } from "../lib/supabase";
@@ -576,9 +577,9 @@ export default function CodeEditor() {
               </div>
               <button
                 onClick={() => {
-                  if (confirm("시험을 종료하시겠습니까? 종료 후에는 다시 입장할 수 없습니다.")) {
-                    examMode.endExam("학생이 직접 종료");
-                  }
+                  customConfirm("시험을 종료하시겠습니까? 종료 후에는 다시 입장할 수 없습니다.", { danger: true, confirmText: "종료" }).then((ok) => {
+                    if (ok) examMode.endExam("학생이 직접 종료");
+                  });
                 }}
                 style={{
                   padding: "4px 12px", borderRadius: 20, fontSize: 11, fontWeight: 600,

@@ -211,8 +211,6 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   },
 
   removeCustomTheme: (id: string) => {
-    const target = get().customThemes.find((t) => t.id === id);
-    if (target?.isPreset) return;
     const current = get().currentTheme;
     const updated = get().customThemes.filter((t) => t.id !== id);
     saveCustomThemes(updated);

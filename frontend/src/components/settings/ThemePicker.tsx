@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { THEMES, getCurrentVariableValues } from "../../themes";
 import { PRESET_THEMES } from "../../themes/presets";
 import { useThemeStore } from "../../store/themeStore";
+import { customConfirm } from "../../lib/confirm";
 import type { CustomTheme, ThemeDefinition } from "../../themes";
 import ThemeEditor from "./ThemeEditor";
 
@@ -63,8 +64,24 @@ export default function ThemePicker() {
   };
 
   const applyPreset = (preset: typeof PRESET_THEMES[number]) => {
-    const theme = addCustomTheme({ ...preset, isPreset: true });
-    setTheme(theme.id);
+    // 같은 이름의 프리셋이 이미 있으면 덮어쓰기
+    const existing = customThemes.find((t) => t.name === preset.name);
+    if (existing) {
+      const { saveCustomTheme } = useThemeStore.getState();
+      const updated = saveCustomTheme({
+        id: existing.id,
+        name: preset.name,
+        variables: preset.variables,
+        customCSS: preset.customCSS,
+        animation: preset.animation,
+        effects: preset.effects,
+        triggers: preset.triggers,
+      });
+      setTheme(updated.id);
+    } else {
+      const theme = addCustomTheme({ ...preset });
+      setTheme(theme.id);
+    }
   };
 
   const forkBuiltinTheme = (theme: ThemeDefinition) => {
@@ -253,21 +270,19 @@ export default function ThemePicker() {
                     <path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
                   </svg>
                 </span>
-                {!theme.isPreset && (
-                  <span
-                    className="custom-theme-delete"
-                    role="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (window.confirm(`"${theme.name}" 테마를 삭제하시겠습니까?`)) {
-                        removeCustomTheme(theme.id);
-                      }
-                    }}
-                    title="삭제"
-                  >
-                    &times;
-                  </span>
-                )}
+                <span
+                  className="custom-theme-delete"
+                  role="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    customConfirm(`"${theme.name}" 테마를 삭제하시겠습니까?`, { danger: true, confirmText: "삭제" }).then((ok) => {
+                      if (ok) removeCustomTheme(theme.id);
+                    });
+                  }}
+                  title="삭제"
+                >
+                  &times;
+                </span>
               </button>
             );
           })}

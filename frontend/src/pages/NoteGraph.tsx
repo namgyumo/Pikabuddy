@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useRef, useCallback, useMemo, Component } from "react";
+import React, { useEffect, useLayoutEffect, useState, useRef, useCallback, useMemo, Component } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import ForceGraph2DImport from "react-force-graph-2d";
+import { forceCollide, forceX, forceY, forceManyBody } from "d3-force";
 import api from "../lib/api";
 import type { Course, GraphData } from "../types";
 
@@ -33,6 +34,7 @@ interface GNode {
   title: string;
   score: number | null;
   tags: string[];
+  categories: string[];
   parentId: string | null;
   size: number;
   createdAt: string;
@@ -45,6 +47,7 @@ interface GLink {
   source: string | GNode;
   target: string | GNode;
   type: "parent" | "link" | "similar";
+  weight?: number;
 }
 
 function scoreColor(s: number | null) {
@@ -83,6 +86,32 @@ export default function NoteGraph() {
   const [tagFilter, setTagFilter] = useState("");
   const [showLabels, setShowLabels] = useState(true);
   const [timeRange, setTimeRange] = useState(100);
+  const [nodeSpacing, setNodeSpacing] = useState(50); // 0~100 : unconnected repulsion
+  const [edgeLength, setEdgeLength] = useState(50);  // 0~100 : connected edge distance
+
+  // Context menu
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; node: GNode | null } | null>(null);
+
+  // Linking mode
+  const [linkingFrom, setLinkingFrom] = useState<GNode | null>(null);
+  // 링크 해제 하이라이트 (hover/click 시 간선 깜빡임)
+  const [highlightLink, setHighlightLink] = useState<{ s: string; t: string } | null>(null);
+  const [linkSearch, setLinkSearch] = useState("");
+  const [linkSearchOpen, setLinkSearchOpen] = useState(false);
+
+  // Edge type filters
+  const [showParentEdges, setShowParentEdges] = useState(true);
+  const [showLinkEdges, setShowLinkEdges] = useState(true);
+  const [showSimilarEdges, setShowSimilarEdges] = useState(true);
+
+  // Set of node IDs that have structural edge (parent/link)
+  const connectedNodeIds = useRef(new Set<string>());
+
+  // Refs so force functions always read latest slider values without re-registration
+  const nodeSpacingRef = useRef(nodeSpacing);
+  const edgeLengthRef = useRef(edgeLength);
+  nodeSpacingRef.current = nodeSpacing;
+  edgeLengthRef.current = edgeLength;
 
   // Panels
   const [studyPath, setStudyPath] = useState<any[]>([]);
@@ -91,6 +120,7 @@ export default function NoteGraph() {
   const [panel, setPanel] = useState<"none" | "path" | "report">("none");
 
   const fittedRef = useRef(false);
+  const prevNodesRef = useRef<GNode[]>([]);
 
   /* ── data ── */
   useEffect(() => {
@@ -109,6 +139,7 @@ export default function NoteGraph() {
             const nodes = r.data.map((n: any) => ({
               id: n.id, title: n.title, parent_id: n.parent_id,
               understanding_score: n.understanding_score, tags: [],
+              categories: n.categories || [],
               updated_at: n.updated_at, created_at: n.created_at, content_length: 100,
             }));
             const edges = r.data.filter((n: any) => n.parent_id).map((n: any) => ({
@@ -151,6 +182,14 @@ export default function NoteGraph() {
     return () => window.removeEventListener("mousemove", handler);
   }, []);
 
+  /* ── close context menu on click anywhere ── */
+  useEffect(() => {
+    if (!ctxMenu) return;
+    const close = () => { setCtxMenu(null); setHighlightLink(null); };
+    window.addEventListener("click", close);
+    return () => window.removeEventListener("click", close);
+  }, [ctxMenu]);
+
   /* ── tags list ── */
   const allTags = useMemo(() => {
     if (!graphData) return [];
@@ -166,22 +205,15 @@ export default function NoteGraph() {
     return { min: Math.min(...ts), max: Math.max(...ts) };
   }, [graphData]);
 
-  /* ── filtered + mapped graph data ── */
+  /* ── mapped graph data (structural only — NO filtering) ── */
   const gd = useMemo(() => {
     if (!graphData) return { nodes: [] as GNode[], links: [] as GLink[] };
-    const cutoff = dateRange.min + (dateRange.max - dateRange.min) * (timeRange / 100);
-    const filtered = graphData.nodes.filter((n) => {
-      if (new Date(n.created_at).getTime() > cutoff) return false;
-      const s = n.understanding_score;
-      if (s != null && (s < scoreRange[0] || s > scoreRange[1])) return false;
-      if (tagFilter && !n.tags.includes(tagFilter)) return false;
-      return true;
-    });
-    const ids = new Set(filtered.map((n) => n.id));
+    const allNodes = graphData.nodes;
+    const ids = new Set(allNodes.map((n) => n.id));
 
     // Compute depth for each node (root=0, child=1, grandchild=2, ...)
     const parentMap = new Map<string, string | null>();
-    filtered.forEach((n) => parentMap.set(n.id, ids.has(n.parent_id ?? "") ? n.parent_id : null));
+    allNodes.forEach((n) => parentMap.set(n.id, ids.has(n.parent_id ?? "") ? n.parent_id : null));
     const depthMap = new Map<string, number>();
     const childCountMap = new Map<string, number>();
     const getDepth = (id: string): number => {
@@ -191,69 +223,221 @@ export default function NoteGraph() {
       depthMap.set(id, d);
       return d;
     };
-    filtered.forEach((n) => getDepth(n.id));
-    // Count children for sizing parents bigger
-    filtered.forEach((n) => {
+    allNodes.forEach((n) => getDepth(n.id));
+    allNodes.forEach((n) => {
       const pid = parentMap.get(n.id);
       if (pid) childCountMap.set(pid, (childCountMap.get(pid) || 0) + 1);
     });
 
-    // Size: root nodes biggest, deeper nodes smaller
     const sizeByDepth = (id: string) => {
       const depth = depthMap.get(id) ?? 0;
       const children = childCountMap.get(id) || 0;
       const base = depth === 0 ? 18 : depth === 1 ? 12 : 8;
-      const bonus = Math.min(6, children * 1.5); // parents with more children slightly bigger
+      const bonus = Math.min(6, children * 1.5);
       return base + bonus;
     };
 
-    return {
-      nodes: filtered.map((n): GNode => ({
+    // Tree-based initial positions (BFS layout)
+    const rootIds = allNodes.filter((n) => !parentMap.get(n.id)).map((n) => n.id);
+    const childrenMap = new Map<string, string[]>();
+    allNodes.forEach((n) => {
+      const pid = parentMap.get(n.id);
+      if (pid) childrenMap.set(pid, [...(childrenMap.get(pid) || []), n.id]);
+    });
+    const initPos = new Map<string, { x: number; y: number }>();
+    const layerGap = 140;
+    const sibGap = 120;
+    // Place each root tree separately
+    let treeOffsetX = 0;
+    rootIds.forEach((rootId) => {
+      // BFS to compute subtree sizes
+      const subtreeSize = new Map<string, number>();
+      const bfsOrder: string[] = [];
+      const queue = [rootId];
+      while (queue.length) {
+        const id = queue.shift()!;
+        bfsOrder.push(id);
+        (childrenMap.get(id) || []).forEach((c) => queue.push(c));
+      }
+      for (let i = bfsOrder.length - 1; i >= 0; i--) {
+        const id = bfsOrder[i];
+        const ch = childrenMap.get(id) || [];
+        subtreeSize.set(id, ch.length === 0 ? 1 : ch.reduce((s, c) => s + (subtreeSize.get(c) || 1), 0));
+      }
+      const treeW = (subtreeSize.get(rootId) || 1) * sibGap;
+      const placeNode = (id: string, cx: number, cy: number) => {
+        initPos.set(id, { x: cx, y: cy });
+        const ch = childrenMap.get(id) || [];
+        if (ch.length === 0) return;
+        const totalW = ch.reduce((s, c) => s + (subtreeSize.get(c) || 1), 0) * sibGap;
+        let left = cx - totalW / 2;
+        ch.forEach((c) => {
+          const w = (subtreeSize.get(c) || 1) * sibGap;
+          placeNode(c, left + w / 2, cy + layerGap);
+          left += w;
+        });
+      };
+      placeNode(rootId, treeOffsetX + treeW / 2, 0);
+      treeOffsetX += treeW + 200;
+    });
+
+    // Preserve positions from previous simulation (d3 mutates x/y in place)
+    const posMap = new Map<string, { x: number; y: number }>();
+    prevNodesRef.current.forEach((pn) => {
+      if (pn.x != null && pn.y != null && isFinite(pn.x) && isFinite(pn.y)) {
+        posMap.set(pn.id, { x: pn.x, y: pn.y });
+      }
+    });
+
+    const nodes = allNodes.map((n, i): GNode => {
+      const pid = parentMap.get(n.id);
+      const existing = posMap.get(n.id);
+      let x: number, y: number;
+      if (existing) {
+        x = existing.x; y = existing.y;
+      } else {
+        const treePos = initPos.get(n.id);
+        if (treePos) {
+          x = treePos.x; y = treePos.y;
+        } else {
+          // Orphan node fallback
+          x = Math.cos(i * 2.4) * 300 + (Math.random() - 0.5) * 60;
+          y = Math.sin(i * 2.4) * 300 + (Math.random() - 0.5) * 60;
+        }
+      }
+      return {
         id: n.id, title: n.title, score: n.understanding_score,
-        tags: n.tags, parentId: parentMap.get(n.id) ?? null,
+        tags: n.tags, categories: n.categories || [],
+        parentId: pid ?? null,
         size: sizeByDepth(n.id),
         createdAt: n.created_at, updatedAt: n.updated_at,
-      })),
-      links: graphData.edges
-        .filter((e) => ids.has(e.source) && ids.has(e.target))
-        .map((e): GLink => ({ source: e.source, target: e.target, type: e.type })),
+        x, y,
+      };
+    });
+    prevNodesRef.current = nodes;
+
+    return {
+      nodes,
+      links: (() => {
+        const links = graphData.edges
+          .filter((e) => ids.has(e.source) && ids.has(e.target))
+          .map((e): GLink => ({ source: e.source, target: e.target, type: e.type, weight: e.weight }));
+        const connected = new Set<string>();
+        links.forEach((l) => {
+          if (l.type === "parent" || l.type === "link") {
+            connected.add(typeof l.source === "string" ? l.source : l.source.id);
+            connected.add(typeof l.target === "string" ? l.target : l.target.id);
+          }
+        });
+        connectedNodeIds.current = connected;
+        return links;
+      })(),
     };
+  }, [graphData]);
+
+  /* ── visible node IDs (filter changes DON'T rebuild graphData → no simulation restart) ── */
+  const visibleIds = useMemo(() => {
+    if (!graphData) return new Set<string>();
+    const cutoff = dateRange.min + (dateRange.max - dateRange.min) * (timeRange / 100);
+    return new Set(
+      graphData.nodes
+        .filter((n) => {
+          if (new Date(n.created_at).getTime() > cutoff) return false;
+          const s = n.understanding_score;
+          if (s != null && (s < scoreRange[0] || s > scoreRange[1])) return false;
+          if (tagFilter && !n.tags.includes(tagFilter)) return false;
+          return true;
+        })
+        .map((n) => n.id)
+    );
   }, [graphData, scoreRange, tagFilter, timeRange, dateRange]);
 
-  /* ── configure d3 forces after graph mounts ── */
+  const visibleIdsRef = useRef(visibleIds);
+  visibleIdsRef.current = visibleIds;
+
+  // Edge visibility ref (read by force strength + paintLink)
+  const edgeVisRef = useRef({ parent: true, link: true, similar: true });
+  edgeVisRef.current = { parent: showParentEdges, link: showLinkEdges, similar: showSimilarEdges };
+
+  const highlightLinkRef = useRef(highlightLink);
+  highlightLinkRef.current = highlightLink;
+
+  // 하이라이트 깜빡임을 위한 캔버스 리페인트 루프
+  const [, setBlinkTick] = useState(0);
   useEffect(() => {
+    if (!highlightLink) return;
+    const iv = setInterval(() => setBlinkTick((t) => t + 1), 50);
+    return () => clearInterval(iv);
+  }, [highlightLink]);
+
+  // ── Force 설정 ──
+  // 시뮬레이션 테스트 검증 (8노드 트리):
+  //   sp 10→100: 전체거리 161→337 (2.09x), 간선 160→161 (0.6% 커플링)
+  //   el 10→100: 간선 104→230 (2.2x), sp와 독립
+  //   sp=100 el=10: 간선=106 (target=104) → 완벽 독립
+  //
+  // charge(sp) + collision(sp) → 노드 간격
+  // link(str=0.99, iter=20) → 간선 간격 (charge를 완전 차단)
+  // useLayoutEffect: 첫 paint 전에 force 설정 → 기본 d3 force로 트리 배치 망가지는 것 방지
+  useLayoutEffect(() => {
     const fg = fgRef.current;
     if (!fg || gd.nodes.length === 0) return;
     try {
-      // Stronger charge repulsion — root nodes push harder
-      fg.d3Force("charge")?.strength((node: GNode) => {
-        return node.parentId === null ? -500 : -250;
-      }).distanceMax(500);
+      const sp = nodeSpacingRef.current;       // 10 ~ 100
+      const spV = sp / 50;                     // 0.2 ~ 2.0
+      const el = edgeLengthRef.current / 50;   // 0.2 ~ 2.0
+      const vis = edgeVisRef.current;
+      const visible = visibleIdsRef.current;
 
-      // Link distance by type — parent-child closer, rest further
+      // 노드 간격: charge + collision (sp 연동)
+      fg.d3Force("charge", (forceManyBody as any)()
+        .strength((node: GNode) => visible.has(node.id) ? -200 * spV * spV / Math.sqrt(el) : 0)
+      );
+      fg.d3Force("repulsion", null);
+
+      fg.d3Force("collide", forceCollide<GNode>()
+        .radius((node: GNode) => visible.has(node.id) ? 5 + sp * 0.28 : 0)
+        .strength(1).iterations(3)
+      );
+
+      // Pull: sp 낮으면 강하게 당겨서 수축, sp 높으면 약하게
+      const pullStr = 0.005 + Math.max(0, 0.035 * (1 - spV));
+      fg.d3Force("pullX", (forceX as any)(0).strength(
+        (node: GNode) => visible.has(node.id) ? pullStr : 0.5
+      ));
+      fg.d3Force("pullY", (forceY as any)(0).strength(
+        (node: GNode) => visible.has(node.id) ? pullStr : 0.5
+      ));
+      fg.d3Force("center")?.strength(0.003);
+
+      // 간선 간격: link (str=0.99, iter=20 → charge 영향 차단)
+      // link target 최소(10+110*0.2=32) — collision보다 짧을 수 있으나 link(str=0.99,iter=20)가 우선
       fg.d3Force("link")
-        ?.distance((link: GLink) => {
-          if (link.type === "parent") return 100;
-          if (link.type === "link") return 180;
-          return 220;
+        ?.iterations(20)
+        .distance((link: GLink) => {
+          if (link.type === "parent") return 10 + 110 * el;
+          if (link.type === "link") return 15 + 130 * el;
+          return 40 + 160 * el;
         })
         .strength((link: GLink) => {
-          return link.type === "parent" ? 0.7 : 0.15;
+          const sId = typeof link.source === "string" ? link.source : link.source.id;
+          const tId = typeof link.target === "string" ? link.target : link.target.id;
+          if (!visible.has(sId) || !visible.has(tId)) return 0;
+          const k = link.type as keyof typeof vis;
+          if (!vis[k]) return 0;
+          if (link.type === "parent") return 0.99;
+          if (link.type === "link") return 0.99;
+          return 0.03;
         });
-
-      // Weaker center force so it doesn't crush nodes together
-      fg.d3Force("center")?.strength(0.03);
 
       fg.d3ReheatSimulation();
     } catch { /* force API may vary */ }
-  }, [gd]);
+  }, [gd, nodeSpacing, edgeLength, showParentEdges, showLinkEdges, showSimilarEdges, visibleIds]);
 
-  /* ── zoom to fit + freeze all nodes after engine settles ── */
+  /* ── zoom to fit after engine settles ── */
   const onEngineStop = useCallback(() => {
     if (!fittedRef.current && fgRef.current && gd.nodes.length > 0) {
       fittedRef.current = true;
-      // freeze every node in place so dragging one doesn't ripple
-      gd.nodes.forEach((n) => { n.fx = n.x; n.fy = n.y; });
       fgRef.current.zoomToFit(300, 80);
     }
   }, [gd.nodes]);
@@ -286,6 +470,7 @@ export default function NoteGraph() {
 
   /* ── node paint ── */
   const paintNode = useCallback((node: GNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
+    if (!visibleIdsRef.current.has(node.id)) return; // hidden by filter
     const x = node.x, y = node.y;
     if (x == null || y == null || !isFinite(x) || !isFinite(y)) return;
 
@@ -380,45 +565,153 @@ export default function NoteGraph() {
     ctx.fillText(txt, lx, ly);
   }, [hovered, showLabels]);
 
-  /* ── link paint ── */
+  /* ── link paint (cyber / neon style) ── */
   const paintLink = useCallback((link: GLink, ctx: CanvasRenderingContext2D, globalScale: number) => {
     const s = link.source as GNode, t = link.target as GNode;
     if (!isFinite(s.x!) || !isFinite(s.y!) || !isFinite(t.x!) || !isFinite(t.y!)) return;
 
+    // hidden 노드 포함 간선 → 안 그림
+    const visible = visibleIdsRef.current;
+    if (!visible.has(s.id) || !visible.has(t.id)) return;
+
+    // 숨긴 간선 타입 → 안 그림
+    const vis = edgeVisRef.current;
+    if (link.type === "parent" && !vis.parent) return;
+    if (link.type === "link" && !vis.link) return;
+    if (link.type === "similar" && !vis.similar) return;
+
     const lw = 1 / globalScale;
+
     if (link.type === "parent") {
-      // Curved parent→child line
+      // Neon cyan curved line
       const mx = (s.x! + t.x!) / 2;
       const my = (s.y! + t.y!) / 2;
       const dx = t.x! - s.x!, dy = t.y! - s.y!;
-      const offset = Math.min(20, Math.sqrt(dx * dx + dy * dy) * 0.1);
-      const cx = mx - dy * offset / Math.sqrt(dx * dx + dy * dy + 1);
-      const cy = my + dx * offset / Math.sqrt(dx * dx + dy * dy + 1);
+      const dist = Math.sqrt(dx * dx + dy * dy + 1);
+      const offset = Math.min(25, dist * 0.12);
+      const cx = mx - dy * offset / dist;
+      const cy = my + dx * offset / dist;
+
+      // Outer glow
       ctx.beginPath();
       ctx.moveTo(s.x!, s.y!);
       ctx.quadraticCurveTo(cx, cy, t.x!, t.y!);
-      ctx.strokeStyle = "rgba(96,165,250,0.35)";
+      ctx.strokeStyle = "rgba(34,211,238,0.12)";
+      ctx.lineWidth = Math.max(lw * 4, 4);
+      ctx.setLineDash([]);
+      ctx.stroke();
+
+      // Core line
+      ctx.beginPath();
+      ctx.moveTo(s.x!, s.y!);
+      ctx.quadraticCurveTo(cx, cy, t.x!, t.y!);
+      ctx.strokeStyle = "rgba(34,211,238,0.5)";
       ctx.lineWidth = Math.max(lw * 1.2, 1);
-      ctx.setLineDash([]);
       ctx.stroke();
+
     } else if (link.type === "link") {
+      // Neon amber dashed
+      // Outer glow
       ctx.beginPath();
       ctx.moveTo(s.x!, s.y!);
       ctx.lineTo(t.x!, t.y!);
-      ctx.strokeStyle = "rgba(251,191,36,0.25)";
-      ctx.lineWidth = Math.max(lw * 0.8, 0.5);
-      ctx.setLineDash([4 / globalScale, 4 / globalScale]);
+      ctx.strokeStyle = "rgba(251,191,36,0.08)";
+      ctx.lineWidth = Math.max(lw * 3, 3);
+      ctx.setLineDash([]);
+      ctx.stroke();
+
+      // Core
+      ctx.beginPath();
+      ctx.moveTo(s.x!, s.y!);
+      ctx.lineTo(t.x!, t.y!);
+      ctx.strokeStyle = "rgba(251,191,36,0.4)";
+      ctx.lineWidth = Math.max(lw * 0.8, 0.6);
+      ctx.setLineDash([5 / globalScale, 4 / globalScale]);
       ctx.stroke();
       ctx.setLineDash([]);
+
     } else {
+      // Similar (category neon) — weight → thickness, glow intensity
+      const w = Math.min(link.weight || 2, 8);
+      const t_norm = (w - 2) / 6; // 0..1
+      const thickness = 0.8 + t_norm * 1.2;
+      const isWeak = w <= 2;
+
+      // Neon purple/magenta palette
+      const r = 192, g = 38, b = 211; // vivid magenta-purple
+      const coreOpacity = 0.25 + t_norm * 0.35;
+
+      // Layer 1: wide soft glow (always)
       ctx.beginPath();
       ctx.moveTo(s.x!, s.y!);
       ctx.lineTo(t.x!, t.y!);
-      ctx.strokeStyle = "rgba(148,163,184,0.12)";
-      ctx.lineWidth = Math.max(lw * 0.5, 0.3);
-      ctx.setLineDash([2 / globalScale, 4 / globalScale]);
+      ctx.strokeStyle = `rgba(${r},${g},${b},${0.04 + t_norm * 0.08})`;
+      ctx.lineWidth = Math.max((thickness + 6) / globalScale, thickness + 5);
+      ctx.setLineDash([]);
+      ctx.stroke();
+
+      // Layer 2: medium glow (weight >= 3)
+      if (w >= 3) {
+        ctx.beginPath();
+        ctx.moveTo(s.x!, s.y!);
+        ctx.lineTo(t.x!, t.y!);
+        ctx.strokeStyle = `rgba(${r},${g},${b},${0.1 + t_norm * 0.12})`;
+        ctx.lineWidth = Math.max((thickness + 3) / globalScale, thickness + 2.5);
+        ctx.setLineDash([]);
+        ctx.stroke();
+      }
+
+      // Layer 3: bright inner glow (weight >= 5)
+      if (w >= 5) {
+        ctx.beginPath();
+        ctx.moveTo(s.x!, s.y!);
+        ctx.lineTo(t.x!, t.y!);
+        ctx.strokeStyle = `rgba(232,121,249,${0.15 + t_norm * 0.1})`;
+        ctx.lineWidth = Math.max((thickness + 1.5) / globalScale, thickness + 1);
+        ctx.setLineDash([]);
+        ctx.stroke();
+      }
+
+      // Core line
+      ctx.beginPath();
+      ctx.moveTo(s.x!, s.y!);
+      ctx.lineTo(t.x!, t.y!);
+      ctx.strokeStyle = `rgba(${r},${g},${b},${coreOpacity})`;
+      ctx.lineWidth = Math.max(thickness / globalScale, thickness * 0.7);
+      if (isWeak) {
+        ctx.setLineDash([4 / globalScale, 5 / globalScale]);
+      } else {
+        ctx.setLineDash([]);
+      }
       ctx.stroke();
       ctx.setLineDash([]);
+    }
+
+    // 링크 해제 하이라이트: 밝은 깜빡임 효과
+    const hl = highlightLinkRef.current;
+    if (hl && link.type === "link") {
+      const sId = s.id, tId = t.id;
+      if ((sId === hl.s && tId === hl.t) || (sId === hl.t && tId === hl.s)) {
+        const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 150); // 빠른 깜빡임
+        ctx.save();
+        // 넓은 글로우
+        ctx.beginPath();
+        ctx.moveTo(s.x!, s.y!);
+        ctx.lineTo(t.x!, t.y!);
+        ctx.strokeStyle = `rgba(255,100,100,${0.15 + pulse * 0.35})`;
+        ctx.lineWidth = Math.max(8 / globalScale, 8);
+        ctx.setLineDash([]);
+        ctx.stroke();
+        // 밝은 코어
+        ctx.beginPath();
+        ctx.moveTo(s.x!, s.y!);
+        ctx.lineTo(t.x!, t.y!);
+        ctx.strokeStyle = `rgba(255,180,180,${0.4 + pulse * 0.6})`;
+        ctx.lineWidth = Math.max(3 / globalScale, 3);
+        ctx.setLineDash([]);
+        ctx.stroke();
+        ctx.restore();
+      }
     }
   }, []);
 
@@ -455,7 +748,7 @@ export default function NoteGraph() {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
           <h1 className="graph-title">노트 지도</h1>
-          <span className="graph-count">{gd.nodes.length}개</span>
+          <span className="graph-count">{visibleIds.size}개</span>
         </div>
         <div className="graph-header-right">
           <button className={`graph-panel-btn${panel === "path" ? " active" : ""}`}
@@ -481,11 +774,21 @@ export default function NoteGraph() {
           </div>
           <div className="graph-legend">
             <h4>연결선</h4>
-            <div className="legend-row"><span className="legend-line solid" /> 부모-자식</div>
-            <div className="legend-row"><span className="legend-line dashed" /> 링크</div>
+            <label className="edge-filter-chip">
+              <input type="checkbox" checked={showParentEdges} onChange={(e) => setShowParentEdges(e.target.checked)} />
+              <span className="edge-chip edge-chip-parent"><span className="edge-chip-line solid" />{"\uBD80\uBAA8-\uC790\uC2DD"}</span>
+            </label>
+            <label className="edge-filter-chip">
+              <input type="checkbox" checked={showLinkEdges} onChange={(e) => setShowLinkEdges(e.target.checked)} />
+              <span className="edge-chip edge-chip-link"><span className="edge-chip-line dashed" />{"\uB9C1\uD06C"}</span>
+            </label>
+            <label className="edge-filter-chip">
+              <input type="checkbox" checked={showSimilarEdges} onChange={(e) => setShowSimilarEdges(e.target.checked)} />
+              <span className="edge-chip edge-chip-similar"><span className="edge-chip-line similar" />{"\uC720\uC0AC"}</span>
+            </label>
           </div>
           <div className="graph-filter">
-            <label>점수: {scoreRange[0]}–{scoreRange[1]}%</label>
+            <label>{"\uC810\uC218"}: {scoreRange[0]}–{scoreRange[1]}%</label>
             <input type="range" min={0} max={100} value={scoreRange[0]}
               onChange={(e) => setScoreRange([+e.target.value, scoreRange[1]])} />
             <input type="range" min={0} max={100} value={scoreRange[1]}
@@ -506,14 +809,32 @@ export default function NoteGraph() {
               onChange={(e) => setTimeRange(+e.target.value)} />
             <div className="graph-filter-hint">{timeRange < 100 ? `${timeRange}%` : "전체"}</div>
           </div>
-          <label className="graph-toggle">
+          <div className="graph-filter">
+            <label>{"\uB178\uB4DC"} {"\uAC04\uACA9"}</label>
+            <input type="range" min={10} max={100} value={nodeSpacing}
+              onChange={(e) => setNodeSpacing(+e.target.value)} />
+            <div className="graph-filter-hint">{nodeSpacing < 30 ? "\uBC00\uC9D1" : nodeSpacing < 70 ? "\uBCF4\uD1B5" : "\uB113\uAC8C"}</div>
+          </div>
+          <div className="graph-filter">
+            <label>{"\uAC04\uC120"} {"\uAC04\uACA9"}</label>
+            <input type="range" min={10} max={100} value={edgeLength}
+              onChange={(e) => setEdgeLength(+e.target.value)} />
+            <div className="graph-filter-hint">{edgeLength < 30 ? "\uC9E7\uAC8C" : edgeLength < 70 ? "\uBCF4\uD1B5" : "\uAE38\uAC8C"}</div>
+          </div>
+          <label className="graph-toggle-switch">
             <input type="checkbox" checked={showLabels} onChange={(e) => setShowLabels(e.target.checked)} />
-            <span>이름 표시</span>
+            <span className="toggle-track"><span className="toggle-thumb" /></span>
+            <span>{"\uC774\uB984"} {"\uD45C\uC2DC"}</span>
           </label>
         </div>
 
         {/* Canvas */}
-        <div className="graph-canvas" ref={wrapRef}>
+        <div className="graph-canvas" ref={wrapRef} onContextMenu={(e) => {
+          e.preventDefault();
+          // Check if hovering a node
+          setCtxMenu({ x: e.clientX, y: e.clientY, node: hovered });
+          setHighlightLink(null);
+        }}>
           <GraphErrorBoundary>
             {ready && dim.w > 0 && dim.h > 0 && (
               <ForceGraph2D
@@ -531,6 +852,7 @@ export default function NoteGraph() {
                   paintNode(node, ctx, globalScale);
                 }}
                 nodePointerAreaPaint={(node: GNode, color: string, ctx: CanvasRenderingContext2D) => {
+                  if (!visibleIdsRef.current.has(node.id)) return;
                   if (node.x == null || node.y == null) return;
                   ctx.beginPath();
                   ctx.arc(node.x, node.y, node.size + 6, 0, Math.PI * 2);
@@ -538,17 +860,42 @@ export default function NoteGraph() {
                   ctx.fill();
                 }}
                 linkCanvasObject={paintLink}
-                onNodeClick={(node: GNode) => navigate(`/courses/${courseId}/notes/${node.id}`)}
+                onNodeClick={(node: GNode) => {
+                  if (linkingFrom) {
+                    if (node.id !== linkingFrom.id) {
+                      api.post(`/courses/${courseId}/notes/manual-link`, {
+                        source_note_id: linkingFrom.id,
+                        target_note_id: node.id,
+                      }).then(() => {
+                        // Add edge locally for immediate feedback
+                        setGraphData((prev) => {
+                          if (!prev) return prev;
+                          const newEdge = { source: linkingFrom.id, target: node.id, type: "link" as const };
+                          return { ...prev, edges: [...prev.edges, newEdge] };
+                        });
+                      }).catch(() => {});
+                    }
+                    setLinkingFrom(null);
+                    return;
+                  }
+                  navigate(`/courses/${courseId}/notes/${node.id}`);
+                }}
                 onNodeHover={(node: GNode | null) => setHovered(node)}
                 onNodeDrag={(node: GNode) => { node.fx = node.x; node.fy = node.y; }}
-                onNodeDragEnd={(node: GNode) => { node.fx = node.x; node.fy = node.y; }}
+                onNodeDragEnd={(node: GNode) => {
+                  // 고정 해제 → 충돌 힘이 다시 작용하도록
+                  node.fx = undefined;
+                  node.fy = undefined;
+                  // 시뮬레이션 재가열 → 충돌 판정 재개
+                  fgRef.current?.d3ReheatSimulation();
+                }}
                 onEngineStop={onEngineStop}
                 backgroundColor="transparent"
-                warmupTicks={150}
-                cooldownTicks={80}
-                cooldownTime={4000}
-                d3AlphaDecay={0.05}
-                d3VelocityDecay={0.4}
+                warmupTicks={0}
+                cooldownTicks={400}
+                cooldownTime={8000}
+                d3AlphaDecay={0.012}
+                d3VelocityDecay={0.35}
                 enableZoomInteraction={true}
                 enablePanInteraction={true}
                 minZoom={0.15}
@@ -571,9 +918,225 @@ export default function NoteGraph() {
                   {hovered.tags.map((t) => <span key={t}>#{t}</span>)}
                 </div>
               )}
+              {hovered.categories.length > 0 && (
+                <div className="graph-tooltip-tags" style={{ borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 4, marginTop: 4 }}>
+                  {hovered.categories.slice(0, 5).map((c) => <span key={c} style={{ color: "rgba(168,85,247,0.9)" }}>{c}</span>)}
+                  {hovered.categories.length > 5 && <span style={{ color: "rgba(148,163,184,0.6)" }}>+{hovered.categories.length - 5}</span>}
+                </div>
+              )}
               <div className="graph-tooltip-date">
                 {new Date(hovered.updatedAt).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })} 수정
               </div>
+            </div>
+          )}
+
+          {/* Context menu */}
+          {ctxMenu && (
+            <div className="graph-ctx-menu" ref={(el) => {
+              if (!el) return;
+              const rect = el.getBoundingClientRect();
+              const vw = window.innerWidth, vh = window.innerHeight;
+              let x = ctxMenu.x, y = ctxMenu.y;
+              if (y + rect.height > vh - 8) y = vh - rect.height - 8;
+              if (y < 8) y = 8;
+              if (x + rect.width > vw - 8) x = vw - rect.width - 8;
+              if (el.style.left !== `${x}px` || el.style.top !== `${y}px`) {
+                el.style.left = `${x}px`;
+                el.style.top = `${y}px`;
+              }
+            }} style={{
+              left: ctxMenu.x, top: ctxMenu.y,
+              opacity: highlightLink ? 0.5 : 1,
+              transition: "opacity 0.15s",
+            }}
+              onClick={(e) => e.stopPropagation()}>
+              {ctxMenu.node ? (
+                <>
+                  <div className="graph-ctx-header">
+                    <span className="graph-ctx-dot" style={{ background: scoreColor(ctxMenu.node.score) }} />
+                    {ctxMenu.node.title.length > 20 ? ctxMenu.node.title.slice(0, 20) + "..." : ctxMenu.node.title}
+                  </div>
+                  <button className="graph-ctx-item" onClick={() => { navigate(`/courses/${courseId}/notes/${ctxMenu.node!.id}`); setCtxMenu(null); }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    노트 열기
+                  </button>
+                  <button className="graph-ctx-item" onClick={() => {
+                    const n = ctxMenu.node!;
+                    n.fx = n.x; n.fy = n.y;
+                    setCtxMenu(null);
+                  }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    위치 고정
+                  </button>
+                  <button className="graph-ctx-item" onClick={() => {
+                    const n = ctxMenu.node!;
+                    n.fx = undefined; n.fy = undefined;
+                    fgRef.current?.d3ReheatSimulation();
+                    setCtxMenu(null);
+                  }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+                    고정 해제
+                  </button>
+                  <div className="graph-ctx-divider" />
+                  <button className="graph-ctx-item" onClick={() => {
+                    fgRef.current?.centerAt(ctxMenu.node!.x, ctxMenu.node!.y, 400);
+                    fgRef.current?.zoom(3, 400);
+                    setCtxMenu(null);
+                  }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                    이 노트에 집중
+                  </button>
+                  <div className="graph-ctx-divider" />
+                  <button className="graph-ctx-item" onClick={() => {
+                    setLinkingFrom(ctxMenu.node!);
+                    setLinkSearch("");
+                    setLinkSearchOpen(false);
+                    setCtxMenu(null);
+                  }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    다른 노트와 링크
+                  </button>
+                  {/* 이 노드의 수동 링크 목록 → 삭제 가능 */}
+                  {(() => {
+                    const nodeId = ctxMenu.node!.id;
+                    const manualLinks = gd.links.filter((l) => {
+                      if (l.type !== "link") return false;
+                      const sId = typeof l.source === "string" ? l.source : (l.source as GNode).id;
+                      const tId = typeof l.target === "string" ? l.target : (l.target as GNode).id;
+                      return sId === nodeId || tId === nodeId;
+                    });
+                    if (manualLinks.length === 0) return null;
+                    return (
+                      <>
+                        <div className="graph-ctx-divider" />
+                        <div className="graph-ctx-header" style={{ fontSize: 10, opacity: 0.6, padding: "4px 12px 2px" }}>링크 해제</div>
+                        {manualLinks.map((l, i) => {
+                          const sId = typeof l.source === "string" ? l.source : (l.source as GNode).id;
+                          const tId = typeof l.target === "string" ? l.target : (l.target as GNode).id;
+                          const otherId = sId === nodeId ? tId : sId;
+                          const otherNode = gd.nodes.find((n) => n.id === otherId);
+                          const otherTitle = otherNode ? (otherNode.title.length > 16 ? otherNode.title.slice(0, 16) + "..." : otherNode.title) : "?";
+                          return (
+                            <button key={i} className="graph-ctx-item" style={{ color: "#f87171" }}
+                              onMouseEnter={() => setHighlightLink({ s: sId, t: tId })}
+                              onMouseLeave={() => setHighlightLink(null)}
+                              onClick={() => {
+                                setHighlightLink(null);
+                                api.delete(`/courses/${courseId}/notes/manual-link`, { data: { source_note_id: sId, target_note_id: tId } })
+                                  .then(() => {
+                                    setGraphData((prev) => {
+                                      if (!prev) return prev;
+                                      return { ...prev, edges: prev.edges.filter((e) => !(
+                                        (e.source === sId && e.target === tId && e.type === "link") ||
+                                        (e.source === tId && e.target === sId && e.type === "link")
+                                      ))};
+                                    });
+                                  }).catch(() => {});
+                                setCtxMenu(null);
+                              }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                              {otherTitle}
+                            </button>
+                          );
+                        })}
+                      </>
+                    );
+                  })()}
+                </>
+              ) : (
+                <>
+                  <button className="graph-ctx-item" onClick={() => {
+                    fittedRef.current = false;
+                    fgRef.current?.zoomToFit(300, 80);
+                    setCtxMenu(null);
+                  }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                    전체 보기
+                  </button>
+                  <button className="graph-ctx-item" onClick={() => {
+                    gd.nodes.forEach((n) => { n.fx = undefined; n.fy = undefined; });
+                    fgRef.current?.d3ReheatSimulation();
+                    setCtxMenu(null);
+                  }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                    레이아웃 초기화
+                  </button>
+                  <div className="graph-ctx-divider" />
+                  <button className="graph-ctx-item" onClick={() => { setShowLabels(!showLabels); setCtxMenu(null); }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    이름 {showLabels ? "숨기기" : "표시"}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Linking mode banner */}
+          {linkingFrom && (
+            <div className="graph-link-banner">
+              <div className="graph-link-banner-text">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                <strong>{linkingFrom.title.length > 18 ? linkingFrom.title.slice(0, 18) + "..." : linkingFrom.title}</strong>
+                {"\uC5D0\uC11C"} {"\uC5F0\uACB0\uD560"} {"\uB178\uD2B8\uB97C"} {"\uD074\uB9AD\uD558\uC138\uC694"}
+              </div>
+              <div className="graph-link-banner-actions">
+                <button
+                  className="graph-link-search-btn"
+                  onClick={() => setLinkSearchOpen(!linkSearchOpen)}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  {"\uAC80\uC0C9"}
+                </button>
+                <button
+                  className="graph-link-cancel-btn"
+                  onClick={() => setLinkingFrom(null)}
+                >
+                  {"\uCDE8\uC18C"}
+                </button>
+              </div>
+              {linkSearchOpen && (
+                <div className="graph-link-search-panel">
+                  <input
+                    className="graph-link-search-input"
+                    placeholder={"\uB178\uD2B8"}
+                    value={linkSearch}
+                    onChange={(e) => setLinkSearch(e.target.value)}
+                    autoFocus
+                  />
+                  <div className="graph-link-search-results">
+                    {gd.nodes
+                      .filter((n) => n.id !== linkingFrom.id && n.title.toLowerCase().includes(linkSearch.toLowerCase()))
+                      .slice(0, 8)
+                      .map((n) => (
+                        <button
+                          key={n.id}
+                          className="graph-link-search-item"
+                          onClick={() => {
+                            api.post(`/courses/${courseId}/notes/manual-link`, {
+                              source_note_id: linkingFrom.id,
+                              target_note_id: n.id,
+                            }).then(() => {
+                              setGraphData((prev) => {
+                                if (!prev) return prev;
+                                const newEdge = { source: linkingFrom.id, target: n.id, type: "link" as const };
+                                return { ...prev, edges: [...prev.edges, newEdge] };
+                              });
+                            }).catch(() => {});
+                            setLinkingFrom(null);
+                            setLinkSearchOpen(false);
+                          }}
+                        >
+                          <span className="graph-link-search-dot" style={{ background: scoreColor(n.score) }} />
+                          <span className="graph-link-search-title">{n.title}</span>
+                          {n.score != null && <span className="graph-link-search-score">{n.score}%</span>}
+                        </button>
+                      ))}
+                    {gd.nodes.filter((n) => n.id !== linkingFrom.id && n.title.toLowerCase().includes(linkSearch.toLowerCase())).length === 0 && (
+                      <div className="graph-link-search-empty">{"\uACB0\uACFC"} {"\uC5C6\uC74C"}</div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
