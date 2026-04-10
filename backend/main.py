@@ -17,6 +17,7 @@ from modules.materials.router import router as materials_router
 from modules.gamification.router import router as gamification_router
 from modules.messenger.router import router as messenger_router
 from modules.comments.router import router as comments_router
+from modules.notifications.router import router as notifications_router
 
 settings = get_settings()
 
@@ -49,6 +50,7 @@ app.include_router(materials_router, prefix="/api")
 app.include_router(gamification_router, prefix="/api")
 app.include_router(messenger_router, prefix="/api")
 app.include_router(comments_router, prefix="/api")
+app.include_router(notifications_router, prefix="/api")
 
 
 @app.get("/")

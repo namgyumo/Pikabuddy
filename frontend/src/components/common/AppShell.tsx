@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
 import { useMessengerStore } from "../../store/messengerStore";
+import { useNotificationStore } from "../../store/notificationStore";
 import TierBadge from "./TierBadge";
 import ThemeBackground from "./ThemeBackground";
+import NotificationBell from "./NotificationBell";
 
 interface Props {
   children: React.ReactNode;
@@ -28,12 +30,25 @@ export default function AppShell({ children, courseTitle }: Props) {
   const fetchUnreadCount = useMessengerStore((s) => s.fetchUnreadCount);
   const unreadPollRef = useRef<ReturnType<typeof setInterval>>();
 
+  const totalUnreadMessages = useNotificationStore((s) => s.totalUnreadMessages);
+  const messengerCourseId = useNotificationStore((s) => s.messengerCourseId);
+  const fetchTotalUnread = useNotificationStore((s) => s.fetchTotalUnread);
+  const fetchMessengerCourse = useNotificationStore((s) => s.fetchMessengerCourse);
+
   const homeLink = isProfessor ? "/professor" : isPersonal ? "/personal" : "/student";
   const isActive = (path: string) => location.pathname.includes(path);
 
   // Extract courseId from URL for contextual navigation
   const courseIdMatch = location.pathname.match(/\/courses\/([^/]+)/);
   const courseId = courseIdMatch ? courseIdMatch[1] : null;
+
+  // 메신저 바로가기용 코스 + 전체 안 읽은 수
+  useEffect(() => {
+    if (!isPersonal) {
+      fetchMessengerCourse();
+      fetchTotalUnread();
+    }
+  }, [isPersonal, fetchMessengerCourse, fetchTotalUnread]);
 
   // 30초 폴링으로 안 읽은 메시지 수 갱신
   useEffect(() => {
@@ -75,6 +90,17 @@ export default function AppShell({ children, courseTitle }: Props) {
                 <span className="sidebar-link-icon">&#x1F4DA;</span>
                 Classroom
               </Link>
+              {/* 메신저 바로가기 (강의 밖에서도 접근) */}
+              {!courseId && messengerCourseId && (
+                <Link
+                  to={`/courses/${messengerCourseId}/messenger`}
+                  className={`sidebar-link ${isActive("messenger") ? "active" : ""}`}
+                >
+                  <span className="sidebar-link-icon">&#x1F4AC;</span>
+                  Messenger
+                  {totalUnreadMessages > 0 && <span className="sidebar-badge">{totalUnreadMessages}</span>}
+                </Link>
+              )}
               {courseId && (
                 <>
                   <Link
@@ -148,6 +174,17 @@ export default function AppShell({ children, courseTitle }: Props) {
                 <span className="sidebar-link-icon">&#x1F4DA;</span>
                 Classroom
               </Link>
+              {/* 메신저 바로가기 (강의 밖에서도 접근) */}
+              {!courseId && messengerCourseId && (
+                <Link
+                  to={`/courses/${messengerCourseId}/messenger`}
+                  className={`sidebar-link ${isActive("messenger") ? "active" : ""}`}
+                >
+                  <span className="sidebar-link-icon">&#x1F4AC;</span>
+                  Messenger
+                  {totalUnreadMessages > 0 && <span className="sidebar-badge">{totalUnreadMessages}</span>}
+                </Link>
+              )}
               {courseId && (
                 <>
                   <Link
@@ -211,6 +248,7 @@ export default function AppShell({ children, courseTitle }: Props) {
             )}
           </div>
           <div className="topnav-right">
+            <NotificationBell />
             <div className="topnav-avatar">
               {user?.name?.charAt(0)?.toUpperCase() || "U"}
             </div>
