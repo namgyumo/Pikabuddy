@@ -238,7 +238,7 @@ export default function NoteEditor() {
       SubNoteExtension,
       NoteLinkExtension,
       SlashCommandExtension,
-      BlockHandleExtension,
+      BlockHandleExtension.configure({ isReviewMode }),
       ToggleExtension,
       CalloutExtension,
     ],

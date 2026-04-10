@@ -24,6 +24,19 @@ export default function BlockCommentOverlay({
   const [newComment, setNewComment] = useState("");
   const overlayRef = useRef<HTMLDivElement>(null);
 
+  // Listen for block-comment-toggle events from BlockHandleExtension
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.blockIndex != null) {
+        setExpandedBlock((prev) => (prev === detail.blockIndex ? null : detail.blockIndex));
+        setNewComment("");
+      }
+    };
+    window.addEventListener("block-comment-toggle", handler);
+    return () => window.removeEventListener("block-comment-toggle", handler);
+  }, []);
+
   // Measure ProseMirror block positions
   const measure = useCallback(() => {
     const el = editorRef.current;
@@ -65,7 +78,7 @@ export default function BlockCommentOverlay({
     };
   }, [editorRef, measure]);
 
-  // Re-measure when comments change (expanded sections change layout)
+  // Re-measure when expanded block or comments change
   useEffect(() => {
     const timer = setTimeout(measure, 50);
     return () => clearTimeout(timer);
@@ -96,28 +109,31 @@ export default function BlockCommentOverlay({
     <div ref={overlayRef} className="block-comment-overlay" style={{ position: "absolute", top: 0, left: 0, right: 0, pointerEvents: "none", zIndex: 6 }}>
       {blockPositions.map((pos, i) => {
         const count = blockCounts[i] || 0;
-        if (count === 0 && expandedBlock !== i) return null;
         const isExpanded = expandedBlock === i;
-        const blockComments = isExpanded ? getBlockComments(i) : [];
+
+        // 코멘트가 있는 블록에만 우측 뱃지 표시
+        const showBadge = count > 0;
 
         return (
           <div key={i}>
-            {/* Badge on right edge of block */}
-            <button
-              className={`block-comment-indicator${isExpanded ? " active" : ""}`}
-              style={{
-                position: "absolute",
-                top: pos.top + 2,
-                right: 4,
-                pointerEvents: "auto",
-              }}
-              onClick={() => toggleBlock(i)}
-            >
-              <span>{count}</span>
-              <span className={`bci-chevron${isExpanded ? " open" : ""}`}>&rsaquo;</span>
-            </button>
+            {/* 코멘트 수 뱃지 (우측) — 코멘트가 있을 때만 */}
+            {showBadge && (
+              <button
+                className={`block-comment-indicator${isExpanded ? " active" : ""}`}
+                style={{
+                  position: "absolute",
+                  top: pos.top + 2,
+                  right: 4,
+                  pointerEvents: "auto",
+                }}
+                onClick={() => toggleBlock(i)}
+              >
+                <span>{count}</span>
+                <span className={`bci-chevron${isExpanded ? " open" : ""}`}>&rsaquo;</span>
+              </button>
+            )}
 
-            {/* Expanded inline comments below block */}
+            {/* 펼쳐진 인라인 코멘트 영역 */}
             {isExpanded && (
               <div
                 className="block-inline-comments"
@@ -135,17 +151,17 @@ export default function BlockCommentOverlay({
                     className="bic-resolve-btn"
                     onClick={() => toggleBlock(i)}
                   >
-                    접기
+                    접기 &times;
                   </button>
                 </div>
 
-                {blockComments.length === 0 && (
+                {getBlockComments(i).length === 0 && (
                   <div style={{ fontSize: 12, color: "var(--on-surface-variant)", padding: "4px 0" }}>
                     아직 코멘트가 없습니다.
                   </div>
                 )}
 
-                {blockComments.map((c) => (
+                {getBlockComments(i).map((c) => (
                   <div key={c.id} className={`bic-item${c.is_resolved ? " bic-resolved" : ""}`}>
                     <div className="bic-author">
                       {c.user_name}
@@ -165,7 +181,7 @@ export default function BlockCommentOverlay({
                         month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
                       })}
                     </div>
-                    {/* Replies */}
+                    {/* 답글 */}
                     {getReplies(c.id).map((r) => (
                       <div key={r.id} className="bic-item" style={{ marginLeft: 16, borderLeft: "2px solid var(--outline-variant)", paddingLeft: 10 }}>
                         <div className="bic-author">

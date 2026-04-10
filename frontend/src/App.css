@@ -3218,6 +3218,28 @@ textarea.input {
   cursor: grabbing;
 }
 
+/* 리뷰 모드: 코멘트 버튼 */
+.block-handle-comment {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-lowest);
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--primary);
+  transition: all 0.15s;
+  padding: 0;
+}
+.block-handle-comment:hover {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(99,102,241,0.25);
+}
+
 /* Block-level hover — subtle left border on hovered blocks */
 .note-editor .tiptap > *:hover {
   border-radius: 4px;
