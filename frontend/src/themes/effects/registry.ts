@@ -627,14 +627,16 @@ export const EFFECT_DEFINITIONS: EffectDefinition[] = [
   },
 ];
 
+/** Pre-computed category → definitions map (avoids re-creation per render) */
+const _categoryMap = new Map<string, EffectDefinition[]>();
+for (const def of EFFECT_DEFINITIONS) {
+  const list = _categoryMap.get(def.category) || [];
+  list.push(def);
+  _categoryMap.set(def.category, list);
+}
+
 export function getEffectsByCategory() {
-  const map = new Map<string, EffectDefinition[]>();
-  for (const def of EFFECT_DEFINITIONS) {
-    const list = map.get(def.category) || [];
-    list.push(def);
-    map.set(def.category, list);
-  }
-  return map;
+  return _categoryMap;
 }
 
 export function getEffectDef(id: string) {

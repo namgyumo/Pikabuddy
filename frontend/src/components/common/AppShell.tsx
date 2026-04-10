@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
+import { useMessengerStore } from "../../store/messengerStore";
 import TierBadge from "./TierBadge";
 import ThemeBackground from "./ThemeBackground";
 
@@ -23,6 +24,19 @@ export default function AppShell({ children, courseTitle }: Props) {
 
   const isProfessor = user?.role === "professor";
   const isPersonal = user?.role === "personal";
+  const unreadCount = useMessengerStore((s) => s.unreadCount);
+  const fetchUnreadCount = useMessengerStore((s) => s.fetchUnreadCount);
+  const unreadPollRef = useRef<ReturnType<typeof setInterval>>();
+
+  // 30초 폴링으로 안 읽은 메시지 수 갱신
+  useEffect(() => {
+    if (unreadPollRef.current) clearInterval(unreadPollRef.current);
+    if (courseId && !isPersonal) {
+      fetchUnreadCount(courseId);
+      unreadPollRef.current = setInterval(() => fetchUnreadCount(courseId), 30000);
+    }
+    return () => { if (unreadPollRef.current) clearInterval(unreadPollRef.current); };
+  }, [courseId, isPersonal, fetchUnreadCount]);
 
   const homeLink = isProfessor ? "/professor" : isPersonal ? "/personal" : "/student";
   const isActive = (path: string) => location.pathname.includes(path);
@@ -73,10 +87,25 @@ export default function AppShell({ children, courseTitle }: Props) {
                   </Link>
                   <Link
                     to={`/courses/${courseId}`}
-                    className={`sidebar-link ${!isActive("dashboard") && !isActive("assignments") && isActive("courses") ? "active" : ""}`}
+                    className={`sidebar-link ${!isActive("dashboard") && !isActive("assignments") && !isActive("student-notes") && !isActive("messenger") && isActive("courses") ? "active" : ""}`}
                   >
                     <span className="sidebar-link-icon">&#x1F4DD;</span>
                     Curriculum
+                  </Link>
+                  <Link
+                    to={`/courses/${courseId}/student-notes`}
+                    className={`sidebar-link ${isActive("student-notes") ? "active" : ""}`}
+                  >
+                    <span className="sidebar-link-icon">&#x1F4D3;</span>
+                    Student Notes
+                  </Link>
+                  <Link
+                    to={`/courses/${courseId}/messenger`}
+                    className={`sidebar-link ${isActive("messenger") ? "active" : ""}`}
+                  >
+                    <span className="sidebar-link-icon">&#x1F4AC;</span>
+                    Messenger
+                    {unreadCount > 0 && <span className="sidebar-badge">{unreadCount}</span>}
                   </Link>
                 </>
               )}
@@ -135,6 +164,14 @@ export default function AppShell({ children, courseTitle }: Props) {
                   >
                     <span className="sidebar-link-icon">&#x1F4DD;</span>
                     Notes
+                  </Link>
+                  <Link
+                    to={`/courses/${courseId}/messenger`}
+                    className={`sidebar-link ${isActive("messenger") ? "active" : ""}`}
+                  >
+                    <span className="sidebar-link-icon">&#x1F4AC;</span>
+                    Messenger
+                    {unreadCount > 0 && <span className="sidebar-badge">{unreadCount}</span>}
                   </Link>
                 </>
               )}

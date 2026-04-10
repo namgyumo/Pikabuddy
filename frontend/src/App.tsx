@@ -22,6 +22,8 @@ import PersonalHome from "./pages/PersonalHome";
 import PersonalAssignmentDetail from "./pages/PersonalAssignmentDetail";
 import QuizEditor from "./pages/QuizEditor";
 import Profile from "./pages/Profile";
+import Messenger from "./pages/Messenger";
+import StudentNotes from "./pages/StudentNotes";
 import TutorialProvider from "./components/common/TutorialProvider";
 import "./App.css";
 
@@ -182,6 +184,38 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Workspace />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/courses/:courseId/messenger"
+          element={
+            <ProtectedRoute>
+              <Messenger />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/courses/:courseId/messenger/:partnerId"
+          element={
+            <ProtectedRoute>
+              <Messenger />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/courses/:courseId/student-notes"
+          element={
+            <ProtectedRoute role="professor">
+              <StudentNotes />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/courses/:courseId/student-notes/:studentId/:noteId"
+          element={
+            <ProtectedRoute role="professor">
+              <NoteEditor />
             </ProtectedRoute>
           }
         />

@@ -68,6 +68,9 @@ export const ALLOWED_CSS_VARIABLES = [
   "--border-text-color",
 ] as const;
 
+/** O(1) lookup set for CSS variable validation */
+export const ALLOWED_CSS_SET = new Set<string>(ALLOWED_CSS_VARIABLES);
+
 /** Template JSON for custom theme files */
 export const CUSTOM_THEME_TEMPLATE = {
   name: "My Custom Theme",

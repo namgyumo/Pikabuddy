@@ -164,6 +164,65 @@ export interface AiAnalysis {
   created_at: string;
 }
 
+/* ── Messenger ── */
+
+export interface Message {
+  id: string;
+  sender_id: string;
+  receiver_id: string;
+  content: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface ConversationPartner {
+  id: string;
+  name: string;
+  avatar_url: string | null;
+}
+
+export interface ConversationItem {
+  partner: ConversationPartner;
+  last_message: Message | null;
+  unread_count: number;
+}
+
+/* ── Note Comments ── */
+
+export interface NoteComment {
+  id: string;
+  note_id: string;
+  user_id: string;
+  user_name: string;
+  user_role: string;
+  user_avatar_url: string | null;
+  block_index: number | null;
+  parent_id: string | null;
+  content: string;
+  is_resolved: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CommentCounts {
+  block_counts: Record<number, number>;
+  total: number;
+  unresolved: number;
+}
+
+export interface StudentNoteItem {
+  id: string;
+  title: string;
+  updated_at: string;
+  understanding_score: number | null;
+  comment_count: number;
+}
+
+export interface StudentWithNotes {
+  student: Pick<User, "id" | "name" | "avatar_url">;
+  notes: StudentNoteItem[];
+}
+
 export interface DashboardData {
   course_id: string;
   student_count: number;

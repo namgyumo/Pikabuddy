@@ -35,6 +35,8 @@ import { BlockHandleExtension } from "../lib/BlockHandleExtension";
 import { ToggleExtension } from "../lib/ToggleExtension";
 import { CalloutExtension } from "../lib/CalloutExtension";
 import MiniNoteTree from "../components/MiniNoteTree";
+import CommentsPanel from "../components/comments/CommentsPanel";
+import { useCommentStore } from "../store/commentStore";
 import type { Note } from "../types";
 
 interface AiComment {
@@ -166,7 +168,8 @@ function MaterialEmbedPanel({ material }: { material: CourseMaterial }) {
 }
 
 export default function NoteEditor() {
-  const { courseId, noteId } = useParams<{ courseId: string; noteId: string }>();
+  const { courseId, noteId, studentId } = useParams<{ courseId: string; noteId: string; studentId?: string }>();
+  const isReviewMode = !!studentId; // 교수가 학생 노트를 리뷰하는 모드
   const [title, setTitle] = useState("새 노트");
   const [aiComments, setAiComments] = useState<AiComment[]>([]);
   const [score, setScore] = useState<number | null>(null);
@@ -190,9 +193,10 @@ export default function NoteEditor() {
   const [searchParams] = useSearchParams();
   const [materials, setMaterials] = useState<CourseMaterial[]>([]);
   const [selectedMaterial, setSelectedMaterial] = useState<CourseMaterial | null>(null);
-  const [sidebarTab, setSidebarTab] = useState<"ai" | "material" | "map">(
-    searchParams.get("material") ? "material" : "ai"
+  const [sidebarTab, setSidebarTab] = useState<"ai" | "material" | "map" | "comments">(
+    isReviewMode ? "comments" : searchParams.get("material") ? "material" : "ai"
   );
+  const [noteOwnerId, setNoteOwnerId] = useState<string>("");
   const [tags, setTags] = useState<{ id: string; tag: string }[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [noteLinkSearch, setNoteLinkSearch] = useState(false);
@@ -241,15 +245,36 @@ export default function NoteEditor() {
   // ── 데이터 로드 ───────────────────────────────────────
   useEffect(() => {
     if (!noteId || noteId === "new" || !courseId) return;
-    api.get(`/courses/${courseId}/notes`).then(({ data }) => {
-      const note = data.find((n: { id: string }) => n.id === noteId);
-      if (note) {
-        setTitle(note.title);
-        if (note.content && editor) editor.commands.setContent(note.content);
-        if (note.understanding_score != null) setScore(note.understanding_score);
-        if (note.gap_analysis?.feedback) setFeedbackText(note.gap_analysis.feedback);
-      }
-    });
+
+    // 리뷰 모드: 교수가 학생 노트 열람 (student-notes 경로)
+    if (isReviewMode && studentId) {
+      // student-notes 경로에서는 직접 노트 로드
+      api.get(`/courses/${courseId}/notes?student_id=${studentId}`).then(({ data }) => {
+        const note = data.find((n: { id: string }) => n.id === noteId);
+        if (note) {
+          setTitle(note.title);
+          setNoteOwnerId(note.student_id || studentId);
+          if (note.content && editor) {
+            editor.commands.setContent(note.content);
+            // 리뷰 모드에서는 읽기 전용
+            editor.setEditable(false);
+          }
+          if (note.understanding_score != null) setScore(note.understanding_score);
+          if (note.gap_analysis?.feedback) setFeedbackText(note.gap_analysis.feedback);
+        }
+      }).catch(() => {});
+    } else {
+      api.get(`/courses/${courseId}/notes`).then(({ data }) => {
+        const note = data.find((n: { id: string }) => n.id === noteId);
+        if (note) {
+          setTitle(note.title);
+          setNoteOwnerId(note.student_id || user?.id || "");
+          if (note.content && editor) editor.commands.setContent(note.content);
+          if (note.understanding_score != null) setScore(note.understanding_score);
+          if (note.gap_analysis?.feedback) setFeedbackText(note.gap_analysis.feedback);
+        }
+      });
+    }
     api.get(`/notes/${noteId}/ai-comments`).then(({ data }) => setAiComments(data));
     api.get(`/notes/${noteId}/tags`).then(({ data }) => setTags(data)).catch(() => {});
     api.get(`/courses/${courseId}/materials`).then(({ data }) => {
@@ -260,7 +285,7 @@ export default function NoteEditor() {
         if (found) setSelectedMaterial(found);
       }
     }).catch(() => {});
-  }, [noteId, courseId, editor, searchParams]);
+  }, [noteId, courseId, editor, searchParams, isReviewMode, studentId, user?.id]);
 
   // ── 저장 & 분석 ───────────────────────────────────────
   const handleSave = useCallback(async () => {
@@ -626,6 +651,15 @@ export default function NoteEditor() {
               onClick={() => setSidebarTab("map")}>
               지도
             </button>
+            {(isReviewMode || noteId !== "new") && (
+              <button className={`sidebar-tab${sidebarTab === "comments" ? " active" : ""}`}
+                onClick={() => setSidebarTab("comments")}>
+                코멘트
+                {useCommentStore.getState().counts.unresolved > 0 && (
+                  <span className="sidebar-tab-badge">{useCommentStore.getState().counts.unresolved}</span>
+                )}
+              </button>
+            )}
           </div>
 
           {/* ── 자료 탭 ── */}
@@ -752,6 +786,17 @@ export default function NoteEditor() {
           {sidebarTab === "map" && (
             <div className="sidebar-tab-content">
               <MiniNoteTree />
+            </div>
+          )}
+
+          {sidebarTab === "comments" && noteId && noteId !== "new" && (
+            <div className="sidebar-tab-content">
+              <CommentsPanel
+                noteId={noteId}
+                noteOwnerId={noteOwnerId || user?.id || ""}
+                currentUserId={user?.id || ""}
+                currentUserRole={user?.role || ""}
+              />
             </div>
           )}
         </div>

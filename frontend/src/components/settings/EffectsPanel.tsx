@@ -1,6 +1,6 @@
 /* ── EffectsPanel — Toggle/configure all 55 theme effects ── */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, memo } from "react";
 import {
   EFFECT_DEFINITIONS,
   getEffectsByCategory,
@@ -112,154 +112,17 @@ export default function EffectsPanel({ effectsState, onChange }: Props) {
             {/* Effect List */}
             {isOpen && (
               <div style={{ padding: "4px 10px 10px" }}>
-                {defs.map((def) => {
-                  const config = effectsState[def.id];
-                  const enabled = config?.enabled || false;
-                  const params = config?.params || getDefaultParams(def);
-                  const isEvent = def.mode === "event";
-
-                  return (
-                    <div key={def.id} style={{
-                      padding: "8px 6px", borderBottom: "1px solid var(--outline-variant)",
-                    }}>
-                      {/* Effect header with toggle */}
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontSize: 16, width: 24, textAlign: "center" }}>{def.icon}</span>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--on-surface)" }}>
-                            {def.name}
-                          </div>
-                          <div style={{
-                            fontSize: 11, color: "var(--on-surface-variant)",
-                            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                          }}>
-                            {def.description}
-                          </div>
-                        </div>
-
-                        {/* Test button for event effects */}
-                        {isEvent && (
-                          <button
-                            onClick={() => testEvent(def.id)}
-                            disabled={testingId === def.id}
-                            style={{
-                              padding: "3px 8px", borderRadius: 6, fontSize: 11,
-                              border: "1px solid var(--outline-variant)",
-                              background: testingId === def.id ? "var(--primary-light)" : "transparent",
-                              color: "var(--primary)", cursor: "pointer", fontWeight: 500,
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            {testingId === def.id ? "..." : "테스트"}
-                          </button>
-                        )}
-
-                        {/* Toggle switch */}
-                        <button
-                          onClick={() => toggleEffect(def.id, def)}
-                          style={{
-                            width: 40, height: 22, borderRadius: 11, border: "none",
-                            background: enabled ? "var(--primary)" : "var(--outline-variant)",
-                            cursor: "pointer", position: "relative", flexShrink: 0,
-                            transition: "background 0.2s",
-                          }}
-                        >
-                          <span style={{
-                            position: "absolute", top: 2,
-                            left: enabled ? 20 : 2,
-                            width: 18, height: 18, borderRadius: "50%",
-                            background: "#fff", transition: "left 0.2s",
-                            boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
-                          }} />
-                        </button>
-                      </div>
-
-                      {/* Params (shown when enabled and has params) */}
-                      {enabled && def.params.length > 0 && (
-                        <div style={{
-                          marginTop: 8, marginLeft: 32,
-                          display: "flex", flexDirection: "column", gap: 6,
-                        }}>
-                          {def.params.map((param) => (
-                            <div key={param.key} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                              <span style={{ fontSize: 11, color: "var(--on-surface-variant)", minWidth: 56 }}>
-                                {param.label}
-                              </span>
-
-                              {param.type === "color" && (
-                                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                                  <input
-                                    type="color"
-                                    value={String(params[param.key] || param.default)}
-                                    onChange={(e) => updateParam(def.id, param.key, e.target.value, def)}
-                                    style={{ width: 28, height: 24, border: "none", cursor: "pointer", padding: 0, borderRadius: 4 }}
-                                  />
-                                  <input
-                                    type="text"
-                                    value={String(params[param.key] || param.default)}
-                                    onChange={(e) => updateParam(def.id, param.key, e.target.value, def)}
-                                    style={{
-                                      width: 80, padding: "2px 6px", border: "1px solid var(--outline-variant)",
-                                      borderRadius: 4, fontSize: 11, fontFamily: "monospace",
-                                      background: "var(--surface-container-lowest)", color: "var(--on-surface)",
-                                    }}
-                                  />
-                                </div>
-                              )}
-
-                              {param.type === "number" && (
-                                <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1 }}>
-                                  <input
-                                    type="range"
-                                    min={param.min ?? 0}
-                                    max={param.max ?? 100}
-                                    step={param.step ?? 1}
-                                    value={Number(params[param.key] ?? param.default)}
-                                    onChange={(e) => updateParam(def.id, param.key, parseFloat(e.target.value), def)}
-                                    style={{ flex: 1, accentColor: "var(--primary)" }}
-                                  />
-                                  <span style={{ fontSize: 11, fontFamily: "monospace", minWidth: 32, textAlign: "right", color: "var(--on-surface)" }}>
-                                    {params[param.key] ?? param.default}
-                                  </span>
-                                </div>
-                              )}
-
-                              {param.type === "select" && (
-                                <select
-                                  value={String(params[param.key] || param.default)}
-                                  onChange={(e) => updateParam(def.id, param.key, e.target.value, def)}
-                                  style={{
-                                    flex: 1, padding: "3px 6px", border: "1px solid var(--outline-variant)",
-                                    borderRadius: 4, fontSize: 11,
-                                    background: "var(--surface-container-lowest)", color: "var(--on-surface)",
-                                  }}
-                                >
-                                  {param.options?.map((opt) => (
-                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                  ))}
-                                </select>
-                              )}
-
-                              {param.type === "emoji" && (
-                                <input
-                                  type="text"
-                                  value={String(params[param.key] || param.default)}
-                                  onChange={(e) => updateParam(def.id, param.key, e.target.value, def)}
-                                  maxLength={4}
-                                  style={{
-                                    width: 50, padding: "2px 6px", border: "1px solid var(--outline-variant)",
-                                    borderRadius: 4, fontSize: 16, textAlign: "center",
-                                    background: "var(--surface-container-lowest)",
-                                  }}
-                                />
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                {defs.map((def) => (
+                  <EffectItem
+                    key={def.id}
+                    def={def}
+                    config={effectsState[def.id]}
+                    isTesting={testingId === def.id}
+                    onToggle={toggleEffect}
+                    onParamChange={updateParam}
+                    onTest={testEvent}
+                  />
+                ))}
               </div>
             )}
           </div>
@@ -293,3 +156,157 @@ function getDefaultParams(def: EffectDefinition): Record<string, string | number
 function countEnabled(state: EffectsState): number {
   return Object.values(state).filter((c) => c.enabled).length;
 }
+
+/* ── Memoized Effect Item — only re-renders when its own config/testing state changes ── */
+const EffectItem = memo(function EffectItem({
+  def, config, isTesting, onToggle, onParamChange, onTest,
+}: {
+  def: EffectDefinition;
+  config: EffectsState[string] | undefined;
+  isTesting: boolean;
+  onToggle: (id: string, def: EffectDefinition) => void;
+  onParamChange: (id: string, key: string, value: string | number, def: EffectDefinition) => void;
+  onTest: (id: string) => void;
+}) {
+  const enabled = config?.enabled || false;
+  const params = config?.params || getDefaultParams(def);
+  const isEvent = def.mode === "event";
+
+  return (
+    <div style={{
+      padding: "8px 6px", borderBottom: "1px solid var(--outline-variant)",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 16, width: 24, textAlign: "center" }}>{def.icon}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--on-surface)" }}>
+            {def.name}
+          </div>
+          <div style={{
+            fontSize: 11, color: "var(--on-surface-variant)",
+            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+          }}>
+            {def.description}
+          </div>
+        </div>
+
+        {isEvent && (
+          <button
+            onClick={() => onTest(def.id)}
+            disabled={isTesting}
+            style={{
+              padding: "3px 8px", borderRadius: 6, fontSize: 11,
+              border: "1px solid var(--outline-variant)",
+              background: isTesting ? "var(--primary-light)" : "transparent",
+              color: "var(--primary)", cursor: "pointer", fontWeight: 500,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {isTesting ? "..." : "테스트"}
+          </button>
+        )}
+
+        <button
+          onClick={() => onToggle(def.id, def)}
+          style={{
+            width: 40, height: 22, borderRadius: 11, border: "none",
+            background: enabled ? "var(--primary)" : "var(--outline-variant)",
+            cursor: "pointer", position: "relative", flexShrink: 0,
+            transition: "background 0.2s",
+          }}
+        >
+          <span style={{
+            position: "absolute", top: 2,
+            left: enabled ? 20 : 2,
+            width: 18, height: 18, borderRadius: "50%",
+            background: "#fff", transition: "left 0.2s",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+          }} />
+        </button>
+      </div>
+
+      {enabled && def.params.length > 0 && (
+        <div style={{
+          marginTop: 8, marginLeft: 32,
+          display: "flex", flexDirection: "column", gap: 6,
+        }}>
+          {def.params.map((param) => (
+            <div key={param.key} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 11, color: "var(--on-surface-variant)", minWidth: 56 }}>
+                {param.label}
+              </span>
+
+              {param.type === "color" && (
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <input
+                    type="color"
+                    value={String(params[param.key] || param.default)}
+                    onChange={(e) => onParamChange(def.id, param.key, e.target.value, def)}
+                    style={{ width: 28, height: 24, border: "none", cursor: "pointer", padding: 0, borderRadius: 4 }}
+                  />
+                  <input
+                    type="text"
+                    value={String(params[param.key] || param.default)}
+                    onChange={(e) => onParamChange(def.id, param.key, e.target.value, def)}
+                    style={{
+                      width: 80, padding: "2px 6px", border: "1px solid var(--outline-variant)",
+                      borderRadius: 4, fontSize: 11, fontFamily: "monospace",
+                      background: "var(--surface-container-lowest)", color: "var(--on-surface)",
+                    }}
+                  />
+                </div>
+              )}
+
+              {param.type === "number" && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1 }}>
+                  <input
+                    type="range"
+                    min={param.min ?? 0}
+                    max={param.max ?? 100}
+                    step={param.step ?? 1}
+                    value={Number(params[param.key] ?? param.default)}
+                    onChange={(e) => onParamChange(def.id, param.key, parseFloat(e.target.value), def)}
+                    style={{ flex: 1, accentColor: "var(--primary)" }}
+                  />
+                  <span style={{ fontSize: 11, fontFamily: "monospace", minWidth: 32, textAlign: "right", color: "var(--on-surface)" }}>
+                    {params[param.key] ?? param.default}
+                  </span>
+                </div>
+              )}
+
+              {param.type === "select" && (
+                <select
+                  value={String(params[param.key] || param.default)}
+                  onChange={(e) => onParamChange(def.id, param.key, e.target.value, def)}
+                  style={{
+                    flex: 1, padding: "3px 6px", border: "1px solid var(--outline-variant)",
+                    borderRadius: 4, fontSize: 11,
+                    background: "var(--surface-container-lowest)", color: "var(--on-surface)",
+                  }}
+                >
+                  {param.options?.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              )}
+
+              {param.type === "emoji" && (
+                <input
+                  type="text"
+                  value={String(params[param.key] || param.default)}
+                  onChange={(e) => onParamChange(def.id, param.key, e.target.value, def)}
+                  maxLength={4}
+                  style={{
+                    width: 50, padding: "2px 6px", border: "1px solid var(--outline-variant)",
+                    borderRadius: 4, fontSize: 16, textAlign: "center",
+                    background: "var(--surface-container-lowest)",
+                  }}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+});

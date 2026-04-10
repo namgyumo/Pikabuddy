@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, memo } from "react";
 import {
   ALLOWED_CSS_VARIABLES,
+  ALLOWED_CSS_SET,
   VARIABLE_GROUPS,
   FONT_OPTIONS,
   ANIMATION_PRESETS,
@@ -9,6 +10,7 @@ import {
   toHex,
   getCurrentVariableValues,
 } from "../../themes";
+import type { VariableGroup, VariableDefinition } from "../../themes";
 import { useThemeStore } from "../../store/themeStore";
 import type { CustomTheme } from "../../themes";
 import type { EffectsState } from "../../themes/effects";
@@ -53,7 +55,7 @@ export default function ThemeEditor({ onClose, editingTheme }: Props) {
       const el = document.documentElement;
       el.removeAttribute("data-theme");
       for (const [key, value] of Object.entries(variables)) {
-        if ((ALLOWED_CSS_VARIABLES as readonly string[]).includes(key)) {
+        if (ALLOWED_CSS_SET.has(key)) {
           el.style.setProperty(key, value);
         }
       }
@@ -91,7 +93,7 @@ export default function ThemeEditor({ onClose, editingTheme }: Props) {
   const flushTimerRef = useRef(0);
   const handleVariableChange = useCallback((key: string, value: string) => {
     // Immediate DOM update (no React re-render)
-    if ((ALLOWED_CSS_VARIABLES as readonly string[]).includes(key)) {
+    if (ALLOWED_CSS_SET.has(key)) {
       document.documentElement.style.setProperty(key, value);
     }
     pendingRef.current[key] = value;
@@ -202,11 +204,6 @@ export default function ThemeEditor({ onClose, editingTheme }: Props) {
       else next.add(id);
       return next;
     });
-  };
-
-  const parseSliderValue = (val: string | undefined): number => {
-    if (!val) return 8;
-    return parseInt(val) || 0;
   };
 
   const tabs: { key: Tab; label: string; desc: string }[] = [
@@ -323,102 +320,16 @@ export default function ThemeEditor({ onClose, editingTheme }: Props) {
                 </div>
               </div>
 
-              {VARIABLE_GROUPS.map((group) => {
-                const isOpen = openGroups.has(group.id);
-                return (
-                  <div key={group.id} style={{
-                    border: "1px solid var(--outline-variant)", borderRadius: 10, overflow: "hidden",
-                  }}>
-                    <button
-                      onClick={() => toggleGroup(group.id)}
-                      style={{
-                        width: "100%", padding: "10px 14px", border: "none",
-                        background: isOpen ? "var(--surface-container-low)" : "transparent",
-                        cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
-                        fontSize: 13, fontWeight: 600, color: "var(--on-surface)",
-                        transition: "background 0.15s",
-                      }}
-                    >
-                      <span style={{
-                        transform: isOpen ? "rotate(90deg)" : "rotate(0deg)",
-                        transition: "transform 0.2s", fontSize: 11,
-                      }}>&#9654;</span>
-                      {group.label}
-                      <span style={{ fontSize: 11, color: "var(--on-surface-variant)", fontWeight: 400 }}>
-                        ({group.variables.length})
-                      </span>
-                    </button>
-
-                    {isOpen && (
-                      <div style={{ padding: "8px 14px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
-                        {group.variables.map((v) => (
-                          <div key={v.key} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <span style={{ fontSize: 12, color: "var(--on-surface-variant)", minWidth: 80 }}>
-                              {v.label}
-                            </span>
-
-                            {v.type === "color" && (
-                              <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1 }}>
-                                <input
-                                  type="color"
-                                  value={toHex(variables[v.key] || "#000000")}
-                                  onChange={(e) => handleVariableChange(v.key, e.target.value)}
-                                  style={{ width: 32, height: 28, border: "none", cursor: "pointer", borderRadius: 4, padding: 0 }}
-                                />
-                                <input
-                                  type="text"
-                                  value={variables[v.key] || ""}
-                                  onChange={(e) => handleVariableChange(v.key, e.target.value)}
-                                  style={{
-                                    flex: 1, padding: "4px 8px", border: "1px solid var(--outline-variant)",
-                                    borderRadius: 6, fontSize: 12, fontFamily: "monospace", boxSizing: "border-box",
-                                    background: "var(--surface-container-lowest)", color: "var(--on-surface)",
-                                  }}
-                                  placeholder={v.key}
-                                />
-                              </div>
-                            )}
-
-                            {v.type === "slider" && (
-                              <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
-                                <input
-                                  type="range"
-                                  min={v.min ?? 0}
-                                  max={v.max ?? 20}
-                                  step={1}
-                                  value={parseSliderValue(variables[v.key])}
-                                  onChange={(e) => handleVariableChange(v.key, `${e.target.value}${v.unit || "px"}`)}
-                                  style={{ flex: 1 }}
-                                />
-                                <span style={{ fontSize: 12, fontFamily: "monospace", minWidth: 36, textAlign: "right", color: "var(--on-surface)" }}>
-                                  {variables[v.key] || `${v.min ?? 0}${v.unit || "px"}`}
-                                </span>
-                              </div>
-                            )}
-
-                            {v.type === "font" && (
-                              <select
-                                value={variables[v.key] || ""}
-                                onChange={(e) => handleVariableChange(v.key, e.target.value)}
-                                style={{
-                                  flex: 1, padding: "4px 8px", border: "1px solid var(--outline-variant)",
-                                  borderRadius: 6, fontSize: 12, boxSizing: "border-box",
-                                  background: "var(--surface-container-lowest)", color: "var(--on-surface)",
-                                }}
-                              >
-                                <option value="">기본값</option>
-                                {FONT_OPTIONS.map((f) => (
-                                  <option key={f.value} value={f.value}>{f.label}</option>
-                                ))}
-                              </select>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+              {VARIABLE_GROUPS.map((group) => (
+                <VariableGroupPanel
+                  key={group.id}
+                  group={group}
+                  isOpen={openGroups.has(group.id)}
+                  variables={variables}
+                  onToggle={toggleGroup}
+                  onChange={handleVariableChange}
+                />
+              ))}
 
               {/* Animation preset */}
               <div style={{
@@ -557,3 +468,126 @@ const btnPrimary: React.CSSProperties = {
   background: "var(--primary)", color: "#fff",
   fontSize: 13, fontWeight: 600, cursor: "pointer",
 };
+
+/* ── Memoized sub-components to prevent unnecessary re-renders ── */
+
+const VariableGroupPanel = memo(function VariableGroupPanel({
+  group, isOpen, variables, onToggle, onChange,
+}: {
+  group: VariableGroup;
+  isOpen: boolean;
+  variables: Record<string, string>;
+  onToggle: (id: string) => void;
+  onChange: (key: string, value: string) => void;
+}) {
+  return (
+    <div style={{
+      border: "1px solid var(--outline-variant)", borderRadius: 10, overflow: "hidden",
+    }}>
+      <button
+        onClick={() => onToggle(group.id)}
+        style={{
+          width: "100%", padding: "10px 14px", border: "none",
+          background: isOpen ? "var(--surface-container-low)" : "transparent",
+          cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
+          fontSize: 13, fontWeight: 600, color: "var(--on-surface)",
+          transition: "background 0.15s",
+        }}
+      >
+        <span style={{
+          transform: isOpen ? "rotate(90deg)" : "rotate(0deg)",
+          transition: "transform 0.2s", fontSize: 11,
+        }}>&#9654;</span>
+        {group.label}
+        <span style={{ fontSize: 11, color: "var(--on-surface-variant)", fontWeight: 400 }}>
+          ({group.variables.length})
+        </span>
+      </button>
+
+      {isOpen && (
+        <div style={{ padding: "8px 14px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
+          {group.variables.map((v) => (
+            <VariableInput key={v.key} def={v} value={variables[v.key]} onChange={onChange} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+});
+
+function parseSliderVal(val: string | undefined): number {
+  if (!val) return 8;
+  return parseInt(val) || 0;
+}
+
+const VariableInput = memo(function VariableInput({
+  def, value, onChange,
+}: {
+  def: VariableDefinition;
+  value: string | undefined;
+  onChange: (key: string, value: string) => void;
+}) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <span style={{ fontSize: 12, color: "var(--on-surface-variant)", minWidth: 80 }}>
+        {def.label}
+      </span>
+
+      {def.type === "color" && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1 }}>
+          <input
+            type="color"
+            value={toHex(value || "#000000")}
+            onChange={(e) => onChange(def.key, e.target.value)}
+            style={{ width: 32, height: 28, border: "none", cursor: "pointer", borderRadius: 4, padding: 0 }}
+          />
+          <input
+            type="text"
+            value={value || ""}
+            onChange={(e) => onChange(def.key, e.target.value)}
+            style={{
+              flex: 1, padding: "4px 8px", border: "1px solid var(--outline-variant)",
+              borderRadius: 6, fontSize: 12, fontFamily: "monospace", boxSizing: "border-box",
+              background: "var(--surface-container-lowest)", color: "var(--on-surface)",
+            }}
+            placeholder={def.key}
+          />
+        </div>
+      )}
+
+      {def.type === "slider" && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
+          <input
+            type="range"
+            min={def.min ?? 0}
+            max={def.max ?? 20}
+            step={1}
+            value={parseSliderVal(value)}
+            onChange={(e) => onChange(def.key, `${e.target.value}${def.unit || "px"}`)}
+            style={{ flex: 1 }}
+          />
+          <span style={{ fontSize: 12, fontFamily: "monospace", minWidth: 36, textAlign: "right", color: "var(--on-surface)" }}>
+            {value || `${def.min ?? 0}${def.unit || "px"}`}
+          </span>
+        </div>
+      )}
+
+      {def.type === "font" && (
+        <select
+          value={value || ""}
+          onChange={(e) => onChange(def.key, e.target.value)}
+          style={{
+            flex: 1, padding: "4px 8px", border: "1px solid var(--outline-variant)",
+            borderRadius: 6, fontSize: 12, boxSizing: "border-box",
+            background: "var(--surface-container-lowest)", color: "var(--on-surface)",
+          }}
+        >
+          <option value="">기본값</option>
+          {FONT_OPTIONS.map((f) => (
+            <option key={f.value} value={f.value}>{f.label}</option>
+          ))}
+        </select>
+      )}
+    </div>
+  );
+});
