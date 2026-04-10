@@ -36,15 +36,21 @@ export interface EffectDefinition {
 export interface EffectConfig {
   enabled: boolean;
   params: Record<string, string | number>;
+  layer?: number; // z-index priority: lower = behind, higher = front (default 0)
 }
 
 export type EffectsState = Record<string, EffectConfig>;
+
+/** Maps app events to the effects they should trigger */
+export type TriggerMap = Record<string, string[]>;
 
 export interface ThemeEffect {
   id: string;
   activate(params: Record<string, any>): void;
   deactivate(): void;
   trigger?(data?: any): void;
+  /** If implemented, called by the unified animation loop instead of per-effect RAF */
+  tick?(dt: number): void;
 }
 
 export const CATEGORY_LABELS: Record<EffectCategory, string> = {

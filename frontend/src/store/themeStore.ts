@@ -19,7 +19,8 @@ interface ThemeState {
     variables: Record<string, string>;
     customCSS?: string;
     animation?: string;
-    effects?: Record<string, { enabled: boolean; params: Record<string, string | number> }>;
+    effects?: Record<string, { enabled: boolean; params: Record<string, string | number>; layer?: number }>;
+    triggers?: Record<string, string[]>;
   }) => CustomTheme;
 }
 
@@ -68,7 +69,8 @@ function validateThemeJson(json: unknown): {
   variables: Record<string, string>;
   customCSS?: string;
   animation?: string;
-  effects?: Record<string, { enabled: boolean; params: Record<string, string | number> }>;
+  effects?: Record<string, { enabled: boolean; params: Record<string, string | number>; layer?: number }>;
+  triggers?: Record<string, string[]>;
 } {
   if (!json || typeof json !== "object") {
     throw new Error("올바른 JSON 형식이 아닙니다.");
@@ -112,6 +114,7 @@ function validateThemeJson(json: unknown): {
   if (typeof obj.customCSS === "string" && obj.customCSS) result.customCSS = obj.customCSS;
   if (typeof obj.animation === "string" && obj.animation) result.animation = obj.animation;
   if (obj.effects && typeof obj.effects === "object") result.effects = obj.effects as typeof result.effects;
+  if (obj.triggers && typeof obj.triggers === "object") result.triggers = obj.triggers as typeof result.triggers;
   return result;
 }
 
@@ -146,12 +149,16 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
       } else {
         effectManager.disableAll();
       }
+      // Apply trigger mappings
+      effectManager.setTriggers(custom.triggers ?? {});
     } else if (id === "default") {
       document.documentElement.removeAttribute("data-theme");
       effectManager.disableAll();
+      effectManager.setTriggers({});
     } else {
       document.documentElement.setAttribute("data-theme", id);
       effectManager.disableAll();
+      effectManager.setTriggers({});
     }
 
     localStorage.setItem(STORAGE_KEY, id);
@@ -172,6 +179,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
         const savedEffects = effectManager.loadState();
         effectManager.applyState(savedEffects);
       }
+      effectManager.setTriggers(custom.triggers ?? {});
     } else if (saved !== "default") {
       document.documentElement.setAttribute("data-theme", saved);
     }
@@ -182,6 +190,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   addCustomTheme: (json: unknown) => {
     const validated = validateThemeJson(json);
     const id = `custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const obj = json as Record<string, unknown>;
     const theme: CustomTheme = {
       id,
       name: validated.name,
@@ -191,6 +200,8 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
       customCSS: validated.customCSS,
       animation: validated.animation,
       effects: validated.effects,
+      triggers: validated.triggers,
+      isPreset: obj.isPreset === true ? true : undefined,
     };
 
     const updated = [...get().customThemes, theme];
@@ -200,6 +211,8 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   },
 
   removeCustomTheme: (id: string) => {
+    const target = get().customThemes.find((t) => t.id === id);
+    if (target?.isPreset) return;
     const current = get().currentTheme;
     const updated = get().customThemes.filter((t) => t.id !== id);
     saveCustomThemes(updated);
@@ -234,6 +247,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
         customCSS: data.customCSS,
         animation: data.animation,
         effects: data.effects,
+        triggers: data.triggers,
         preview,
       };
       const list = get().customThemes.map((t) => (t.id === existing.id ? updated : t));
@@ -251,6 +265,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
         customCSS: data.customCSS,
         animation: data.animation,
         effects: data.effects,
+        triggers: data.triggers,
         preview,
       };
       const list = [...get().customThemes, theme];

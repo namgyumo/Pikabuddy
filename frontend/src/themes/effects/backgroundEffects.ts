@@ -1,7 +1,12 @@
-/* ── Background Effects (9) — Canvas/DOM-based ambient backgrounds ── */
+/* ── Background Effects (9) — Canvas/DOM-based ambient backgrounds ──
+ * Canvas effects (particles, starfield, aurora, matrixRain, bubbles) use the
+ * unified animation loop via tick() — no per-effect RAF.
+ * CSS effects (cherryBlossom, autumnLeaves, lightning, fogMist) use CSS
+ * animations which are GPU-accelerated and don't need JS ticking.
+ */
 
 import type { ThemeEffect } from "./types";
-import { createEffectCanvas, removeEffectCanvas, createEffectDiv, removeEffectDiv } from "./engine";
+import { createEffectCanvas, removeEffectCanvas, createEffectDiv, removeEffectDiv, effectManager } from "./engine";
 
 /** Ensure hex color is always 7 chars (#RRGGBB) for safe alpha append */
 function toFullHex(c: string): string {
@@ -10,19 +15,19 @@ function toFullHex(c: string): string {
   return c.slice(0, 7);
 }
 
-/* ═══ 1. Particles ═══ */
+/* ═══ 1. Particles — unified loop ═══ */
 export const particlesEffect: ThemeEffect = {
   id: "particles",
-  _raf: 0,
   activate(p) {
     const color = toFullHex(p.color || "#6C5CE7");
-    const count = p.count || 30;
+    const baseCount = p.count || 30;
+    const count = Math.round(baseCount * effectManager.particleBudget);
     const canvas = createEffectCanvas("particles");
     const ctx = canvas.getContext("2d")!;
-    const particles: { x: number; y: number; vx: number; vy: number; r: number; a: number }[] = [];
     const W = () => canvas.width;
     const H = () => canvas.height;
 
+    const particles: { x: number; y: number; vx: number; vy: number; r: number; a: number }[] = [];
     for (let i = 0; i < count; i++) {
       particles.push({
         x: Math.random() * W(), y: Math.random() * H(),
@@ -33,136 +38,137 @@ export const particlesEffect: ThemeEffect = {
 
     const onResize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
     window.addEventListener("resize", onResize);
-    (this as any)._onResize = onResize;
-
-    const draw = () => {
-      ctx.clearRect(0, 0, W(), H());
-      for (const pt of particles) {
-        pt.x += pt.vx; pt.y += pt.vy;
-        if (pt.x < 0) pt.x = W(); if (pt.x > W()) pt.x = 0;
-        if (pt.y < 0) pt.y = H(); if (pt.y > H()) pt.y = 0;
-        ctx.beginPath();
-        ctx.arc(pt.x, pt.y, pt.r, 0, Math.PI * 2);
-        ctx.fillStyle = color + Math.round(pt.a * 255).toString(16).padStart(2, "0");
-        ctx.fill();
-      }
-      (this as any)._raf = requestAnimationFrame(draw);
-    };
-    draw();
+    (this as any)._state = { canvas, ctx, particles, color, onResize, W, H };
+  },
+  tick() {
+    const s = (this as any)._state;
+    if (!s) return;
+    const { ctx, particles, color, W, H } = s;
+    ctx.clearRect(0, 0, W(), H());
+    for (const pt of particles) {
+      pt.x += pt.vx; pt.y += pt.vy;
+      if (pt.x < 0) pt.x = W(); if (pt.x > W()) pt.x = 0;
+      if (pt.y < 0) pt.y = H(); if (pt.y > H()) pt.y = 0;
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, pt.r, 0, Math.PI * 2);
+      ctx.fillStyle = color + Math.round(pt.a * 255).toString(16).padStart(2, "0");
+      ctx.fill();
+    }
   },
   deactivate() {
-    cancelAnimationFrame((this as any)._raf);
-    window.removeEventListener("resize", (this as any)._onResize);
+    const s = (this as any)._state;
+    if (s) window.removeEventListener("resize", s.onResize);
+    (this as any)._state = null;
     removeEffectCanvas("particles");
   },
 } as any;
 
-/* ═══ 2. Starfield ═══ */
+/* ═══ 2. Starfield — unified loop ═══ */
 export const starfieldEffect: ThemeEffect = {
   id: "starfield",
   activate(p) {
     const speed = p.speed || 1;
-    const density = p.density || 100;
+    const baseDensity = p.density || 100;
+    const density = Math.round(baseDensity * effectManager.particleBudget);
     const canvas = createEffectCanvas("starfield");
     const ctx = canvas.getContext("2d")!;
-    const stars: { x: number; y: number; z: number; px: number; py: number }[] = [];
     const W = () => canvas.width;
     const H = () => canvas.height;
-
+    const stars: { x: number; y: number; z: number; px: number; py: number }[] = [];
     for (let i = 0; i < density; i++) {
       stars.push({ x: (Math.random() - 0.5) * W(), y: (Math.random() - 0.5) * H(), z: Math.random() * W(), px: 0, py: 0 });
     }
 
     const onResize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
     window.addEventListener("resize", onResize);
-    (this as any)._onResize = onResize;
-
-    const draw = () => {
-      ctx.clearRect(0, 0, W(), H());
-      const cx = W() / 2, cy = H() / 2;
-      for (const s of stars) {
-        s.z -= speed * 2;
-        if (s.z <= 0) { s.z = W(); s.x = (Math.random() - 0.5) * W(); s.y = (Math.random() - 0.5) * H(); s.px = 0; s.py = 0; }
-        const sx = (s.x / s.z) * W() + cx;
-        const sy = (s.y / s.z) * H() + cy;
-        const r = Math.max(0.3, (1 - s.z / W()) * 2.5);
-        const a = Math.max(0, 1 - s.z / W());
-        // Draw trail line from previous position
-        if (s.px && s.py) {
-          ctx.beginPath();
-          ctx.moveTo(s.px, s.py);
-          ctx.lineTo(sx, sy);
-          ctx.strokeStyle = `rgba(200,200,255,${a * 0.3})`;
-          ctx.lineWidth = r * 0.5;
-          ctx.stroke();
-        }
+    (this as any)._state = { canvas, ctx, stars, speed, onResize, W, H };
+  },
+  tick() {
+    const s = (this as any)._state;
+    if (!s) return;
+    const { ctx, stars, speed, W, H } = s;
+    ctx.clearRect(0, 0, W(), H());
+    const cx = W() / 2, cy = H() / 2;
+    for (const st of stars) {
+      st.z -= speed * 2;
+      if (st.z <= 0) { st.z = W(); st.x = (Math.random() - 0.5) * W(); st.y = (Math.random() - 0.5) * H(); st.px = 0; st.py = 0; }
+      const sx = (st.x / st.z) * W() + cx;
+      const sy = (st.y / st.z) * H() + cy;
+      const r = Math.max(0.3, (1 - st.z / W()) * 2.5);
+      const a = Math.max(0, 1 - st.z / W());
+      if (st.px && st.py) {
         ctx.beginPath();
-        ctx.arc(sx, sy, r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(220,220,255,${a})`;
-        ctx.fill();
-        s.px = sx; s.py = sy;
+        ctx.moveTo(st.px, st.py);
+        ctx.lineTo(sx, sy);
+        ctx.strokeStyle = `rgba(200,200,255,${a * 0.3})`;
+        ctx.lineWidth = r * 0.5;
+        ctx.stroke();
       }
-      (this as any)._raf = requestAnimationFrame(draw);
-    };
-    draw();
+      ctx.beginPath();
+      ctx.arc(sx, sy, r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(220,220,255,${a})`;
+      ctx.fill();
+      st.px = sx; st.py = sy;
+    }
   },
   deactivate() {
-    cancelAnimationFrame((this as any)._raf);
-    window.removeEventListener("resize", (this as any)._onResize);
+    const s = (this as any)._state;
+    if (s) window.removeEventListener("resize", s.onResize);
+    (this as any)._state = null;
     removeEffectCanvas("starfield");
   },
 } as any;
 
-/* ═══ 3. Aurora ═══ */
+/* ═══ 3. Aurora — unified loop ═══ */
 export const auroraEffect: ThemeEffect = {
   id: "aurora",
   activate(p) {
     const colors = [toFullHex(p.color1 || "#00ff87"), toFullHex(p.color2 || "#60efff"), toFullHex(p.color3 || "#ff00e5")];
     const canvas = createEffectCanvas("aurora");
     const ctx = canvas.getContext("2d")!;
-    let t = 0;
     const W = () => canvas.width;
     const H = () => canvas.height;
 
     const onResize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
     window.addEventListener("resize", onResize);
-    (this as any)._onResize = onResize;
-
-    const draw = () => {
-      ctx.clearRect(0, 0, W(), H());
-      t += 0.005;
-      for (let i = 0; i < colors.length; i++) {
-        ctx.beginPath();
-        ctx.moveTo(0, H() * 0.3);
-        for (let x = 0; x <= W(); x += 4) {
-          const y = H() * 0.15 + Math.sin(x * 0.003 + t + i * 2) * H() * 0.08
-            + Math.sin(x * 0.007 + t * 1.5 + i) * H() * 0.04;
-          ctx.lineTo(x, y);
-        }
-        ctx.lineTo(W(), 0);
-        ctx.lineTo(0, 0);
-        ctx.closePath();
-        const grad = ctx.createLinearGradient(0, 0, W(), 0);
-        grad.addColorStop(0, colors[i] + "00");
-        grad.addColorStop(0.3, colors[i] + "30");
-        grad.addColorStop(0.5, colors[i] + "50");
-        grad.addColorStop(0.7, colors[i] + "30");
-        grad.addColorStop(1, colors[i] + "00");
-        ctx.fillStyle = grad;
-        ctx.fill();
+    (this as any)._state = { canvas, ctx, colors, t: 0, onResize, W, H };
+  },
+  tick() {
+    const s = (this as any)._state;
+    if (!s) return;
+    const { ctx, colors, W, H } = s;
+    ctx.clearRect(0, 0, W(), H());
+    s.t += 0.005;
+    for (let i = 0; i < colors.length; i++) {
+      ctx.beginPath();
+      ctx.moveTo(0, H() * 0.3);
+      for (let x = 0; x <= W(); x += 4) {
+        const y = H() * 0.15 + Math.sin(x * 0.003 + s.t + i * 2) * H() * 0.08
+          + Math.sin(x * 0.007 + s.t * 1.5 + i) * H() * 0.04;
+        ctx.lineTo(x, y);
       }
-      (this as any)._raf = requestAnimationFrame(draw);
-    };
-    draw();
+      ctx.lineTo(W(), 0);
+      ctx.lineTo(0, 0);
+      ctx.closePath();
+      const grad = ctx.createLinearGradient(0, 0, W(), 0);
+      grad.addColorStop(0, colors[i] + "00");
+      grad.addColorStop(0.3, colors[i] + "30");
+      grad.addColorStop(0.5, colors[i] + "50");
+      grad.addColorStop(0.7, colors[i] + "30");
+      grad.addColorStop(1, colors[i] + "00");
+      ctx.fillStyle = grad;
+      ctx.fill();
+    }
   },
   deactivate() {
-    cancelAnimationFrame((this as any)._raf);
-    window.removeEventListener("resize", (this as any)._onResize);
+    const s = (this as any)._state;
+    if (s) window.removeEventListener("resize", s.onResize);
+    (this as any)._state = null;
     removeEffectCanvas("aurora");
   },
 } as any;
 
-/* ═══ 4. Matrix Rain ═══ */
+/* ═══ 4. Matrix Rain — unified loop ═══ */
 export const matrixRainEffect: ThemeEffect = {
   id: "matrixRain",
   activate(p) {
@@ -171,70 +177,69 @@ export const matrixRainEffect: ThemeEffect = {
     const ctx = canvas.getContext("2d")!;
     const fontSize = 14;
     const chars = "01アイウエオカキクケコサシスセソABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    let columns: number[];
-    // Track character fade for each column position
-    let grid: { ch: string; age: number }[][] = [];
-    const W = () => canvas.width;
-    const H = () => canvas.height;
     const maxAge = 20;
 
     const init = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-      const cols = Math.ceil(W() / fontSize);
-      const rows = Math.ceil(H() / fontSize);
-      columns = Array(cols).fill(0).map(() => Math.random() * rows | 0);
-      grid = Array(cols).fill(null).map(() => Array(rows).fill(null).map(() => ({ ch: "", age: maxAge })));
+      const cols = Math.ceil(canvas.width / fontSize);
+      const rows = Math.ceil(canvas.height / fontSize);
+      (this as any)._state.columns = Array(cols).fill(0).map(() => Math.random() * rows | 0);
+      (this as any)._state.grid = Array(cols).fill(null).map(() =>
+        Array(rows).fill(null).map(() => ({ ch: "", age: maxAge }))
+      );
     };
-    init();
+
     window.addEventListener("resize", init);
-    (this as any)._onResize = init;
+    (this as any)._state = { canvas, ctx, fontSize, chars, maxAge, color, columns: [] as number[], grid: [] as any[], onResize: init };
+    init();
+  },
+  tick() {
+    const s = (this as any)._state;
+    if (!s) return;
+    const { ctx, canvas, fontSize, chars, maxAge, color, columns, grid } = s;
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+    ctx.font = `${fontSize}px monospace`;
+    const cols = Math.ceil(W / fontSize);
+    const rows = Math.ceil(H / fontSize);
 
-    const draw = () => {
-      ctx.clearRect(0, 0, W(), H());
-      ctx.font = `${fontSize}px monospace`;
-      const cols = Math.ceil(W() / fontSize);
-      const rows = Math.ceil(H() / fontSize);
-
-      for (let i = 0; i < cols; i++) {
-        // Place new character at head
-        const row = columns[i];
-        if (row < rows && grid[i]) {
-          grid[i][row] = { ch: chars[Math.random() * chars.length | 0], age: 0 };
-        }
-        // Draw all alive characters
-        if (grid[i]) {
-          for (let r = 0; r < rows; r++) {
-            const cell = grid[i][r];
-            if (cell.age < maxAge && cell.ch) {
-              const alpha = Math.max(0, 1 - cell.age / maxAge);
-              const brightness = cell.age === 0 ? 1 : alpha * 0.7;
-              ctx.fillStyle = cell.age === 0 ? "#fff" : color + Math.round(brightness * 255).toString(16).padStart(2, "0");
-              ctx.fillText(cell.ch, i * fontSize, r * fontSize);
-              cell.age++;
-            }
+    for (let i = 0; i < cols; i++) {
+      const row = columns[i];
+      if (row < rows && grid[i]) {
+        grid[i][row] = { ch: chars[Math.random() * chars.length | 0], age: 0 };
+      }
+      if (grid[i]) {
+        for (let r = 0; r < rows; r++) {
+          const cell = grid[i][r];
+          if (cell.age < maxAge && cell.ch) {
+            const alpha = Math.max(0, 1 - cell.age / maxAge);
+            const brightness = cell.age === 0 ? 1 : alpha * 0.7;
+            ctx.fillStyle = cell.age === 0 ? "#fff" : color + Math.round(brightness * 255).toString(16).padStart(2, "0");
+            ctx.fillText(cell.ch, i * fontSize, r * fontSize);
+            cell.age++;
           }
         }
-        if (columns[i] * fontSize > H() && Math.random() > 0.975) columns[i] = 0;
-        columns[i]++;
       }
-      (this as any)._raf = requestAnimationFrame(draw);
-    };
-    draw();
+      if (columns[i] * fontSize > H && Math.random() > 0.975) columns[i] = 0;
+      columns[i]++;
+    }
   },
   deactivate() {
-    cancelAnimationFrame((this as any)._raf);
-    window.removeEventListener("resize", (this as any)._onResize);
+    const s = (this as any)._state;
+    if (s) window.removeEventListener("resize", s.onResize);
+    (this as any)._state = null;
     removeEffectCanvas("matrixRain");
   },
 } as any;
 
-/* ═══ 5. Bubbles ═══ */
+/* ═══ 5. Bubbles — unified loop ═══ */
 export const bubblesEffect: ThemeEffect = {
   id: "bubbles",
   activate(p) {
     const color = toFullHex(p.color || "#6C5CE7");
-    const count = p.count || 20;
+    const baseCount = p.count || 20;
+    const count = Math.round(baseCount * effectManager.particleBudget);
     const canvas = createEffectCanvas("bubbles");
     const ctx = canvas.getContext("2d")!;
     const W = () => canvas.width;
@@ -251,44 +256,43 @@ export const bubblesEffect: ThemeEffect = {
 
     const onResize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
     window.addEventListener("resize", onResize);
-    (this as any)._onResize = onResize;
-
-    const draw = () => {
-      ctx.clearRect(0, 0, W(), H());
-      for (const b of bubbles) {
-        b.y -= b.speed;
-        b.wobble += b.wobbleSpeed;
-        const wx = Math.sin(b.wobble) * 20;
-        if (b.y + b.r < 0) { b.y = H() + b.r; b.x = Math.random() * W(); }
-        ctx.beginPath();
-        ctx.arc(b.x + wx, b.y, b.r, 0, Math.PI * 2);
-        ctx.strokeStyle = color + "60";
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        // highlight
-        ctx.beginPath();
-        ctx.arc(b.x + wx - b.r * 0.3, b.y - b.r * 0.3, b.r * 0.2, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(255,255,255,0.4)";
-        ctx.fill();
-      }
-      (this as any)._raf = requestAnimationFrame(draw);
-    };
-    draw();
+    (this as any)._state = { canvas, ctx, bubbles, color, onResize, W, H };
+  },
+  tick() {
+    const s = (this as any)._state;
+    if (!s) return;
+    const { ctx, bubbles, color, W, H } = s;
+    ctx.clearRect(0, 0, W(), H());
+    for (const b of bubbles) {
+      b.y -= b.speed;
+      b.wobble += b.wobbleSpeed;
+      const wx = Math.sin(b.wobble) * 20;
+      if (b.y + b.r < 0) { b.y = H() + b.r; b.x = Math.random() * W(); }
+      ctx.beginPath();
+      ctx.arc(b.x + wx, b.y, b.r, 0, Math.PI * 2);
+      ctx.strokeStyle = color + "60";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(b.x + wx - b.r * 0.3, b.y - b.r * 0.3, b.r * 0.2, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(255,255,255,0.4)";
+      ctx.fill();
+    }
   },
   deactivate() {
-    cancelAnimationFrame((this as any)._raf);
-    window.removeEventListener("resize", (this as any)._onResize);
+    const s = (this as any)._state;
+    if (s) window.removeEventListener("resize", s.onResize);
+    (this as any)._state = null;
     removeEffectCanvas("bubbles");
   },
 } as any;
 
-/* ═══ 6. Cherry Blossom ═══ */
+/* ═══ 6. Cherry Blossom — CSS animation (GPU accelerated) ═══ */
 export const cherryBlossomEffect: ThemeEffect = {
   id: "cherryBlossom",
   activate() {
     const container = createEffectDiv("cherryBlossom", "position:absolute;inset:0;overflow:hidden;");
-    const petals: HTMLDivElement[] = [];
-    const count = 25;
+    const count = Math.round(25 * effectManager.particleBudget);
 
     for (let i = 0; i < count; i++) {
       const petal = document.createElement("div");
@@ -301,13 +305,12 @@ export const cherryBlossomEffect: ThemeEffect = {
         width:${size}px; height:${size * 0.7}px;
         background:radial-gradient(ellipse, #ffb7c5 0%, #ff8fab 60%, transparent 100%);
         border-radius:50% 0 50% 0; opacity:0.7;
+        will-change:transform,opacity;
         animation: pkb-fall-petal ${duration}s ${delay}s linear infinite;
       `;
       container.appendChild(petal);
-      petals.push(petal);
     }
 
-    // Inject keyframes
     let style = document.getElementById("pikabuddy-fxcss-cherryBlossom") as HTMLStyleElement;
     if (!style) {
       style = document.createElement("style");
@@ -319,7 +322,7 @@ export const cherryBlossomEffect: ThemeEffect = {
         0% { transform: translateY(0) translateX(0) rotate(0deg); opacity: 0; }
         10% { opacity: 0.7; }
         90% { opacity: 0.7; }
-        100% { transform: translateY(${window.innerHeight + 40}px) translateX(${60}px) rotate(360deg); opacity: 0; }
+        100% { transform: translateY(${window.innerHeight + 40}px) translateX(60px) rotate(360deg); opacity: 0; }
       }
     `;
   },
@@ -329,13 +332,13 @@ export const cherryBlossomEffect: ThemeEffect = {
   },
 };
 
-/* ═══ 7. Autumn Leaves ═══ */
+/* ═══ 7. Autumn Leaves — CSS animation (GPU accelerated) ═══ */
 export const autumnLeavesEffect: ThemeEffect = {
   id: "autumnLeaves",
   activate() {
     const container = createEffectDiv("autumnLeaves", "position:absolute;inset:0;overflow:hidden;");
     const leafColors = ["#D2691E", "#CD853F", "#B22222", "#DAA520", "#8B4513"];
-    const count = 20;
+    const count = Math.round(20 * effectManager.particleBudget);
 
     for (let i = 0; i < count; i++) {
       const leaf = document.createElement("div");
@@ -349,6 +352,7 @@ export const autumnLeavesEffect: ThemeEffect = {
         width:${size}px; height:${size * 1.2}px; opacity:0.8;
         background: ${color};
         clip-path: polygon(50% 0%, 80% 30%, 100% 50%, 80% 80%, 50% 100%, 20% 80%, 0% 50%, 20% 30%);
+        will-change:transform,opacity;
         animation: pkb-fall-leaf ${duration}s ${delay}s linear infinite;
       `;
       container.appendChild(leaf);
@@ -376,7 +380,7 @@ export const autumnLeavesEffect: ThemeEffect = {
   },
 };
 
-/* ═══ 8. Lightning ═══ */
+/* ═══ 8. Lightning — setTimeout based (no RAF needed) ═══ */
 export const lightningEffect: ThemeEffect = {
   id: "lightning",
   activate(p) {
@@ -399,7 +403,6 @@ export const lightningEffect: ThemeEffect = {
       strike();
       (this as any)._timer = setTimeout(loop, freq + (Math.random() - 0.5) * freq * 0.6);
     };
-    // First strike after a short delay so it's immediately visible
     (this as any)._timer = setTimeout(loop, 500);
   },
   deactivate() {
@@ -408,7 +411,7 @@ export const lightningEffect: ThemeEffect = {
   },
 } as any;
 
-/* ═══ 9. Fog / Mist ═══ */
+/* ═══ 9. Fog / Mist — CSS animation (GPU accelerated) ═══ */
 export const fogMistEffect: ThemeEffect = {
   id: "fogMist",
   activate(p) {
@@ -424,6 +427,7 @@ export const fogMistEffect: ThemeEffect = {
         bottom:${-10 + i * 5}%;
         left:-20%; width:140%; height:40%;
         background: radial-gradient(ellipse at center, rgba(255,255,255,${op}) 0%, transparent 70%);
+        will-change:transform;
         animation: pkb-fog-drift-${i} ${dur}s ease-in-out infinite;
       `;
       container.appendChild(fog);

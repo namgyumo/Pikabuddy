@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PikaBuddy Custom Theme Guide</title>
+<style>
+  :root {
+    --bg: #0f172a; --card: #1e293b; --border: #334155;
+    --text: #e2e8f0; --muted: #94a3b8; --accent: #818cf8;
+    --accent2: #22d3ee; --success: #4ade80; --warn: #fbbf24;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Pretendard Variable', -apple-system, sans-serif;
+    background: var(--bg); color: var(--text);
+    line-height: 1.7; padding: 0;
+  }
+  .hero {
+    text-align:center; padding: 80px 24px 60px;
+    background: linear-gradient(135deg, #1e1b4b, #0f172a 50%, #042f2e);
+    border-bottom: 1px solid var(--border);
+  }
+  .hero h1 { font-size: 2.5rem; font-weight: 800; margin-bottom: 12px; }
+  .hero h1 span { background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .hero p { color: var(--muted); font-size: 1.1rem; max-width: 600px; margin: 0 auto; }
+  .container { max-width: 900px; margin: 0 auto; padding: 40px 24px; }
+  h2 { font-size: 1.6rem; font-weight: 700; margin: 48px 0 20px; padding-bottom: 12px; border-bottom: 2px solid var(--accent); }
+  h3 { font-size: 1.2rem; font-weight: 600; margin: 32px 0 12px; color: var(--accent); }
+  h4 { font-size: 1rem; font-weight: 600; margin: 20px 0 8px; color: var(--accent2); }
+  p, li { color: var(--text); margin-bottom: 8px; }
+  ul, ol { padding-left: 24px; margin-bottom: 16px; }
+  code { background: #0f172a; border: 1px solid var(--border); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; font-family: 'Fira Code', monospace; color: var(--accent2); }
+  pre {
+    background: #0a0f1c; border: 1px solid var(--border); border-radius: 8px;
+    padding: 20px; overflow-x: auto; margin: 16px 0 24px;
+    font-family: 'Fira Code', monospace; font-size: 0.85rem; line-height: 1.6;
+    color: var(--text);
+  }
+  pre .key { color: var(--accent); }
+  pre .str { color: var(--success); }
+  pre .num { color: var(--warn); }
+  pre .comment { color: #475569; font-style: italic; }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px; margin: 16px 0;
+  }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin: 16px 0; }
+  .var-item {
+    background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px; display: flex; align-items: center; gap: 10px;
+  }
+  .var-swatch { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border); flex-shrink:0; }
+  .var-name { font-family: 'Fira Code', monospace; font-size: 0.85em; color: var(--accent2); }
+  .var-desc { font-size: 0.8em; color: var(--muted); }
+  .effect-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .effect-header { display:flex; align-items:center; gap:8px; }
+  .effect-icon { font-size: 1.3em; }
+  .effect-name { font-weight: 600; font-size: 0.95em; }
+  .effect-mode { font-size: 0.7em; padding: 2px 6px; border-radius: 4px; font-weight: 500; }
+  .mode-ambient { background: rgba(74, 222, 128, 0.15); color: var(--success); }
+  .mode-event { background: rgba(251, 191, 36, 0.15); color: var(--warn); }
+  .effect-desc { font-size: 0.8em; color: var(--muted); }
+  .effect-params { font-size: 0.8em; color: var(--accent2); font-family: 'Fira Code', monospace; }
+  .layer-diagram {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 24px; margin: 16px 0; text-align: center;
+  }
+  .layer-stack { display: flex; flex-direction: column; gap: 4px; max-width: 500px; margin: 0 auto; }
+  .layer-row {
+    padding: 12px 20px; border-radius: 8px; font-weight: 600; font-size: 0.9em;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .layer-row span:last-child { font-family:'Fira Code',monospace; font-size:0.8em; opacity:0.7; }
+  table { width:100%; border-collapse:collapse; margin: 16px 0; }
+  th, td { padding: 10px 14px; text-align:left; border-bottom: 1px solid var(--border); font-size: 0.9em; }
+  th { color: var(--accent); font-weight: 600; background: rgba(129,140,248,0.05); }
+  .toc { list-style: none; padding:0; }
+  .toc li { margin-bottom: 6px; }
+  .toc a { color: var(--accent2); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:0.75em; font-weight:600; }
+  .tip { background: rgba(74,222,128,0.08); border-left:3px solid var(--success); padding:12px 16px; border-radius:0 8px 8px 0; margin:16px 0; }
+  .warn { background: rgba(251,191,36,0.08); border-left:3px solid var(--warn); padding:12px 16px; border-radius:0 8px 8px 0; margin:16px 0; }
+  @media (max-width:600px) {
+    .hero h1 { font-size:1.6rem; }
+    .grid { grid-template-columns: 1fr; }
+    pre { font-size: 0.75rem; padding:12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1><span>PikaBuddy</span> Custom Theme Guide</h1>
+  <p>CSS 변수 + Custom CSS + 파티클 이펙트 + 이벤트 트리거까지,<br>JSON 하나로 테마 전체를 표현하는 5계층 테마 엔진 가이드</p>
+</div>
+
+<div class="container">
+
+<!-- TOC -->
+<h2>목차</h2>
+<ol class="toc">
+  <li><a href="#structure">1. 테마 JSON 구조 (5계층)</a></li>
+  <li><a href="#variables">2. CSS 변수 레퍼런스 (47개)</a></li>
+  <li><a href="#customcss">3. Custom CSS 작성법</a></li>
+  <li><a href="#animation">4. 애니메이션 프리셋</a></li>
+  <li><a href="#effects">5. 이펙트 전체 카탈로그 (55개)</a></li>
+  <li><a href="#layers">6. 레이어 시스템 (z-index)</a></li>
+  <li><a href="#triggers">7. 트리거 시스템 (이벤트 이펙트)</a></li>
+  <li><a href="#performance">8. 성능 자동 조절</a></li>
+  <li><a href="#howto">9. 테마 만들기 / 가져오기 / 공유하기</a></li>
+  <li><a href="#examples">10. 예시 테마 8종</a></li>
+  <li><a href="#tips">11. 디자인 팁</a></li>
+</ol>
+
+<!-- 1. Structure -->
+<h2 id="structure">1. 테마 JSON 구조 (5계층)</h2>
+<p>PikaBuddy 테마는 <code>.pikabuddy-theme.json</code> 파일 하나에 5개 계층이 모두 담깁니다.</p>
+
+<pre>{
+  <span class="key">"name"</span>: <span class="str">"My Theme"</span>,         <span class="comment">// 테마 이름 (필수)</span>
+  <span class="key">"version"</span>: <span class="num">1</span>,                  <span class="comment">// 항상 1 (필수)</span>
+
+  <span class="comment">// [계층 1] GUI 변수 — 47개 CSS 변수</span>
+  <span class="key">"variables"</span>: {
+    <span class="key">"--primary"</span>: <span class="str">"#A855F7"</span>,
+    <span class="key">"--surface"</span>: <span class="str">"#0B0E1A"</span>,
+    ...
+  },
+
+  <span class="comment">// [계층 2] Custom CSS — 세밀한 스타일 오버라이드</span>
+  <span class="key">"customCSS"</span>: <span class="str">".card:hover { box-shadow: 0 0 20px rgba(168,85,247,0.3); }"</span>,
+
+  <span class="comment">// [계층 3] 애니메이션 프리셋</span>
+  <span class="key">"animation"</span>: <span class="str">"particles"</span>,
+
+  <span class="comment">// [계층 4] 상시 이펙트 — layer로 겹침 순서 제어</span>
+  <span class="key">"effects"</span>: {
+    <span class="key">"starfield"</span>: { <span class="key">"enabled"</span>: true, <span class="key">"params"</span>: { <span class="key">"speed"</span>: <span class="num">0.75</span> }, <span class="key">"layer"</span>: <span class="num">0</span> },
+    <span class="key">"aurora"</span>:    { <span class="key">"enabled"</span>: true, <span class="key">"params"</span>: { ... }, <span class="key">"layer"</span>: <span class="num">1</span> },
+    <span class="key">"glow"</span>:      { <span class="key">"enabled"</span>: true, <span class="key">"params"</span>: { ... }, <span class="key">"layer"</span>: <span class="num">2</span> }
+  },
+
+  <span class="comment">// [계층 5] 이벤트 트리거 — 정답/오답/레벨업 시 발동</span>
+  <span class="key">"triggers"</span>: {
+    <span class="key">"onCorrect"</span>: [<span class="str">"confetti"</span>, <span class="str">"correctBounce"</span>],
+    <span class="key">"onWrong"</span>:    [<span class="str">"wrongShake"</span>],
+    <span class="key">"onLevelUp"</span>: [<span class="str">"levelUpCelebration"</span>]
+  }
+}</pre>
+
+<div class="tip">
+  <strong>필수 필드:</strong> <code>name</code>, <code>version</code>, <code>variables</code> (최소 1개 이상)<br>
+  <strong>선택 필드:</strong> <code>customCSS</code>, <code>animation</code>, <code>effects</code>, <code>triggers</code>
+</div>
+
+
+<!-- 2. Variables -->
+<h2 id="variables">2. CSS 변수 레퍼런스 (47개)</h2>
+<p>허용된 CSS 변수만 사용 가능합니다. 화이트리스트 밖의 변수는 무시됩니다.</p>
+
+<h3>2.1 주 색상 (Primary)</h3>
+<div class="grid">
+  <div class="var-item"><div class="var-swatch" style="background:#004AC6"></div><div><div class="var-name">--primary</div><div class="var-desc">메인 브랜드 색상</div></div></div>
+  <div class="var-item"><div class="var-swatch" style="background:#dce4ff"></div><div><div class="var-name">--primary-light</div><div class="var-desc">밝은 톤 (배경용)</div></div></div>
+  <div class="var-item"><div class="var-swatch" style="background:#3770e0"></div><div><div class="var-name">--primary-container</div><div class="var-desc">컨테이너 배경</div></div></div>
+  <div class="var-item"><div class="var-swatch" style="background:#003da6"></div><div><div class="var-name">--primary-hover</div><div class="var-desc">호버 상태</div></div></div>
+  <div class="var-item"><div class="var-swatch" style="background:#dce4ff"></div><div><div class="var-name">--primary-fixed</div><div class="var-desc">고정 기본값</div></div></div>
+</div>
+
+<h3>2.2 보조 / 강조 (Secondary & Tertiary)</h3>
+<div class="grid">
+  <div class="var-item"><div class="var-swatch" style="background:#515F74"></div><div><div class="var-name">--secondary</div><div class="var-desc">보조 색상</div></div></div>
+  <div class="var-item"><div class="var-swatch" style="background:#dce4ff"></div><div><div class="var-name">--secondary-light</div><div class="var-desc">보조 밝은 톤</div></div></div>
+  <div class="var-item"><div class="var-swatch" style="background:#632ECD"></div><div><div class="var-name">--tertiary</div><div class="var-desc">강조 색상</div></div></div>
+  <div class="var-item"><div class="var-swatch" style="background:#e0d4ff"></div><div><div class="var-name">--tertiary-light</div><div class="var-desc">강조 밝은 톤</div></div></div>
+  <div class="var-item"><div class="var-swatch" style="background:rgba(99,46,205,0.08)"></div><div><div class="var-name">--tertiary-container</div><div class="var-desc">강조 컨테이너</div></div></div>
+  <div class="var-item"><div class="var-swatch" style="background:#632ECD"></div><div><div class="var-name">--on-tertiary-container</div><div class="var-desc">컨테이너 위 텍스트</div></div></div>
+</div>
+
+<h3>2.3 배경 / 표면 (Surface)</h3>
+<div class="grid">
+  <div class="var-item"><div class="var-swatch" style="background:#f5f6fa"></div><div><div class="var-name">--surface</div><div class="var-desc">기본 배경</div></div></div>
+  <div class="var-item"><div class="var-swatch" style="background:#ffffff"></div><div><div class="var-name">--surface-container-lowest</div><div class="var-desc">가장 밝은 컨테이너</div></div></div>
+  <div class="var-item"><div class="var-swatch" style="background:#f0f1f6"></div><div><div class="var-name">--surface-container-low</div><div class="var-desc">밝은 컨테이너</div></div></div>
+  <div class="var-item"><div class="var-swatch" style="background:#eaebf2"></div><div><div class="var-name">--surface-container</div><div class="var-desc">보통 컨테이너</div></div></div>
+  <div class="var-item"><div class="var-swatch" style="background:#e2e4ec"></div><div><div class="var-name">--surface-container-high</div><div class="var-desc">어두운 컨테이너</div></div></div>
+  <div class="var-item"><div class="var-swatch" style="background:#ffffff"></div><div><div class="var-name">--surface-container-highest</div><div class="var-desc">팝업/모달 배경</div></div></div>
+  <div class="var-item"><div class="var-swatch" style="background:#0f172a"></div><div><div class="var-name">--editor-bg</div><div class="var-desc">코드 에디터 배경</div></div></div>
+</div>
+
+<h3>2.4 텍스트</h3>
+<div class="grid">
+  <div class="var-item"><div class="var-swatch" style="background:#1a1c23"></div><div><div class="var-name">--on-surface</div><div class="var-desc">기본 텍스트</div></div></div>
+  <div class="var-item"><div class="var-swatch" style="background:#44474f"></div><div><div class="var-name">--on-surface-variant</div><div class="var-desc">보조 텍스트</div></div></div>
+  <div class="var-item"><div class="var-swatch" style="background:rgba(68,71,79,0.15)"></div><div><div class="var-name">--outline-variant</div><div class="var-desc">구분선 / 외곽선</div></div></div>
+</div>
+
+<h3>2.5 상태 색상</h3>
+<div class="grid">
+  <div class="var-item"><div class="var-swatch" style="background:#10b981"></div><div><div class="var-name">--success</div><div class="var-desc">성공</div></div></div>
+  <div class="var-item"><div class="var-swatch" style="background:#d1fae5"></div><div><div class="var-name">--success-light</div><div class="var-desc">성공 배경</div></div></div>
+  <div class="var-item"><div class="var-swatch" style="background:#f59e0b"></div><div><div class="var-name">--warning</div><div class="var-desc">경고</div></div></div>
+  <div class="var-item"><div class="var-swatch" style="background:#fef3c7"></div><div><div class="var-name">--warning-light</div><div class="var-desc">경고 배경</div></div></div>
+  <div class="var-item"><div class="var-swatch" style="background:#ef4444"></div><div><div class="var-name">--error</div><div class="var-desc">오류</div></div></div>
+  <div class="var-item"><div class="var-swatch" style="background:#fee2e2"></div><div><div class="var-name">--error-light</div><div class="var-desc">오류 배경</div></div></div>
+</div>
+
+<h3>2.6 그림자 (Shadow)</h3>
+<p>CSS box-shadow 값 전체를 지정합니다.</p>
+<table>
+  <tr><th>변수</th><th>용도</th><th>예시</th></tr>
+  <tr><td><code>--shadow-sm</code></td><td>작은 그림자</td><td><code>0 2px 8px rgba(0,0,0,0.06)</code></td></tr>
+  <tr><td><code>--shadow</code></td><td>기본 그림자</td><td><code>0 4px 20px rgba(0,0,0,0.08)</code></td></tr>
+  <tr><td><code>--shadow-lg</code></td><td>큰 그림자</td><td><code>0 8px 40px rgba(0,0,0,0.10)</code></td></tr>
+  <tr><td><code>--shadow-ai</code></td><td>AI 관련 요소</td><td><code>0 4px 24px rgba(99,46,205,0.10)</code></td></tr>
+  <tr><td><code>--shadow-primary</code></td><td>주 색상 그림자</td><td><code>0 4px 20px rgba(0,74,198,0.15)</code></td></tr>
+  <tr><td><code>--shadow-float</code></td><td>플로팅 요소</td><td><code>0 8px 40px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)</code></td></tr>
+</table>
+
+<h3>2.7 모서리 (Border Radius)</h3>
+<table>
+  <tr><th>변수</th><th>기본값</th><th>용도</th></tr>
+  <tr><td><code>--radius-sm</code></td><td>4px</td><td>작은 요소 (태그, 뱃지)</td></tr>
+  <tr><td><code>--radius-md</code></td><td>8px</td><td>버튼, 입력필드</td></tr>
+  <tr><td><code>--radius-lg</code></td><td>12px</td><td>카드</td></tr>
+  <tr><td><code>--radius-xl</code></td><td>16px</td><td>큰 카드, 모달</td></tr>
+  <tr><td><code>--radius-full</code></td><td>9999px</td><td>원형 (아바타 등)</td></tr>
+</table>
+
+<h3>2.8 글꼴</h3>
+<table>
+  <tr><th>변수</th><th>사용 가능한 값</th></tr>
+  <tr><td><code>--font-display</code></td><td rowspan="2">
+    <code>'Pretendard Variable', Pretendard, sans-serif</code> (기본)<br>
+    <code>'Noto Sans KR', sans-serif</code><br>
+    <code>'IBM Plex Sans KR', sans-serif</code><br>
+    <code>system-ui, sans-serif</code><br>
+    <code>'Fira Code', monospace</code><br>
+    <code>'Nanum Gothic', sans-serif</code><br>
+    <code>'Nanum Myeongjo', serif</code><br>
+    <code>Georgia, serif</code>
+  </td></tr>
+  <tr><td><code>--font-body</code></td></tr>
+</table>
+
+<h3>2.9 테두리</h3>
+<table>
+  <tr><th>변수</th><th>타입</th><th>설명</th></tr>
+  <tr><td><code>--border-card</code></td><td>숫자 (px)</td><td>카드 외곽선 두께</td></tr>
+  <tr><td><code>--border-card-color</code></td><td>색상</td><td>카드 외곽선 색</td></tr>
+  <tr><td><code>--border-inner</code></td><td>숫자 (px)</td><td>내부 요소 두께</td></tr>
+  <tr><td><code>--border-inner-color</code></td><td>색상</td><td>내부 요소 색</td></tr>
+  <tr><td><code>--border-text</code></td><td>숫자 (px)</td><td>텍스트 장식 두께</td></tr>
+  <tr><td><code>--border-text-color</code></td><td>색상</td><td>텍스트 장식 색</td></tr>
+</table>
+
+
+<!-- 3. Custom CSS -->
+<h2 id="customcss">3. Custom CSS 작성법</h2>
+<p><code>customCSS</code> 필드에 CSS를 넣으면 페이지에 직접 주입됩니다.</p>
+
+<div class="warn">
+  <strong>보안 제한:</strong> <code>@import</code>, <code>expression()</code>, <code>javascript:</code>, <code>&lt;script&gt;</code> 태그는 자동 제거됩니다.
+</div>
+
+<h3>자주 쓰는 셀렉터</h3>
+<table>
+  <tr><th>셀렉터</th><th>대상</th></tr>
+  <tr><td><code>.card, .assignment-card, .note-card</code></td><td>카드 컴포넌트</td></tr>
+  <tr><td><code>.card:hover</code></td><td>카드 호버</td></tr>
+  <tr><td><code>h1, h2, h3, .page-title</code></td><td>제목</td></tr>
+  <tr><td><code>.btn-primary, button[class*="primary"]</code></td><td>주 버튼</td></tr>
+  <tr><td><code>.sidebar, [class*="sidebar"]</code></td><td>사이드바</td></tr>
+  <tr><td><code>::-webkit-scrollbar-thumb</code></td><td>스크롤바</td></tr>
+  <tr><td><code>::selection</code></td><td>텍스트 선택 영역</td></tr>
+</table>
+
+<h3>인기 CSS 패턴</h3>
+<h4>그라디언트 텍스트</h4>
+<pre>h1, h2 {
+  background: linear-gradient(135deg, #EC4899, #A855F7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}</pre>
+
+<h4>유리 효과 카드</h4>
+<pre>.card {
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(16px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}</pre>
+
+<h4>네온 글로우 버튼</h4>
+<pre>.btn-primary {
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.4),
+              inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}</pre>
+
+<h4>그라디언트 스크롤바</h4>
+<pre>::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #A855F7, #6366F1) !important;
+  border-radius: 10px;
+}</pre>
+
+
+<!-- 4. Animation -->
+<h2 id="animation">4. 애니메이션 프리셋</h2>
+<p><code>animation</code> 필드에 다음 ID 중 하나를 지정합니다.</p>
+<table>
+  <tr><th>ID</th><th>이름</th><th>설명</th></tr>
+  <tr><td><code>"none"</code></td><td>없음</td><td>애니메이션 비활성화</td></tr>
+  <tr><td><code>"particles"</code></td><td>떠다니는 입자</td><td>부유하는 파티클</td></tr>
+  <tr><td><code>"rain"</code></td><td>비</td><td>빗줄기 효과</td></tr>
+  <tr><td><code>"sparkle"</code></td><td>반짝임</td><td>별 반짝임</td></tr>
+  <tr><td><code>"snow"</code></td><td>눈</td><td>눈 내리는 효과</td></tr>
+  <tr><td><code>"gradient"</code></td><td>그라디언트 흐름</td><td>색상이 흐르는 배경</td></tr>
+</table>
+
+
+<!-- 5. Effects -->
+<h2 id="effects">5. 이펙트 전체 카탈로그 (55개)</h2>
+<p><code>effects</code> 객체에서 ID를 키로, <code>enabled</code> / <code>params</code> / <code>layer</code>를 지정합니다.</p>
+
+<h3>5.1 배경 효과 (Background) — 9개</h3>
+<div class="grid">
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🫧</span><span class="effect-name">particles</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">부유하는 파티클이 화면을 떠다닙니다</div><div class="effect-params">color: color, count: 10~100 (기본 30)</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🌟</span><span class="effect-name">starfield</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">별이 다가오듯 흐르는 우주 배경</div><div class="effect-params">speed: 0.5~3, density: 50~300</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🌈</span><span class="effect-name">aurora</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">오로라 물결 효과</div><div class="effect-params">color1, color2, color3</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🟢</span><span class="effect-name">matrixRain</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">코드 문자가 떨어지는 매트릭스 효과</div><div class="effect-params">color: color</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🫧</span><span class="effect-name">bubbles</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">투명한 거품이 아래에서 위로 떠오릅니다</div><div class="effect-params">color: color, count: 5~50</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🌸</span><span class="effect-name">cherryBlossom</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">벚꽃잎이 떨어지는 효과</div><div class="effect-params">(파라미터 없음)</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🍂</span><span class="effect-name">autumnLeaves</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">낙엽이 바람에 흩날리며 떨어집니다</div><div class="effect-params">(파라미터 없음)</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">⚡</span><span class="effect-name">lightning</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">간헐적 번개 섬광 효과</div><div class="effect-params">frequency: 3~15초</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🌫️</span><span class="effect-name">fogMist</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">안개/미스트 효과</div><div class="effect-params">density: 0.1~1</div></div>
+</div>
+
+<h3>5.2 배경 패턴 (Pattern) — 4개</h3>
+<div class="grid">
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">⚫</span><span class="effect-name">dotGrid</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">규칙적인 도트 격자 패턴</div><div class="effect-params">color, spacing: 12~48px</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">📺</span><span class="effect-name">noiseTexture</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">필름 같은 미세한 노이즈 오버레이</div><div class="effect-params">opacity: 0.01~0.2</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🔷</span><span class="effect-name">geometricPattern</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">기하학 도형 반복 패턴</div><div class="effect-params">shape: triangle|hexagon|diamond|circle</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🎯</span><span class="effect-name">mouseGradient</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">마우스를 따라다니는 그라데이션</div><div class="effect-params">color1, color2</div></div>
+</div>
+
+<h3>5.3 요소 스타일 (Element) — 6개</h3>
+<div class="grid">
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">💡</span><span class="effect-name">glow</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">UI 요소에 발광 효과</div><div class="effect-params">color, intensity: 0.1~1</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🪟</span><span class="effect-name">glassMorphism</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">카드에 프로스트 유리 효과</div><div class="effect-params">blur: 4~24px, opacity: 0.05~0.5</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🌈</span><span class="effect-name">gradientBorder</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">요소 테두리에 그라데이션</div><div class="effect-params">color1, color2</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🃏</span><span class="effect-name">cardTilt</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">마우스에 따라 카드가 기울어짐</div><div class="effect-params">intensity: 5~20도</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🌑</span><span class="effect-name">softShadow</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">부드러운 다층 그림자</div><div class="effect-params">depth: 1~5</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">✏️</span><span class="effect-name">drawBorder</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">호버 시 테두리가 그려지는 애니메이션</div><div class="effect-params">(파라미터 없음)</div></div>
+</div>
+
+<h3>5.4 텍스트 효과 (Text) — 5개</h3>
+<div class="grid">
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">📟</span><span class="effect-name">glitchText</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">디지털 글리치/깨짐 효과</div><div class="effect-params">(파라미터 없음)</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🌈</span><span class="effect-name">rainbowText</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">무지개 그라데이션 텍스트</div><div class="effect-params">(파라미터 없음)</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🔐</span><span class="effect-name">textScramble</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">문자가 해독되듯 나타남</div><div class="effect-params">(파라미터 없음)</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🌊</span><span class="effect-name">wavyText</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">글자가 물결치는 효과</div><div class="effect-params">(파라미터 없음)</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">💜</span><span class="effect-name">neonText</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">네온사인 발광 효과</div><div class="effect-params">color</div></div>
+</div>
+
+<h3>5.5 인터랙션 (Interaction) — 2개</h3>
+<div class="grid">
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">💧</span><span class="effect-name">rippleClick</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">클릭 시 물결이 퍼지는 효과</div><div class="effect-params">color</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🧲</span><span class="effect-name">magneticButton</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">커서 방향으로 끌리는 버튼</div><div class="effect-params">strength: 0.1~0.6</div></div>
+</div>
+
+<h3>5.6 커서 효과 (Cursor) — 5개</h3>
+<div class="grid">
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">✨</span><span class="effect-name">mouseTrail</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">마우스 이동 경로에 궤적</div><div class="effect-params">shape: dot|star|spark, color</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🔆</span><span class="effect-name">cursorGlow</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">커서 주변 빛나는 후광</div><div class="effect-params">color, size: 100~400px</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🖱️</span><span class="effect-name">customCursor</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">커서 모양 변경</div><div class="effect-params">shape: crosshair|star|heart|pikachu</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">💥</span><span class="effect-name">clickExplosion</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">클릭 시 이모지 폭발</div><div class="effect-params">emoji (기본 ⚡)</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">✨</span><span class="effect-name">trailEmoji</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">마우스에 이모지가 따라다님</div><div class="effect-params">emoji (기본 ✨)</div></div>
+</div>
+
+<h3>5.7 애니메이션 (Animation) — 5개</h3>
+<div class="grid">
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">⌨️</span><span class="effect-name">typewriterTitle</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">타이틀이 타이핑되듯 나타남</div><div class="effect-params">(파라미터 없음)</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">📜</span><span class="effect-name">fadeInScroll</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">스크롤 시 요소가 페이드인</div><div class="effect-params">(파라미터 없음)</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🏔️</span><span class="effect-name">parallaxScroll</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">스크롤 시 배경이 느리게 이동</div><div class="effect-params">intensity: 0.1~0.8</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">💓</span><span class="effect-name">pulseElement</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">요소가 맥박처럼 확대/축소</div><div class="effect-params">(파라미터 없음)</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🔢</span><span class="effect-name">countUp</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">숫자가 0에서 목표값까지 애니메이션</div><div class="effect-params">(파라미터 없음)</div></div>
+</div>
+
+<h3>5.8 페이지/전환 (Transition) — 3개</h3>
+<div class="grid">
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">📄</span><span class="effect-name">pageTransition</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">페이지 전환 애니메이션</div><div class="effect-params">type: fade|slide|zoom|flip</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🔄</span><span class="effect-name">cardFlip</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">카드 클릭 시 3D 뒤집기</div><div class="effect-params">(파라미터 없음)</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">⏳</span><span class="effect-name">skeletonShimmer</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">로딩 스켈레톤 시머 스타일</div><div class="effect-params">style: wave|pulse|gradient</div></div>
+</div>
+
+<h3>5.9 색상/시각 (Visual) — 4개</h3>
+<div class="grid">
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🔴</span><span class="effect-name">chromaticAberration</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">RGB 분리 색수차 효과</div><div class="effect-params">(파라미터 없음)</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🎨</span><span class="effect-name">colorShiftScroll</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">스크롤에 따라 색상 변화</div><div class="effect-params">(파라미터 없음)</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🔁</span><span class="effect-name">invertHover</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">호버 시 색상 반전</div><div class="effect-params">(파라미터 없음)</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🔲</span><span class="effect-name">vignetteOverlay</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">화면 모서리 어두움 효과</div><div class="effect-params">intensity: 0.1~0.8</div></div>
+</div>
+
+<h3>5.10 게이미피케이션 (Gamification) — 12개</h3>
+<p>이 이펙트들은 <code>triggers</code>에서 이벤트와 연결하여 사용합니다.</p>
+<div class="grid">
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🎉</span><span class="effect-name">confetti</span><span class="effect-mode mode-event">event</span></div><div class="effect-desc">정답/완료 시 색종이가 터짐</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🔥</span><span class="effect-name">streakFire</span><span class="effect-mode mode-event">event</span></div><div class="effect-desc">연속 정답 시 불꽃 효과</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">⭐</span><span class="effect-name">xpGain</span><span class="effect-mode mode-event">event</span></div><div class="effect-desc">경험치 획득 팝업</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🆙</span><span class="effect-name">levelUpCelebration</span><span class="effect-mode mode-event">event</span></div><div class="effect-desc">레벨업 시 화면 전체 연출</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">⏰</span><span class="effect-name">timerPulse</span><span class="effect-mode mode-event">event</span></div><div class="effect-desc">시간 임박 시 긴박한 효과</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">❌</span><span class="effect-name">wrongShake</span><span class="effect-mode mode-event">event</span></div><div class="effect-desc">오답 시 화면 흔들림</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">✅</span><span class="effect-name">correctBounce</span><span class="effect-mode mode-event">event</span></div><div class="effect-desc">정답 시 통통 바운스</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🔢</span><span class="effect-name">comboCounter</span><span class="effect-mode mode-event">event</span></div><div class="effect-desc">연속 정답 콤보 표시</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🏅</span><span class="effect-name">badgeUnlock</span><span class="effect-mode mode-event">event</span></div><div class="effect-desc">뱃지 획득 팝업</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">👑</span><span class="effect-name">rankUpAnimation</span><span class="effect-mode mode-event">event</span></div><div class="effect-desc">티어 승급 연출</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🎁</span><span class="effect-name">dailyReward</span><span class="effect-mode mode-event">event</span></div><div class="effect-desc">일일 보상 오프닝</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">📊</span><span class="effect-name">leaderboardShift</span><span class="effect-mode mode-event">event</span></div><div class="effect-desc">리더보드 순위 슬라이드</div></div>
+</div>
+
+
+<!-- 6. Layers -->
+<h2 id="layers">6. 레이어 시스템 (z-index)</h2>
+<p>이펙트가 겹칠 때 <code>layer</code> 값으로 렌더링 순서를 제어합니다. 낮을수록 뒤(배경), 높을수록 앞(전경).</p>
+
+<div class="layer-diagram">
+  <div class="layer-stack">
+    <div class="layer-row" style="background:rgba(129,140,248,0.2)"><span>커서 효과 (cursorGlow, mouseTrail)</span><span>layer: 3</span></div>
+    <div class="layer-row" style="background:rgba(129,140,248,0.15)"><span>요소 스타일 (glow, glassMorphism)</span><span>layer: 2</span></div>
+    <div class="layer-row" style="background:rgba(129,140,248,0.1)"><span>중간 효과 (aurora, fadeInScroll)</span><span>layer: 1</span></div>
+    <div class="layer-row" style="background:rgba(129,140,248,0.05)"><span>배경 효과 (starfield, particles)</span><span>layer: 0</span></div>
+  </div>
+</div>
+
+<pre><span class="key">"effects"</span>: {
+  <span class="key">"starfield"</span>: { <span class="key">"enabled"</span>: true, <span class="key">"params"</span>: { ... }, <span class="key">"layer"</span>: <span class="num">0</span> },  <span class="comment">// 가장 뒤</span>
+  <span class="key">"aurora"</span>:    { <span class="key">"enabled"</span>: true, <span class="key">"params"</span>: { ... }, <span class="key">"layer"</span>: <span class="num">1</span> },  <span class="comment">// 중간</span>
+  <span class="key">"glow"</span>:      { <span class="key">"enabled"</span>: true, <span class="key">"params"</span>: { ... }, <span class="key">"layer"</span>: <span class="num">2</span> },  <span class="comment">// 앞</span>
+  <span class="key">"cursorGlow"</span>:{ <span class="key">"enabled"</span>: true, <span class="key">"params"</span>: { ... }, <span class="key">"layer"</span>: <span class="num">3</span> }   <span class="comment">// 가장 앞</span>
+}</pre>
+
+
+<!-- 7. Triggers -->
+<h2 id="triggers">7. 트리거 시스템 (이벤트 이펙트)</h2>
+<p>게이미피케이션 이펙트(confetti, wrongShake 등)는 항상 켜져있는 게 아니라 특정 이벤트에 반응합니다.</p>
+
+<h3>사용 가능한 이벤트</h3>
+<table>
+  <tr><th>이벤트</th><th>발동 시점</th><th>추천 이펙트</th></tr>
+  <tr><td><code>onCorrect</code></td><td>정답 제출 시</td><td>confetti, correctBounce, xpGain, rippleClick</td></tr>
+  <tr><td><code>onWrong</code></td><td>오답 제출 시</td><td>wrongShake, glitchText</td></tr>
+  <tr><td><code>onLevelUp</code></td><td>레벨 상승 시</td><td>levelUpCelebration, confetti</td></tr>
+  <tr><td><code>onBadge</code></td><td>뱃지 획득 시</td><td>badgeUnlock</td></tr>
+  <tr><td><code>onStreak</code></td><td>연속 정답 시</td><td>streakFire, comboCounter</td></tr>
+  <tr><td><code>onCombo</code></td><td>콤보 달성 시</td><td>comboCounter</td></tr>
+  <tr><td><code>onRankUp</code></td><td>티어 승급 시</td><td>rankUpAnimation</td></tr>
+  <tr><td><code>onDaily</code></td><td>일일 보상 시</td><td>dailyReward</td></tr>
+</table>
+
+<pre><span class="key">"triggers"</span>: {
+  <span class="key">"onCorrect"</span>: [<span class="str">"confetti"</span>, <span class="str">"correctBounce"</span>],
+  <span class="key">"onWrong"</span>:   [<span class="str">"wrongShake"</span>],
+  <span class="key">"onLevelUp"</span>:[<span class="str">"levelUpCelebration"</span>, <span class="str">"confetti"</span>],
+  <span class="key">"onBadge"</span>:  [<span class="str">"badgeUnlock"</span>]
+}</pre>
+
+
+<!-- 8. Performance -->
+<h2 id="performance">8. 성능 자동 조절</h2>
+<p>PikaBuddy 테마 엔진은 자동 성능 관리 기능이 내장되어 있습니다.</p>
+
+<div class="card">
+  <h4>통합 애니메이션 루프</h4>
+  <p>Canvas 이펙트(particles, starfield, aurora, matrixRain, bubbles)는 <strong>하나의 requestAnimationFrame 루프</strong>에서 함께 처리됩니다. 이펙트 5개를 켜도 RAF는 1개만 돌아갑니다.</p>
+</div>
+
+<div class="card">
+  <h4>FPS 자동 감소</h4>
+  <p>실시간 FPS를 측정하여 30fps 이하로 떨어지면 파티클 밀도를 자동 축소합니다 (최소 25%). 50fps 이상으로 회복되면 점진적으로 복원합니다.</p>
+</div>
+
+<div class="card">
+  <h4>탭 비활성화 일시정지</h4>
+  <p>브라우저 탭이 비활성화되면 모든 이펙트 렌더링이 자동 일시정지되고, 다시 활성화되면 재개됩니다.</p>
+</div>
+
+<div class="card">
+  <h4>CSS 이펙트 우선</h4>
+  <p>glow, glassMorphism, gradientBorder, cherryBlossom, fogMist 등은 CSS 애니메이션으로 처리되어 GPU 가속을 활용합니다.</p>
+</div>
+
+<div class="tip">
+  이펙트를 많이 켤수록 파티클이 자동으로 줄어듭니다. 저사양 기기에서도 걱정 없이 사용하세요.
+</div>
+
+
+<!-- 9. How-to -->
+<h2 id="howto">9. 테마 만들기 / 가져오기 / 공유하기</h2>
+
+<h3>방법 1: GUI 에디터 (권장)</h3>
+<ol>
+  <li>설정 > 테마에서 <strong>"만들기"</strong> 클릭</li>
+  <li>4개 탭(GUI / JSON / CSS / Effects)에서 편집</li>
+  <li><strong>저장</strong>하면 자동으로 커스텀 테마로 등록</li>
+</ol>
+
+<h3>방법 2: JSON 파일 가져오기</h3>
+<ol>
+  <li><code>.pikabuddy-theme.json</code> 파일 준비</li>
+  <li>설정 > 테마 > 하단 업로드 영역에 드래그 또는 클릭</li>
+  <li>자동 검증 후 테마가 추가됩니다</li>
+</ol>
+
+<h3>방법 3: 프리셋에서 시작</h3>
+<ol>
+  <li>설정 > 테마 > "프리셋 커스텀 테마" 섹션에서 원하는 프리셋 클릭</li>
+  <li>적용된 후 편집 아이콘으로 수정</li>
+</ol>
+
+<h3>테마 공유하기</h3>
+<ol>
+  <li>테마 에디터 > JSON 탭에서 JSON 복사</li>
+  <li><code>.pikabuddy-theme.json</code> 파일로 저장</li>
+  <li>친구에게 파일 공유 → 가져오기로 적용</li>
+</ol>
+
+
+<!-- 10. Examples -->
+<h2 id="examples">10. 예시 테마 8종</h2>
+<p>내장 프리셋 커스텀 테마입니다. 각각의 JSON 파일은 <code>/themes/</code> 경로에서 다운로드 가능합니다.</p>
+
+<table>
+  <tr><th>테마</th><th>스타일</th><th>상시 이펙트</th><th>트리거</th><th>파일</th></tr>
+  <tr>
+    <td><strong>Neon Galaxy</strong></td>
+    <td>다크 우주 + 네온 퍼플/시안</td>
+    <td>starfield(0), aurora(1), glow(2), neonText(3), gradientBorder(2)</td>
+    <td>onCorrect, onWrong, onLevelUp, onBadge</td>
+    <td><code>neon-galaxy.pikabuddy-theme.json</code></td>
+  </tr>
+  <tr>
+    <td><strong>Ocean Deep</strong></td>
+    <td>깊은 바다 다크 블루</td>
+    <td>bubbles(0), fogMist(1), glassMorphism(2), cursorGlow(3)</td>
+    <td>onCorrect, onWrong, onLevelUp, onCombo</td>
+    <td><code>ocean-deep.pikabuddy-theme.json</code></td>
+  </tr>
+  <tr>
+    <td><strong>Cherry Blossom</strong></td>
+    <td>소프트 사쿠라 핑크</td>
+    <td>cherryBlossom(0), fadeInScroll(1), softShadow(2), mouseTrail(3)</td>
+    <td>onCorrect, onWrong, onLevelUp, onStreak</td>
+    <td><code>cherry-blossom.pikabuddy-theme.json</code></td>
+  </tr>
+  <tr>
+    <td><strong>Matrix Terminal</strong></td>
+    <td>블랙/그린 해커</td>
+    <td>matrixRain(0), typewriterTitle(1), glitchText(2), cursorGlow(3)</td>
+    <td>onCorrect, onWrong, onLevelUp, onCombo</td>
+    <td><code>matrix-terminal.pikabuddy-theme.json</code></td>
+  </tr>
+  <tr>
+    <td><strong>Sunset Warmth</strong></td>
+    <td>따뜻한 앰버/골드</td>
+    <td>particles(0), parallaxScroll(1), cardTilt(2), softShadow(2)</td>
+    <td>onCorrect, onWrong, onLevelUp, onDaily</td>
+    <td><code>sunset-warmth.pikabuddy-theme.json</code></td>
+  </tr>
+  <tr>
+    <td><strong>Arctic Aurora</strong></td>
+    <td>아이시 화이트/블루</td>
+    <td>aurora(0), fadeInScroll(1), glassMorphism(2), chromaticAberration(3)</td>
+    <td>onCorrect, onWrong, onLevelUp, onRankUp</td>
+    <td><code>arctic-aurora.pikabuddy-theme.json</code></td>
+  </tr>
+  <tr>
+    <td><strong>Candy Pop</strong></td>
+    <td>비비드 컬러풀</td>
+    <td>dotGrid(0), magneticButton(1), rainbowText(2)</td>
+    <td>onCorrect, onWrong, onLevelUp, onBadge, onStreak</td>
+    <td><code>candy-pop.pikabuddy-theme.json</code></td>
+  </tr>
+  <tr>
+    <td><strong>Midnight Studio</strong></td>
+    <td>프로페셔널 다크</td>
+    <td>particles(0), drawBorder(1), glow(2), fadeInScroll(1)</td>
+    <td>onCorrect, onWrong, onLevelUp, onCombo</td>
+    <td><code>midnight-studio.pikabuddy-theme.json</code></td>
+  </tr>
+</table>
+
+
+<!-- 11. Tips -->
+<h2 id="tips">11. 디자인 팁</h2>
+
+<div class="card">
+  <h4>색상 대비 확인</h4>
+  <p><code>--on-surface</code>(텍스트)와 <code>--surface</code>(배경) 사이에 충분한 대비(4.5:1 이상)를 유지하세요. 다크 테마에서 특히 중요합니다.</p>
+</div>
+
+<div class="card">
+  <h4>이펙트는 3~5개가 적절</h4>
+  <p>상시 이펙트는 3~5개, 트리거는 원하는 만큼 넣어도 됩니다. 상시 이펙트가 너무 많으면 산만해집니다.</p>
+</div>
+
+<div class="card">
+  <h4>라이트/다크 테마 구분</h4>
+  <p>다크 테마: <code>--surface</code>를 어두운 색, <code>--on-surface</code>를 밝은 색으로. shadow는 primary 색 기반 글로우로.<br>
+  라이트 테마: <code>--surface</code>를 밝은 색, <code>--on-surface</code>를 어두운 색으로. shadow는 검정 기반 일반 그림자로.</p>
+</div>
+
+<div class="card">
+  <h4>Custom CSS는 보완용</h4>
+  <p>variables로 대부분 커버 가능합니다. Custom CSS는 카드 호버, 그라디언트 텍스트, 스크롤바 등 세밀한 조정에만 사용하세요.</p>
+</div>
+
+<div class="card">
+  <h4>layer 권장 배치</h4>
+  <p>0: 배경 (starfield, particles, aurora)<br>
+  1: 중간 (fadeInScroll, parallaxScroll, drawBorder)<br>
+  2: 요소 (glow, glassMorphism, softShadow)<br>
+  3: 커서/텍스트 (cursorGlow, neonText, mouseTrail)</p>
+</div>
+
+
+<div style="text-align:center; padding: 60px 0 40px; color: var(--muted); font-size: 0.9em;">
+  <p>PikaBuddy Theme Engine v1 &mdash; 47 Variables / 55 Effects / 5-Layer Architecture</p>
+  <p style="margin-top:8px">Built with AI-powered Vibe Coding</p>
+</div>
+
+</div>
+</body>
+</html>

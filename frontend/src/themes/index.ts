@@ -13,7 +13,9 @@ export interface CustomTheme {
   preview: [string, string, string, string];
   customCSS?: string;
   animation?: string;
-  effects?: Record<string, { enabled: boolean; params: Record<string, string | number> }>;
+  effects?: Record<string, { enabled: boolean; params: Record<string, string | number>; layer?: number }>;
+  triggers?: Record<string, string[]>;
+  isPreset?: boolean;
 }
 
 /** Allowed CSS variable names for custom themes (whitelist) */
