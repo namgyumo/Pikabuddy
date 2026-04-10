@@ -220,6 +220,32 @@ async def get_comment_counts(note_id: str, user: dict = Depends(get_current_user
     return {"block_counts": block_counts, "total": total, "unresolved": unresolved}
 
 
+@router.get("/courses/{course_id}/notes/comment-summary")
+async def notes_comment_summary(course_id: str, user: dict = Depends(get_current_user)):
+    """코스 내 사용자 노트별 미해결 코멘트 수 (노트 목록 뱃지용)."""
+    sb = get_supabase()
+    # 본인 노트만
+    notes = sb.table("notes").select("id").eq("course_id", course_id).eq("student_id", user["id"]).execute()
+    if not notes.data:
+        return {}
+    note_ids = [n["id"] for n in notes.data]
+    comments = sb.table("note_comments") \
+        .select("note_id, is_resolved") \
+        .in_("note_id", note_ids) \
+        .is_("parent_id", "null") \
+        .execute()
+
+    summary: dict[str, dict] = {}
+    for row in (comments.data or []):
+        nid = row["note_id"]
+        if nid not in summary:
+            summary[nid] = {"total": 0, "unresolved": 0}
+        summary[nid]["total"] += 1
+        if not row["is_resolved"]:
+            summary[nid]["unresolved"] += 1
+    return summary
+
+
 # ── Professor: Student Notes Browser ──
 
 @router.get("/courses/{course_id}/student-notes")

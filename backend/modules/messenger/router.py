@@ -134,13 +134,14 @@ async def list_conversations(course_id: str, user: dict = Depends(get_current_us
             "unread_count": unread.count or 0,
         })
 
-    # 안 읽은 수 내림차순 → 최근 메시지순 정렬
-    conversations.sort(
-        key=lambda c: (
-            -(c["unread_count"]),
-            -(c["last_message"]["created_at"] if c["last_message"] else ""),
-        )
-    )
+    # 최근 메시지순 정렬 (메시지 없는 사람은 뒤로), 안 읽은 수 내림차순
+    def _sort_key(c):
+        ts = c["last_message"]["created_at"] if c["last_message"] else ""
+        return (-c["unread_count"], ts)
+
+    # 2-pass: 먼저 최신순 desc, 그 다음 unread desc
+    conversations.sort(key=lambda c: c["last_message"]["created_at"] if c["last_message"] else "", reverse=True)
+    conversations.sort(key=lambda c: c["unread_count"], reverse=True)
 
     return conversations
 

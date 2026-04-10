@@ -1039,6 +1039,10 @@ textarea.input {
   background: var(--editor-bg);
   position: relative;
 }
+.editor-main .editor-block-gutter-wrap {
+  padding-left: 40px;
+  position: relative;
+}
 
 .editor-sidebar {
   width: 420px;
@@ -5426,4 +5430,119 @@ select.form-input {
 .btn-sm.btn-ghost {
   border-color: transparent;
   color: var(--on-surface-variant);
+}
+
+/* ── Review Mode Badge ── */
+.review-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--warning, #f59e0b);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  margin-left: 8px;
+}
+
+/* ── Block Gutter (블록 번호 + 코멘트 수) ── */
+.editor-block-gutter-wrap {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.editor-block-gutter-wrap > .tiptap {
+  flex: 1;
+  min-width: 0;
+}
+.block-gutter {
+  position: absolute;
+  left: -36px;
+  top: 0;
+  width: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  pointer-events: auto;
+  z-index: 5;
+}
+.block-gutter-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin: 1px 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--on-surface-variant);
+  font-size: 10px;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: all 0.15s;
+}
+.block-gutter-btn:hover {
+  background: var(--surface-container);
+  opacity: 1;
+}
+.block-gutter-btn.active {
+  background: var(--primary);
+  color: #fff;
+  opacity: 1;
+}
+.block-gutter-btn.has-comments {
+  opacity: 1;
+}
+.block-gutter-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 0 3px;
+}
+.block-gutter-num {
+  font-size: 10px;
+  font-weight: 500;
+}
+
+/* ── Messenger — 대화 없는 파트너도 표시 ── */
+.conversation-item .conversation-preview-empty {
+  color: var(--on-surface-variant);
+  font-style: italic;
+  font-size: 12px;
+}
+
+/* ── Note comment count badge in notes list ── */
+.note-card-badges {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.note-card-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.note-card-badge.comments {
+  background: var(--primary-container, rgba(99,102,241,0.12));
+  color: var(--primary);
+}
+.note-card-badge.unread {
+  background: var(--error-container, rgba(239,68,68,0.12));
+  color: var(--error, #ef4444);
 }

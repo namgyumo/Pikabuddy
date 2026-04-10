@@ -197,6 +197,7 @@ export default function NoteEditor() {
     isReviewMode ? "comments" : searchParams.get("material") ? "material" : "ai"
   );
   const [noteOwnerId, setNoteOwnerId] = useState<string>("");
+  const [activeBlockIndex, setActiveBlockIndex] = useState<number | null>(null);
   const [tags, setTags] = useState<{ id: string; tag: string }[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [noteLinkSearch, setNoteLinkSearch] = useState(false);
@@ -464,39 +465,45 @@ export default function NoteEditor() {
           <input
             className="note-title-input"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => !isReviewMode && setTitle(e.target.value)}
             placeholder="노트 제목"
+            readOnly={isReviewMode}
           />
+          {isReviewMode && <span className="review-mode-badge">리뷰 모드 (읽기 전용)</span>}
         </div>
         <div className="topbar-right">
-          {saved && <span className="topbar-saved">저장됨</span>}
-          <button className="topbar-action" onClick={handleSave} title="저장 (Ctrl+S)">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
-            </svg>
-            저장
-          </button>
-          {(score != null || !!feedbackText) && (
-            <button className="topbar-action ai" onClick={handlePolish}
-              disabled={polishing || noteId === "new"}>
-              {polishing ? "..." : "AI 다듬기"}
-            </button>
+          {!isReviewMode && (
+            <>
+              {saved && <span className="topbar-saved">저장됨</span>}
+              <button className="topbar-action" onClick={handleSave} title="저장 (Ctrl+S)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+                </svg>
+                저장
+              </button>
+              {(score != null || !!feedbackText) && (
+                <button className="topbar-action ai" onClick={handlePolish}
+                  disabled={polishing || noteId === "new"}>
+                  {polishing ? "..." : "AI 다듬기"}
+                </button>
+              )}
+              <button className="topbar-action primary" onClick={handleAnalyze}
+                disabled={analyzing || noteId === "new"}>
+                {analyzing ? "분석 중..." : "AI 분석"}
+              </button>
+              <button className="topbar-icon-btn" onClick={() => setShowShortcuts(true)} title="단축키 (Ctrl+/)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="4" width="20" height="16" rx="2"/><line x1="6" y1="8" x2="6" y2="8"/><line x1="10" y1="8" x2="14" y2="8"/><line x1="18" y1="8" x2="18" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+              </button>
+            </>
           )}
-          <button className="topbar-action primary" onClick={handleAnalyze}
-            disabled={analyzing || noteId === "new"}>
-            {analyzing ? "분석 중..." : "AI 분석"}
-          </button>
-          <button className="topbar-icon-btn" onClick={() => setShowShortcuts(true)} title="단축키 (Ctrl+/)">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="2" y="4" width="20" height="16" rx="2"/><line x1="6" y1="8" x2="6" y2="8"/><line x1="10" y1="8" x2="14" y2="8"/><line x1="18" y1="8" x2="18" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-          </button>
         </div>
       </header>
 
       <div className="editor-layout">
         <div className={`editor-main note-editor${isProfessor ? " show-ai-marks" : ""}`}>
           {/* ── 간결한 툴바 — 드롭다운 그룹 ── */}
-          {editor && (
+          {editor && !isReviewMode && (
             <div className="note-toolbar compact">
               {/* 빠른 접근: 서식 */}
               <Btn active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()} title="굵게"><strong>B</strong></Btn>
@@ -586,7 +593,7 @@ export default function NoteEditor() {
           )}
 
           {/* ── 버블 메뉴 ── */}
-          {editor && (
+          {editor && !isReviewMode && (
             <BubbleMenu editor={editor} tippyOptions={{ duration: 150, placement: "top" }}>
               <div className="bubble-menu">
                 <button className={`bubble-btn ${editor.isActive("bold") ? "active" : ""}`} onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().toggleBold().run(); }}><strong>B</strong></button>
@@ -600,7 +607,34 @@ export default function NoteEditor() {
             </BubbleMenu>
           )}
 
-          <EditorContent editor={editor} />
+          <div className="editor-block-gutter-wrap">
+            <EditorContent editor={editor} />
+            {/* 블록 번호 거터 (리뷰모드/코멘트 탭) */}
+            {editor && (isReviewMode || sidebarTab === "comments") && (
+              <div className="block-gutter">
+                {(editor.getJSON().content || []).map((_: unknown, i: number) => {
+                  const commentCount = useCommentStore.getState().counts.block_counts[i] || 0;
+                  return (
+                    <button
+                      key={i}
+                      className={`block-gutter-btn${activeBlockIndex === i ? " active" : ""}${commentCount > 0 ? " has-comments" : ""}`}
+                      title={`블록 ${i + 1}${commentCount > 0 ? ` (코멘트 ${commentCount}개)` : ""} — 클릭해서 코멘트`}
+                      onClick={() => {
+                        setActiveBlockIndex(i);
+                        setSidebarTab("comments");
+                      }}
+                    >
+                      {commentCount > 0 ? (
+                        <span className="block-gutter-badge">{commentCount}</span>
+                      ) : (
+                        <span className="block-gutter-num">{i + 1}</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           {/* ── AI 다듬기 제안 패널 ── */}
           {polishedMarkdown !== null && (
@@ -796,6 +830,8 @@ export default function NoteEditor() {
                 noteOwnerId={noteOwnerId || user?.id || ""}
                 currentUserId={user?.id || ""}
                 currentUserRole={user?.role || ""}
+                activeBlockIndex={activeBlockIndex}
+                onBlockClick={(idx) => setActiveBlockIndex(idx)}
               />
             </div>
           )}
@@ -808,18 +844,22 @@ export default function NoteEditor() {
           {tags.map((t) => (
             <span key={t.id} className="note-tag">
               #{t.tag}
-              <button className="note-tag-remove" onClick={() => handleRemoveTag(t.id)}>&times;</button>
+              {!isReviewMode && (
+                <button className="note-tag-remove" onClick={() => handleRemoveTag(t.id)}>&times;</button>
+              )}
             </span>
           ))}
-          <input
-            className="note-tag-input"
-            placeholder="태그 추가..."
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") { e.preventDefault(); handleAddTag(); }
-            }}
-          />
+          {!isReviewMode && (
+            <input
+              className="note-tag-input"
+              placeholder="태그 추가..."
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { e.preventDefault(); handleAddTag(); }
+              }}
+            />
+          )}
         </div>
       )}
 

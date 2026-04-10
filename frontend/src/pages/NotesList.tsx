@@ -16,15 +16,18 @@ export default function NotesList() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string; childCount: number } | null>(null);
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [searchQuery, setSearchQuery] = useState("");
+  const [commentSummary, setCommentSummary] = useState<Record<string, { total: number; unresolved: number }>>({});
 
   useEffect(() => {
     if (!courseId) return;
     Promise.all([
       api.get(`/courses/${courseId}/notes`),
       api.get(`/courses/${courseId}`),
-    ]).then(([notesRes, courseRes]) => {
+      api.get(`/courses/${courseId}/notes/comment-summary`).catch(() => ({ data: {} })),
+    ]).then(([notesRes, courseRes, commentRes]) => {
       setNotes(notesRes.data);
       setCourse(courseRes.data);
+      setCommentSummary(commentRes.data || {});
       setLoading(false);
     });
   }, [courseId]);
@@ -186,6 +189,11 @@ export default function NotesList() {
                         {children.length > 0 && (
                           <span className="badge" style={{ background: "rgba(0,74,198,0.08)", color: "var(--primary)" }}>
                             하위 {children.length}개
+                          </span>
+                        )}
+                        {commentSummary[note.id]?.unresolved > 0 && (
+                          <span className="note-card-badge comments">
+                            💬 {commentSummary[note.id].unresolved}
                           </span>
                         )}
                       </div>

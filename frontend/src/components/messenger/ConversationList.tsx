@@ -36,12 +36,14 @@ export default function ConversationList({ conversations, activePartnerId, onSel
             </div>
             <div className="conversation-info">
               <div className="conversation-name">{conv.partner.name}</div>
-              {lastMsg && (
+              {lastMsg ? (
                 <div className="conversation-preview">
                   {lastMsg.content.length > 40
                     ? lastMsg.content.slice(0, 40) + "..."
                     : lastMsg.content}
                 </div>
+              ) : (
+                <div className="conversation-preview-empty">대화 시작하기</div>
               )}
             </div>
             {conv.unread_count > 0 && (
