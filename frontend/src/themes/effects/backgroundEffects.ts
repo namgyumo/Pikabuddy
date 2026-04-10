@@ -175,7 +175,7 @@ export const matrixRainEffect: ThemeEffect = {
     const color = toFullHex(p.color || "#00ff00");
     const canvas = createEffectCanvas("matrixRain");
     const ctx = canvas.getContext("2d")!;
-    const fontSize = 14;
+    const fontSize = 16; // slightly larger = fewer columns/rows
     const chars = "01アイウエオカキクケコサシスセソABCDEFGHIJKLMNOPQRSTUVWXYZ";
     const maxAge = 20;
 
@@ -191,12 +191,16 @@ export const matrixRainEffect: ThemeEffect = {
     };
 
     window.addEventListener("resize", init);
-    (this as any)._state = { canvas, ctx, fontSize, chars, maxAge, color, columns: [] as number[], grid: [] as any[], onResize: init };
+    (this as any)._state = { canvas, ctx, fontSize, chars, maxAge, color, columns: [] as number[], grid: [] as any[], onResize: init, frameCount: 0 };
     init();
   },
   tick() {
     const s = (this as any)._state;
     if (!s) return;
+    // Run at ~30fps instead of 60fps
+    s.frameCount = (s.frameCount || 0) + 1;
+    if (s.frameCount % 2 !== 0) return;
+
     const { ctx, canvas, fontSize, chars, maxAge, color, columns, grid } = s;
     const W = canvas.width, H = canvas.height;
     ctx.clearRect(0, 0, W, H);

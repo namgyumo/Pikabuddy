@@ -7,6 +7,8 @@ import { useCourseStore } from "../../store/courseStore";
 import TierBadge from "./TierBadge";
 import ThemeBackground from "./ThemeBackground";
 import NotificationBell from "./NotificationBell";
+import GlobalContextMenu from "./GlobalContextMenu";
+import { useRealtimeNotifications } from "../../lib/useRealtimeNotifications";
 
 interface Props {
   children: React.ReactNode;
@@ -41,6 +43,9 @@ export default function AppShell({ children, courseTitle }: Props) {
   const fetchCourses = useCourseStore((s) => s.fetchCourses);
   // 메신저 바로가기: messengerCourseId 우선, 없으면 첫 번째 코스
   const messengerLink = messengerCourseId || (courses.length > 0 ? courses[0].id : null);
+
+  // Supabase Realtime 구독 — 메시지/코멘트 즉시 알림
+  useRealtimeNotifications(user?.id);
 
   const homeLink = isProfessor ? "/professor" : isPersonal ? "/personal" : "/student";
   const isActive = (path: string) => location.pathname.includes(path);
@@ -267,6 +272,7 @@ export default function AppShell({ children, courseTitle }: Props) {
 
         {children}
       </div>
+      <GlobalContextMenu />
     </div>
   );
 }

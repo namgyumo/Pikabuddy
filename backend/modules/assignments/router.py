@@ -922,7 +922,7 @@ async def create_assignment(
 
 @router.get("")
 async def list_assignments(course_id: str, user: dict = Depends(get_current_user)):
-    """과제 목록 조회 (학생은 published만)"""
+    """과제 목록 조회 (학생은 published만, 제출 여부 포함)"""
     supabase = get_supabase()
     query = (
         supabase.table("assignments")
@@ -932,11 +932,24 @@ async def list_assignments(course_id: str, user: dict = Depends(get_current_user
     )
     # 학생은 published 과제만 볼 수 있음 (어드민 제외)
     is_admin = user.get("email", "").endswith("@pikabuddy.admin")
-    if user.get("role") == "student" and not is_admin:
+    role = user.get("role", "student")
+    if role == "student" and not is_admin:
         query = query.eq("status", "published")
 
     result = query.execute()
-    return result.data
+    assignments = result.data or []
+
+    # 학생/개인은 제출 여부 표시
+    if role in ("student", "personal") and assignments:
+        aid_list = [a["id"] for a in assignments]
+        subs = supabase.table("submissions").select("assignment_id").eq(
+            "student_id", user["id"]
+        ).in_("assignment_id", aid_list).execute()
+        submitted_ids = {s["assignment_id"] for s in (subs.data or [])}
+        for a in assignments:
+            a["has_submitted"] = a["id"] in submitted_ids
+
+    return assignments
 
 
 @router.delete("/{assignment_id}")
@@ -1023,6 +1036,80 @@ async def unpublish_assignment(
         {"status": "draft"}
     ).eq("id", assignment_id).execute()
     return {"message": "과제가 비공개로 전환되었습니다.", "status": "draft"}
+
+
+@router.get("/problem-bank")
+async def get_problem_bank(
+    course_id: str,
+    user: dict = Depends(require_professor_or_personal),
+):
+    """교수의 모든 과제에서 문제를 검색 (문제 은행)"""
+    supabase = get_supabase()
+    result = supabase.table("assignments").select(
+        "id, title, topic, type, problems, created_at"
+    ).eq("course_id", course_id).order("created_at", desc=True).execute()
+
+    bank = []
+    for a in result.data or []:
+        problems = a.get("problems") or []
+        for idx, p in enumerate(problems):
+            bank.append({
+                "assignment_id": a["id"],
+                "assignment_title": a["title"],
+                "problem_index": idx,
+                "problem": p,
+            })
+    return bank
+
+
+class ProblemImportRequest(BaseModel):
+    source_assignment_id: str
+    problem_indices: list[int]
+
+
+@router.post("/{assignment_id}/import-problems", status_code=201)
+async def import_problems(
+    course_id: str,
+    assignment_id: str,
+    body: ProblemImportRequest,
+    user: dict = Depends(require_professor_or_personal),
+):
+    """다른 과제에서 문제를 복사해서 현재 과제에 추가"""
+    supabase = get_supabase()
+
+    # 소스 과제 가져오기
+    source = supabase.table("assignments").select(
+        "problems"
+    ).eq("id", body.source_assignment_id).single().execute()
+    if not source.data:
+        raise HTTPException(status_code=404, detail="소스 과제를 찾을 수 없습니다.")
+
+    source_problems = source.data.get("problems") or []
+
+    # 대상 과제 가져오기
+    target = supabase.table("assignments").select(
+        "problems"
+    ).eq("id", assignment_id).single().execute()
+    if not target.data:
+        raise HTTPException(status_code=404, detail="대상 과제를 찾을 수 없습니다.")
+
+    target_problems = list(target.data.get("problems") or [])
+    next_id = max((p.get("id", 0) for p in target_problems), default=0) + 1
+
+    imported = []
+    for idx in body.problem_indices:
+        if 0 <= idx < len(source_problems):
+            p = dict(source_problems[idx])
+            p["id"] = next_id
+            next_id += 1
+            target_problems.append(p)
+            imported.append(p)
+
+    supabase.table("assignments").update(
+        {"problems": target_problems}
+    ).eq("id", assignment_id).execute()
+
+    return {"message": f"{len(imported)}개 문제가 추가되었습니다.", "imported_count": len(imported)}
 
 
 @router.patch("/{assignment_id}/policy")

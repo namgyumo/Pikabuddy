@@ -12,6 +12,8 @@ interface Props {
 
 interface BlockPos {
   top: number;
+  left: number;
+  width: number;
   height: number;
 }
 
@@ -51,6 +53,8 @@ export default function BlockCommentOverlay({
       const rect = child.getBoundingClientRect();
       positions.push({
         top: rect.top - containerRect.top + el.scrollTop,
+        left: rect.left - containerRect.left,
+        width: rect.width,
         height: rect.height,
       });
     }
@@ -116,42 +120,43 @@ export default function BlockCommentOverlay({
 
         return (
           <div key={i}>
-            {/* 코멘트 수 뱃지 (우측) — 코멘트가 있을 때만 */}
+            {/* 우측 코멘트 인디케이터 — 블록 오른쪽 끝 */}
             {showBadge && (
               <button
                 className={`block-comment-indicator${isExpanded ? " active" : ""}`}
                 style={{
                   position: "absolute",
-                  top: pos.top + 2,
-                  right: 4,
+                  top: pos.top + Math.max(0, (pos.height - 24) / 2),
+                  left: pos.left + pos.width + 4,
                   pointerEvents: "auto",
                 }}
                 onClick={() => toggleBlock(i)}
               >
-                <span>{count}</span>
-                <span className={`bci-chevron${isExpanded ? " open" : ""}`}>&rsaquo;</span>
+                <span className="bci-count">{count}</span>
+                <span className={`bci-chevron${isExpanded ? " open" : ""}`}>&#8250;</span>
               </button>
             )}
 
-            {/* 펼쳐진 인라인 코멘트 영역 */}
+            {/* 펼쳐진 인라인 코멘트 영역 — 블록과 같은 너비 */}
             {isExpanded && (
               <div
                 className="block-inline-comments"
                 style={{
                   position: "absolute",
                   top: pos.top + pos.height + 2,
-                  left: 12,
-                  right: 12,
+                  left: pos.left,
+                  width: pos.width,
                   pointerEvents: "auto",
                 }}
               >
                 <div className="block-inline-comments-header">
-                  <span>블록 {i + 1} 코멘트 ({count})</span>
+                  <span>Block {i + 1} &middot; {count} comments</span>
                   <button
-                    className="bic-resolve-btn"
+                    className="bic-close-btn"
                     onClick={() => toggleBlock(i)}
+                    title="접기"
                   >
-                    접기 &times;
+                    &times;
                   </button>
                 </div>
 

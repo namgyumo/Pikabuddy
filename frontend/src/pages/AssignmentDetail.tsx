@@ -153,6 +153,16 @@ export default function AssignmentDetail() {
     function_name: "solution", return_type: "", return_description: "", parameters_text: "",
   });
 
+  // Due date editing
+  const [editingDueDate, setEditingDueDate] = useState(false);
+  const [dueDateValue, setDueDateValue] = useState("");
+
+  // Problem import (문제 가져오기)
+  const [showImport, setShowImport] = useState(false);
+  const [problemBank, setProblemBank] = useState<{ assignment_id: string; assignment_title: string; problem_index: number; problem: Problem }[]>([]);
+  const [importSelected, setImportSelected] = useState<Set<string>>(new Set());
+  const [importLoading, setImportLoading] = useState(false);
+
   // Writing prompt editing
   const [editingPrompt, setEditingPrompt] = useState(false);
   const [promptText, setPromptText] = useState("");
@@ -649,8 +659,51 @@ export default function AssignmentDetail() {
                     </>
                   );
                 })()}
-                {assignment.due_date && (
-                  <span className="badge">마감: {new Date(assignment.due_date).toLocaleDateString("ko-KR")}</span>
+                {editingDueDate ? (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    <input
+                      type="datetime-local"
+                      className="input"
+                      style={{ fontSize: 12, padding: "3px 8px", width: "auto" }}
+                      value={dueDateValue}
+                      onChange={(e) => setDueDateValue(e.target.value)}
+                    />
+                    <button className="btn btn-primary" style={{ fontSize: 11, padding: "3px 10px" }}
+                      onClick={async () => {
+                        try {
+                          await api.patch(`/courses/${courseId}/assignments/${assignmentId}`, {
+                            due_date: dueDateValue ? new Date(dueDateValue).toISOString() : null,
+                          });
+                          setAssignment((prev) => prev ? { ...prev, due_date: dueDateValue ? new Date(dueDateValue).toISOString() : null } : prev);
+                          setEditingDueDate(false);
+                        } catch { /* ignore */ }
+                      }}>저장</button>
+                    <button className="btn btn-ghost" style={{ fontSize: 11, padding: "3px 8px" }}
+                      onClick={() => setEditingDueDate(false)}>취소</button>
+                    {dueDateValue && (
+                      <button className="btn btn-ghost" style={{ fontSize: 11, padding: "3px 8px", color: "var(--error)" }}
+                        onClick={async () => {
+                          try {
+                            await api.patch(`/courses/${courseId}/assignments/${assignmentId}`, { due_date: null });
+                            setAssignment((prev) => prev ? { ...prev, due_date: null } : prev);
+                            setDueDateValue("");
+                            setEditingDueDate(false);
+                          } catch { /* ignore */ }
+                        }}>삭제</button>
+                    )}
+                  </span>
+                ) : (
+                  <span className="badge" style={{ cursor: "pointer" }}
+                    onClick={() => {
+                      setDueDateValue(assignment.due_date
+                        ? new Date(assignment.due_date).toISOString().slice(0, 16)
+                        : "");
+                      setEditingDueDate(true);
+                    }}>
+                    {assignment.due_date
+                      ? `마감: ${new Date(assignment.due_date).toLocaleDateString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}`
+                      : "+ 기한 설정"}
+                  </span>
                 )}
               </div>
             </div>
@@ -862,8 +915,90 @@ export default function AssignmentDetail() {
           <div className="card" style={{ marginBottom: 24 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h2 className="section-title">문제 목록</h2>
-              <button className="btn btn-secondary" onClick={() => setAddingProblem(true)}>+ 문제 추가</button>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="btn btn-ghost" onClick={async () => {
+                  setShowImport(true);
+                  setImportSelected(new Set());
+                  try {
+                    const { data } = await api.get(`/courses/${courseId}/assignments/problem-bank`);
+                    // 현재 과제의 문제는 제외
+                    setProblemBank((data || []).filter((p: { assignment_id: string }) => p.assignment_id !== assignmentId));
+                  } catch { setProblemBank([]); }
+                }}>기존 문제 가져오기</button>
+                <button className="btn btn-secondary" onClick={() => setAddingProblem(true)}>+ 문제 추가</button>
+              </div>
             </div>
+            {/* 문제 가져오기 패널 */}
+            {showImport && (
+              <div style={{ padding: 20, background: "var(--surface-container)", borderRadius: 12, marginBottom: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <h3 style={{ margin: 0, fontSize: 15 }}>기존 문제 가져오기</h3>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button className="btn btn-primary" style={{ fontSize: 12 }} disabled={importSelected.size === 0 || importLoading}
+                      onClick={async () => {
+                        setImportLoading(true);
+                        try {
+                          // 선택된 문제를 소스별로 그룹화
+                          const grouped: Record<string, number[]> = {};
+                          for (const key of importSelected) {
+                            const [aId, pIdx] = key.split("::");
+                            if (!grouped[aId]) grouped[aId] = [];
+                            grouped[aId].push(parseInt(pIdx));
+                          }
+                          for (const [sourceId, indices] of Object.entries(grouped)) {
+                            await api.post(`/courses/${courseId}/assignments/${assignmentId}/import-problems`, {
+                              source_assignment_id: sourceId,
+                              problem_indices: indices,
+                            });
+                          }
+                          // 과제 새로고침
+                          const { data } = await api.get(`/courses/${courseId}/assignments/${assignmentId}`);
+                          setAssignment(data);
+                          setShowImport(false);
+                        } finally { setImportLoading(false); }
+                      }}>
+                      {importLoading ? "가져오는 중..." : `${importSelected.size}개 가져오기`}
+                    </button>
+                    <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setShowImport(false)}>취소</button>
+                  </div>
+                </div>
+                {problemBank.length === 0 ? (
+                  <div style={{ color: "var(--on-surface-variant)", fontSize: 13, padding: "12px 0" }}>가져올 수 있는 문제가 없습니다.</div>
+                ) : (
+                  <div style={{ maxHeight: 400, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
+                    {problemBank.map((item) => {
+                      const key = `${item.assignment_id}::${item.problem_index}`;
+                      const checked = importSelected.has(key);
+                      return (
+                        <label key={key} style={{
+                          display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 12px",
+                          background: checked ? "var(--primary-light)" : "var(--surface-container-lowest)",
+                          borderRadius: 8, cursor: "pointer", border: `1px solid ${checked ? "var(--primary)" : "var(--outline-variant)"}`,
+                          transition: "all 0.12s",
+                        }}>
+                          <input type="checkbox" checked={checked}
+                            onChange={() => {
+                              setImportSelected((prev) => {
+                                const next = new Set(prev);
+                                next.has(key) ? next.delete(key) : next.add(key);
+                                return next;
+                              });
+                            }}
+                            style={{ marginTop: 3, accentColor: "var(--primary)" }} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600 }}>{item.problem.title}</div>
+                            <div style={{ fontSize: 11, color: "var(--on-surface-variant)", marginTop: 2 }}>
+                              {item.assignment_title} &middot; {(item.problem as Record<string, unknown>).format === "baekjoon" ? "표준 입출력" : (item.problem as Record<string, unknown>).format === "programmers" ? "함수 구현" : (item.problem as Record<string, unknown>).format === "quiz" ? "퀴즈" : "일반"}
+                            </div>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
             {addingProblem && (
               <div style={{ padding: 20, background: "var(--surface-container)", borderRadius: 12, marginBottom: 16 }}>
                 <h3 style={{ margin: "0 0 12px", fontSize: 15 }}>새 문제 추가</h3>

@@ -23,7 +23,8 @@ import { TableCell } from "@tiptap/extension-table/cell";
 import { Markdown } from "tiptap-markdown";
 import { renderMarkdown } from "../lib/markdown";
 import api from "../lib/api";
-import { useAuthStore } from "../store/authStore";
+import { useAuthStore, getAdminToken } from "../store/authStore";
+import { supabase } from "../lib/supabase";
 import type { CourseMaterial } from "../types";
 import { ExcalidrawExtension } from "../lib/ExcalidrawExtension";
 import { AIPolishedExtension } from "../lib/AIPolishedExtension";
@@ -375,12 +376,68 @@ export default function NoteEditor() {
   const handleAnalyze = useCallback(async () => {
     if (!noteId || noteId === "new") return;
     setAnalyzing(true);
+    setFeedbackText("");
+
     try {
-      const { data } = await api.post(`/notes/${noteId}/analyze`);
-      if (data.understanding_score != null) setScore(data.understanding_score);
-      if (data.feedback) setFeedbackText(data.feedback);
+      // Get auth headers for raw fetch
+      const adminToken = getAdminToken() || sessionStorage.getItem("admin_token");
+      const headers: Record<string, string> = {};
+      if (adminToken) {
+        headers["Authorization"] = `Bearer ${adminToken}`;
+      } else {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          headers["Authorization"] = `Bearer ${session.access_token}`;
+        }
+      }
+
+      const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8001/api";
+      const response = await fetch(`${API_BASE}/notes/${noteId}/analyze-stream`, { headers });
+
+      if (!response.ok) {
+        // Fallback to non-streaming endpoint
+        const { data } = await api.post(`/notes/${noteId}/analyze`);
+        if (data.understanding_score != null) setScore(data.understanding_score);
+        if (data.feedback) setFeedbackText(data.feedback);
+      } else {
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+
+        if (reader) {
+          let buffer = "";
+          const processLine = (line: string) => {
+            if (line.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                if (data.type === "chunk") {
+                  setFeedbackText((prev) => prev + data.text);
+                } else if (data.type === "done") {
+                  if (data.score != null) setScore(data.score);
+                } else if (data.type === "error") {
+                  setFeedbackText((prev) => prev || `오류: ${data.text}`);
+                }
+              } catch { /* SSE parse error */ }
+            }
+          };
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+              if (buffer.trim()) processLine(buffer);
+              break;
+            }
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+            for (const line of lines) processLine(line);
+          }
+        }
+      }
+
+      // Fetch AI comments after analysis completes
       const { data: comments } = await api.get(`/notes/${noteId}/ai-comments`);
       setAiComments(comments);
+    } catch {
+      setFeedbackText((prev) => prev || "분석 중 오류가 발생했습니다.");
     } finally {
       setAnalyzing(false);
     }
@@ -614,8 +671,8 @@ export default function NoteEditor() {
 
           <EditorContent editor={editor} />
 
-          {/* 블록별 인라인 코멘트 오버레이 */}
-          {editor && noteId && noteId !== "new" && (isReviewMode || sidebarTab === "comments") && (
+          {/* 블록별 인라인 코멘트 오버레이 — 코멘트가 있으면 항상 > 뱃지 표시 */}
+          {editor && noteId && noteId !== "new" && (
             <BlockCommentOverlay
               editorRef={editorMainRef}
               noteId={noteId}

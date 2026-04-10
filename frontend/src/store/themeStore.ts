@@ -142,12 +142,12 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
       // Custom theme: remove data-theme, apply inline styles
       document.documentElement.removeAttribute("data-theme");
       applyCustomStyles(custom.variables, custom.customCSS);
+      // Always disable all effects first to prevent stacking
+      effectManager.disableAll();
       // Apply effects for this custom theme
       if (custom.effects) {
         effectManager.saveState(custom.effects);
         effectManager.applyState(custom.effects);
-      } else {
-        effectManager.disableAll();
       }
       // Apply trigger mappings
       effectManager.setTriggers(custom.triggers ?? {});

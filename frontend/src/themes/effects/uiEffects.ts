@@ -84,16 +84,20 @@ export const cardTiltEffect: ThemeEffect = {
   activate(p) {
     const maxAngle = p.intensity || 5;
 
+    let rafId = 0;
     const onMove = (e: MouseEvent) => {
-      const el = e.target as HTMLElement;
-      if (!el || typeof el.closest !== "function") return;
-      const target = el.closest<HTMLElement>(".card, [class*='card']");
-      if (!target) return;
-      const rect = target.getBoundingClientRect();
-      const x = (e.clientX - rect.left) / rect.width - 0.5;
-      const y = (e.clientY - rect.top) / rect.height - 0.5;
-      target.style.transform = `perspective(800px) rotateX(${-y * maxAngle}deg) rotateY(${x * maxAngle}deg)`;
-      target.style.transition = "transform 0.1s ease";
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        const el = e.target as HTMLElement;
+        if (!el || typeof el.closest !== "function") return;
+        const target = el.closest<HTMLElement>(".card, [class*='card']");
+        if (!target) return;
+        const rect = target.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width - 0.5;
+        const y = (e.clientY - rect.top) / rect.height - 0.5;
+        target.style.transform = `perspective(800px) rotateX(${-y * maxAngle}deg) rotateY(${x * maxAngle}deg)`;
+        target.style.transition = "transform 0.1s ease";
+      });
     };
 
     const onLeave = (e: MouseEvent) => {
@@ -106,10 +110,11 @@ export const cardTiltEffect: ThemeEffect = {
       }
     };
 
-    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mousemove", onMove, { passive: true });
     document.addEventListener("mouseleave", onLeave, true);
     (this as any)._onMove = onMove;
     (this as any)._onLeave = onLeave;
+    (this as any)._rafId = rafId;
 
     injectEffectStyle("cardTilt", `
       .card, [class*="card"] { transform-style: preserve-3d; }
@@ -118,6 +123,7 @@ export const cardTiltEffect: ThemeEffect = {
   deactivate() {
     document.removeEventListener("mousemove", (this as any)._onMove);
     document.removeEventListener("mouseleave", (this as any)._onLeave, true);
+    cancelAnimationFrame((this as any)._rafId);
     removeEffectStyle("cardTilt");
     document.querySelectorAll<HTMLElement>(".card, [class*='card']").forEach((el) => {
       el.style.transform = "";
@@ -247,8 +253,12 @@ export const textScrambleEffect: ThemeEffect = {
       animate();
     };
 
+    let scrambleTimer = 0;
     const observer = new MutationObserver(() => {
-      document.querySelectorAll<HTMLElement>("h1, h2, .page-title").forEach(scramble);
+      clearTimeout(scrambleTimer);
+      scrambleTimer = window.setTimeout(() => {
+        document.querySelectorAll<HTMLElement>("h1, h2, .page-title").forEach(scramble);
+      }, 200);
     });
     observer.observe(document.body, { childList: true, subtree: true });
     document.querySelectorAll<HTMLElement>("h1, h2, .page-title").forEach(scramble);
@@ -353,28 +363,43 @@ export const magneticButtonEffect: ThemeEffect = {
   id: "magneticButton",
   activate(p) {
     const strength = p.strength || 0.12;
+    let buttons: HTMLElement[] = [];
+    let cacheTime = 0;
+
+    let rafId = 0;
     const onMove = (e: MouseEvent) => {
-      document.querySelectorAll<HTMLElement>(".btn-primary, button[class*='primary']").forEach((btn) => {
-        const rect = btn.getBoundingClientRect();
-        const cx = rect.left + rect.width / 2;
-        const cy = rect.top + rect.height / 2;
-        const dx = e.clientX - cx;
-        const dy = e.clientY - cy;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 60) {
-          btn.style.transform = `translate(${dx * strength}px, ${dy * strength}px)`;
-          btn.style.transition = "transform 0.2s ease";
-        } else {
-          btn.style.transform = "";
-          btn.style.transition = "transform 0.4s ease";
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        const now = Date.now();
+        if (now - cacheTime > 1000) {
+          buttons = Array.from(document.querySelectorAll<HTMLElement>(".btn-primary, button[class*='primary']"));
+          cacheTime = now;
+        }
+        for (const btn of buttons) {
+          if (!btn.isConnected) continue;
+          const rect = btn.getBoundingClientRect();
+          const cx = rect.left + rect.width / 2;
+          const cy = rect.top + rect.height / 2;
+          const dx = e.clientX - cx;
+          const dy = e.clientY - cy;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 60) {
+            btn.style.transform = `translate(${dx * strength}px, ${dy * strength}px)`;
+            btn.style.transition = "transform 0.2s ease";
+          } else {
+            btn.style.transform = "";
+            btn.style.transition = "transform 0.4s ease";
+          }
         }
       });
     };
-    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mousemove", onMove, { passive: true });
     (this as any)._onMove = onMove;
+    (this as any)._rafId = rafId;
   },
   deactivate() {
     document.removeEventListener("mousemove", (this as any)._onMove);
+    cancelAnimationFrame((this as any)._rafId);
     document.querySelectorAll<HTMLElement>(".btn-primary, button[class*='primary']").forEach((b) => {
       b.style.transform = "";
     });

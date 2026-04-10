@@ -1,10 +1,16 @@
 import asyncio
 import json
 import logging
+import re as _re_module
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from sse_starlette.sse import EventSourceResponse
 from common.supabase_client import get_supabase
 from common.gemini_client import get_gemini_model
+from common.note_categories import (
+    match_categories_by_text, get_categories_prompt_list,
+    CATEGORY_SLUGS, SLUG_TO_NAME,
+)
 from middleware.auth import get_current_user, require_student_or_personal
 
 logger = logging.getLogger(__name__)
@@ -108,7 +114,7 @@ async def delete_note(note_id: str, user: dict = Depends(require_student_or_pers
 
 @router.get("/courses/{course_id}/notes/graph")
 async def get_graph_data(course_id: str, user: dict = Depends(get_current_user)):
-    """노트 그래프 데이터 — 노드 + 엣지 (부모-자식 + 노트 간 링크)"""
+    """노트 그래프 데이터 — 노드 + 엣지 (부모-자식 + 링크 + 카테고리 유사도)"""
     supabase = get_supabase()
     query = supabase.table("notes").select("*").eq("course_id", course_id)
     if user["role"] == "student":
@@ -129,6 +135,16 @@ async def get_graph_data(course_id: str, user: dict = Depends(get_current_user))
         for t in tags_result.data:
             tags_map.setdefault(t["note_id"], []).append(t["tag"])
 
+    # 카테고리 맵 — DB에 있으면 사용, 없으면 키워드 매칭
+    cat_map: dict[str, list[str]] = {}
+    for n in notes:
+        db_cats = n.get("categories")
+        if db_cats and isinstance(db_cats, list) and len(db_cats) > 0:
+            cat_map[n["id"]] = db_cats
+        else:
+            content_text = _tiptap_to_markdown(n.get("content") or {})
+            cat_map[n["id"]] = match_categories_by_text(content_text, max_categories=6)
+
     # 노드 생성
     nodes = []
     for n in notes:
@@ -139,6 +155,7 @@ async def get_graph_data(course_id: str, user: dict = Depends(get_current_user))
             "parent_id": n.get("parent_id"),
             "understanding_score": n.get("understanding_score"),
             "tags": tags_map.get(n["id"], []),
+            "categories": cat_map.get(n["id"], []),
             "updated_at": n["updated_at"],
             "created_at": n["created_at"],
             "content_length": len(content_text),
@@ -165,6 +182,45 @@ async def get_graph_data(course_id: str, user: dict = Depends(get_current_user))
                     "target": link_target_id,
                     "type": "link",
                 })
+
+    # 엣지: 수동 링크 (그래프 UI에서 생성)
+    try:
+        ml_result = supabase.table("note_manual_links").select("source_note_id, target_note_id").eq("course_id", course_id).execute()
+        for ml in (ml_result.data or []):
+            if ml["source_note_id"] in note_id_set and ml["target_note_id"] in note_id_set:
+                edges.append({
+                    "source": ml["source_note_id"],
+                    "target": ml["target_note_id"],
+                    "type": "link",
+                })
+    except Exception:
+        pass  # 테이블이 아직 없을 수 있음
+
+    # 엣지: 카테고리 유사도 (공유 카테고리 수 기반)
+    existing_edges = set()
+    for e in edges:
+        pair = tuple(sorted([e["source"], e["target"]]))
+        existing_edges.add(pair)
+
+    for i in range(len(notes)):
+        cats_i = set(cat_map.get(notes[i]["id"], []))
+        if not cats_i:
+            continue
+        for j in range(i + 1, len(notes)):
+            cats_j = set(cat_map.get(notes[j]["id"], []))
+            if not cats_j:
+                continue
+            shared = cats_i & cats_j
+            if len(shared) >= 2:
+                pair = tuple(sorted([notes[i]["id"], notes[j]["id"]]))
+                if pair not in existing_edges:
+                    existing_edges.add(pair)
+                    edges.append({
+                        "source": notes[i]["id"],
+                        "target": notes[j]["id"],
+                        "type": "similar",
+                        "weight": len(shared),
+                    })
 
     return {"nodes": nodes, "edges": edges}
 
@@ -404,6 +460,53 @@ async def get_weekly_report(course_id: str, user: dict = Depends(require_student
         ],
         "summary": summary,
     }
+
+
+## ── 수동 링크 (그래프 UI에서 생성) ─────────────────────
+
+@router.post("/courses/{course_id}/notes/manual-link")
+async def create_manual_link(
+    course_id: str,
+    body: dict,
+    user: dict = Depends(get_current_user),
+):
+    supabase = get_supabase()
+    source_id = body.get("source_note_id")
+    target_id = body.get("target_note_id")
+    if not source_id or not target_id or source_id == target_id:
+        raise HTTPException(status_code=400, detail="source와 target이 필요합니다")
+    # 정렬하여 중복 방지 (A→B == B→A)
+    ids = sorted([source_id, target_id])
+    try:
+        supabase.table("note_manual_links").insert({
+            "course_id": course_id,
+            "source_note_id": ids[0],
+            "target_note_id": ids[1],
+            "created_by": user["id"],
+        }).execute()
+    except Exception:
+        # UNIQUE 위반 → 이미 존재
+        pass
+    return {"ok": True}
+
+
+@router.delete("/courses/{course_id}/notes/manual-link")
+async def delete_manual_link(
+    course_id: str,
+    body: dict,
+    user: dict = Depends(get_current_user),
+):
+    supabase = get_supabase()
+    source_id = body.get("source_note_id")
+    target_id = body.get("target_note_id")
+    if not source_id or not target_id:
+        raise HTTPException(status_code=400, detail="source와 target이 필요합니다")
+    ids = sorted([source_id, target_id])
+    supabase.table("note_manual_links").delete().match({
+        "source_note_id": ids[0],
+        "target_note_id": ids[1],
+    }).execute()
+    return {"ok": True}
 
 
 ## ── 노트 링크 추출 헬퍼 ──────────────────────────────
@@ -650,9 +753,11 @@ async def analyze_note(note_id: str, user: dict = Depends(get_current_user)):
         if had_ai_section else ""
     )
 
+    # ── 카테고리 목록 (AI에게 전달) ──
+    cat_list = get_categories_prompt_list()
+
     prompt = f"""당신은 친절한 학습 튜터입니다.
 학생의 노트를 분석하고 피드백을 자연스러운 한국어로 작성하세요.
-코드블록(```)이나 JSON 없이 순수 텍스트로만 출력하세요.
 {ai_polished_notice}
 강의 목표: {json.dumps(objectives, ensure_ascii=False)}
 학생 노트: {content_text}
@@ -673,6 +778,11 @@ async def analyze_note(note_id: str, user: dict = Depends(get_current_user)):
 
 💡 학습 추천
 (구체적인 방법 2~3개를 번호로)
+
+🏷️ 카테고리
+아래 목록에서 이 노트에 해당하는 카테고리를 3~8개 골라 slug만 쉼표로 나열하세요.
+목록에 없는 주제가 있다면 "NEW:slug:한글명" 형식으로 1개까지 추가할 수 있습니다.
+카테고리 목록: {cat_list}
 
 말투는 친근하고 격려하는 톤으로. 잘한 점도 반드시 언급하세요."""
 
@@ -698,13 +808,218 @@ async def analyze_note(note_id: str, user: dict = Depends(get_current_user)):
     if match:
         score = int(match.group(1))
 
+    # ── 카테고리 추출 ──
+    categories: list[str] = []
+    cat_match = re.search(r"카테고리[:\s]*\n?(.+)", feedback_text)
+    if cat_match:
+        raw_cats = cat_match.group(1).strip()
+        for token in re.split(r"[,\s]+", raw_cats):
+            token = token.strip().strip("`")
+            if not token:
+                continue
+            if token.startswith("NEW:"):
+                # AI가 새 카테고리 추가: NEW:slug:한글명
+                parts = token.split(":", 2)
+                if len(parts) == 3:
+                    new_slug = parts[1].strip().lower().replace(" ", "-")
+                    new_name = parts[2].strip()
+                    if new_slug and new_name and new_slug not in CATEGORY_SLUGS:
+                        try:
+                            supabase.table("custom_categories").upsert({
+                                "slug": new_slug,
+                                "name": new_name,
+                                "keywords": json.dumps([new_name.lower(), new_slug]),
+                            }, on_conflict="slug").execute()
+                            CATEGORY_SLUGS.add(new_slug)
+                            SLUG_TO_NAME[new_slug] = new_name
+                        except Exception:
+                            pass
+                    if new_slug:
+                        categories.append(new_slug)
+            elif token in CATEGORY_SLUGS:
+                categories.append(token)
+
+    # 카테고리가 너무 적으면 키워드 매칭으로 보충
+    if len(categories) < 3:
+        kw_cats = match_categories_by_text(content_text, max_categories=5)
+        for c in kw_cats:
+            if c not in categories:
+                categories.append(c)
+            if len(categories) >= 5:
+                break
+
     # Save to DB
     supabase.table("notes").update({
         "gap_analysis": {"feedback": feedback_text},
         "understanding_score": score,
+        "categories": json.dumps(categories),
     }).eq("id", note_id).execute()
 
     return {
         "understanding_score": score,
         "feedback": feedback_text,
+        "categories": categories,
     }
+
+
+@router.get("/notes/{note_id}/analyze-stream")
+async def analyze_note_stream(note_id: str, user: dict = Depends(get_current_user)):
+    """노트 갭 분석 SSE 스트리밍 — 실시간으로 피드백 전달"""
+    import re
+
+    supabase = get_supabase()
+
+    note = supabase.table("notes").select("*, courses(objectives)").eq("id", note_id).single().execute()
+    if not note.data:
+        raise HTTPException(status_code=404, detail="노트를 찾을 수 없습니다.")
+
+    note_data = note.data
+    raw_content = note_data["content"] or {}
+    stripped_content, had_ai_section = _extract_ai_polished(raw_content)
+    content_text = _tiptap_to_markdown(stripped_content)
+    objectives = note_data.get("courses", {}).get("objectives", [])
+
+    submissions = (
+        supabase.table("submissions")
+        .select("*, ai_analyses(*)")
+        .eq("student_id", note_data["student_id"])
+        .execute()
+    )
+
+    ai_polished_notice = (
+        "\n※ 이 노트에는 'AI 다듬기' 기능으로 처리된 구간이 있었으나 평가에서 제외했습니다. "
+        "아래 내용은 학생이 직접 작성한 부분만입니다.\n"
+        if had_ai_section else ""
+    )
+
+    cat_list = get_categories_prompt_list()
+
+    prompt = f"""당신은 친절한 학습 튜터입니다.
+학생의 노트를 분석하고 피드백을 자연스러운 한국어로 작성하세요.
+{ai_polished_notice}
+강의 목표: {json.dumps(objectives, ensure_ascii=False)}
+학생 노트: {content_text}
+코드 제출 수: {len(submissions.data)}건
+
+아래 형식 그대로 작성하세요:
+
+📊 이해도 점수: [0~100]점 / 100점
+
+📝 종합 평가
+(2~3문장)
+
+✅ 잘 이해한 부분
+(정확하게 이해한 개념)
+
+⚠️ 보완이 필요한 부분
+(잘못 이해했거나 빠진 개념)
+
+💡 학습 추천
+(구체적인 방법 2~3개를 번호로)
+
+🏷️ 카테고리
+아래 목록에서 이 노트에 해당하는 카테고리를 3~8개 골라 slug만 쉼표로 나열하세요.
+목록에 없는 주제가 있다면 "NEW:slug:한글명" 형식으로 1개까지 추가할 수 있습니다.
+카테고리 목록: {cat_list}
+
+말투는 친근하고 격려하는 톤으로. 잘한 점도 반드시 언급하세요."""
+
+    async def generate():
+        loop = asyncio.get_running_loop()
+        queue: asyncio.Queue = asyncio.Queue()
+
+        def run_stream():
+            try:
+                model = get_gemini_model()
+                response = model.generate_content(prompt, stream=True)
+                for chunk in response:
+                    if chunk.text:
+                        loop.call_soon_threadsafe(queue.put_nowait, ("chunk", chunk.text))
+                loop.call_soon_threadsafe(queue.put_nowait, ("done", None))
+            except Exception as e:
+                loop.call_soon_threadsafe(queue.put_nowait, ("error", str(e)))
+
+        loop.run_in_executor(None, run_stream)
+
+        accumulated = ""
+        while True:
+            event_type, data = await queue.get()
+
+            if event_type == "chunk":
+                accumulated += data
+                yield {"event": "message", "data": json.dumps({"type": "chunk", "text": data}, ensure_ascii=False)}
+
+            elif event_type == "done":
+                feedback_text = accumulated.strip()
+                if feedback_text.startswith("```"):
+                    feedback_text = feedback_text.split("\n", 1)[1] if "\n" in feedback_text else feedback_text[3:]
+                if feedback_text.endswith("```"):
+                    feedback_text = feedback_text[:-3]
+                feedback_text = feedback_text.strip()
+
+                # Extract score
+                score = None
+                match = re.search(r"점수[:\s]*(\d+)", feedback_text)
+                if match:
+                    score = int(match.group(1))
+
+                # Extract categories
+                categories: list[str] = []
+                cat_match = re.search(r"카테고리[:\s]*\n?(.+)", feedback_text)
+                if cat_match:
+                    raw_cats = cat_match.group(1).strip()
+                    for token in re.split(r"[,\s]+", raw_cats):
+                        token = token.strip().strip("`")
+                        if not token:
+                            continue
+                        if token.startswith("NEW:"):
+                            parts = token.split(":", 2)
+                            if len(parts) == 3:
+                                new_slug = parts[1].strip().lower().replace(" ", "-")
+                                new_name = parts[2].strip()
+                                if new_slug and new_name and new_slug not in CATEGORY_SLUGS:
+                                    try:
+                                        supabase.table("custom_categories").upsert({
+                                            "slug": new_slug,
+                                            "name": new_name,
+                                            "keywords": json.dumps([new_name.lower(), new_slug]),
+                                        }, on_conflict="slug").execute()
+                                        CATEGORY_SLUGS.add(new_slug)
+                                        SLUG_TO_NAME[new_slug] = new_name
+                                    except Exception:
+                                        pass
+                                if new_slug:
+                                    categories.append(new_slug)
+                        elif token in CATEGORY_SLUGS:
+                            categories.append(token)
+
+                if len(categories) < 3:
+                    kw_cats = match_categories_by_text(content_text, max_categories=5)
+                    for c in kw_cats:
+                        if c not in categories:
+                            categories.append(c)
+                        if len(categories) >= 5:
+                            break
+
+                try:
+                    supabase.table("notes").update({
+                        "gap_analysis": {"feedback": feedback_text},
+                        "understanding_score": score,
+                        "categories": json.dumps(categories),
+                    }).eq("id", note_id).execute()
+                except Exception as db_err:
+                    logger.error(f"[NoteAnalysis] DB 저장 실패 note_id={note_id}: {db_err}")
+
+                yield {"event": "message", "data": json.dumps({
+                    "type": "done",
+                    "score": score,
+                    "categories": categories,
+                }, ensure_ascii=False)}
+                break
+
+            elif event_type == "error":
+                logger.error(f"[NoteAnalysis] Gemini 스트리밍 오류 note_id={note_id}: {data}")
+                yield {"event": "message", "data": json.dumps({"type": "error", "text": data}, ensure_ascii=False)}
+                break
+
+    return EventSourceResponse(generate())

@@ -14,7 +14,7 @@ export interface SlashItem {
   action: (editor: any) => void;
 }
 
-const SLASH_ITEMS: SlashItem[] = [
+export const SLASH_ITEMS: SlashItem[] = [
   {
     id: "paragraph",
     label: "텍스트",

@@ -130,17 +130,31 @@ export default function Settings() {
 
         {/* ── 튜토리얼 ── */}
         <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12, color: "var(--on-surface)" }}>튜토리얼</h2>
-        <button
-          className="btn btn-secondary"
-          onClick={() => {
-            useTutorialStore.getState().resetAll();
-            const home = user?.role === "professor" ? "/professor" : user?.role === "personal" ? "/personal" : "/student";
-            navigate(home);
-          }}
-          style={{ marginBottom: 28 }}
-        >
-          튜토리얼 다시 보기
-        </button>
+        <div style={{ display: "flex", gap: 8, marginBottom: 28, flexWrap: "wrap" }}>
+          <button
+            className="btn btn-secondary"
+            onClick={() => {
+              useTutorialStore.getState().resetAll();
+              const home = user?.role === "professor" ? "/professor" : user?.role === "personal" ? "/personal" : "/student";
+              navigate(home);
+            }}
+          >
+            튜토리얼 다시 보기
+          </button>
+          <a
+            href="/guide.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-secondary"
+            style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 2h7l3 3v7H2V2z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M5 8h4M5 10h2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+            </svg>
+            PikaBuddy 사용법 가이드
+          </a>
+        </div>
 
         {/* ── 외관 설정 ── */}
         <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12, color: "var(--on-surface)" }}>외관</h2>

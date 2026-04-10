@@ -62,8 +62,12 @@ export const fadeInScrollEffect: ThemeEffect = {
     };
     observe();
 
-    // Re-observe on DOM changes
-    const mutObs = new MutationObserver(observe);
+    // Re-observe on DOM changes (debounced to avoid excessive scans)
+    let mutTimer = 0;
+    const mutObs = new MutationObserver(() => {
+      clearTimeout(mutTimer);
+      mutTimer = window.setTimeout(observe, 200);
+    });
     mutObs.observe(document.body, { childList: true, subtree: true });
 
     (this as any)._observer = observer;
@@ -157,7 +161,11 @@ export const countUpEffect: ThemeEffect = {
       });
     };
     scan();
-    const mutObs = new MutationObserver(scan);
+    let scanTimer = 0;
+    const mutObs = new MutationObserver(() => {
+      clearTimeout(scanTimer);
+      scanTimer = window.setTimeout(scan, 200);
+    });
     mutObs.observe(document.body, { childList: true, subtree: true });
 
     (this as any)._observer = observer;

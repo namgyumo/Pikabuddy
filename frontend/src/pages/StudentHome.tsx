@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState, useMemo } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useCourseStore } from "../store/courseStore";
 import { useAuthStore } from "../store/authStore";
 import { useTutorialStore } from "../store/tutorialStore";
@@ -9,19 +9,117 @@ import AppShell from "../components/common/AppShell";
 import { toast } from "../lib/toast";
 import { SkeletonList } from "../components/common/Skeleton";
 
+interface CalendarItem {
+  id: string;
+  title: string;
+  kind: "assignment" | "event" | "holiday";
+  type?: string;
+  due_date?: string;
+  event_date?: string;
+  course_id?: string;
+  course_title?: string;
+  color?: string;
+  description?: string;
+}
+
+interface TodoItem {
+  id: string;
+  title: string;
+  kind: "assignment";
+  type?: string;
+  due_date?: string;
+  course_id?: string;
+  course_title?: string;
+  language?: string;
+  ai_policy?: string;
+  problem_count?: number;
+}
+
+// 한국 공휴일 (고정)
+function getKoreanHolidays(year: number): { date: string; title: string }[] {
+  const fixed = [
+    { m: 1, d: 1, title: "신정" },
+    { m: 3, d: 1, title: "삼일절" },
+    { m: 5, d: 5, title: "어린이날" },
+    { m: 6, d: 6, title: "현충일" },
+    { m: 8, d: 15, title: "광복절" },
+    { m: 10, d: 3, title: "개천절" },
+    { m: 10, d: 9, title: "한글날" },
+    { m: 12, d: 25, title: "크리스마스" },
+  ];
+  // 석가탄신일, 추석, 설날 등 음력 공휴일은 연도별 고정
+  const lunar: Record<number, { m: number; d: number; title: string }[]> = {
+    2025: [
+      { m: 1, d: 28, title: "설날 연휴" }, { m: 1, d: 29, title: "설날" }, { m: 1, d: 30, title: "설날 연휴" },
+      { m: 5, d: 5, title: "석가탄신일" },
+      { m: 9, d: 5, title: "추석 연휴" }, { m: 9, d: 6, title: "추석" }, { m: 9, d: 7, title: "추석 연휴" },
+    ],
+    2026: [
+      { m: 2, d: 16, title: "설날 연휴" }, { m: 2, d: 17, title: "설날" }, { m: 2, d: 18, title: "설날 연휴" },
+      { m: 5, d: 24, title: "석가탄신일" },
+      { m: 9, d: 24, title: "추석 연휴" }, { m: 9, d: 25, title: "추석" }, { m: 9, d: 26, title: "추석 연휴" },
+    ],
+  };
+  const all = [...fixed, ...(lunar[year] || [])];
+  return all.map((h) => ({
+    date: `${year}-${String(h.m).padStart(2, "0")}-${String(h.d).padStart(2, "0")}T00:00:00`,
+    title: h.title,
+  }));
+}
+
 export default function StudentHome() {
   const { courses, fetchCourses, loading } = useCourseStore();
   const user = useAuthStore((s) => s.user);
+  const navigate = useNavigate();
 
   const [showJoin, setShowJoin] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
   const [joining, setJoining] = useState(false);
+
+  // 캘린더
+  const [calItems, setCalItems] = useState<CalendarItem[]>([]);
+  const [calMonth, setCalMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
+  const [showAddEvent, setShowAddEvent] = useState(false);
+  const [newEventTitle, setNewEventTitle] = useState("");
+  const [newEventDate, setNewEventDate] = useState("");
+  const [newEventColor, setNewEventColor] = useState("primary");
+  const [addingEvent, setAddingEvent] = useState(false);
+
+  // 할 일
+  const [todos, setTodos] = useState<TodoItem[]>([]);
 
   const tutorialStart = useTutorialStore((s) => s.start);
   const tutorialCompleted = useTutorialStore((s) => s.isCompleted);
 
   useEffect(() => {
     fetchCourses();
+    // 캘린더 데이터 로드
+    api.get("/calendar").then(({ data }) => {
+      const items: CalendarItem[] = [
+        ...(data.assignments || []).map((a: CalendarItem) => ({ ...a, kind: "assignment" as const })),
+        ...(data.events || []).map((e: CalendarItem) => ({ ...e, kind: "event" as const })),
+      ];
+      setCalItems(items);
+
+      // 과제 마감 1일 전 알림
+      const now = new Date();
+      const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      for (const a of data.assignments || []) {
+        if (a.due_date) {
+          const due = new Date(a.due_date);
+          if (due > now && due <= tomorrow) {
+            const notifKey = `deadline-notif-${a.id}-${due.toDateString()}`;
+            if (!sessionStorage.getItem(notifKey)) {
+              sessionStorage.setItem(notifKey, "1");
+              const hours = Math.round((due.getTime() - now.getTime()) / (60 * 60 * 1000));
+              toast.warning(`"${a.title}" 마감이 ${hours}시간 남았습니다!`);
+            }
+          }
+        }
+      }
+    }).catch(() => {});
+    // 할 일 로드
+    api.get("/todos").then(({ data }) => setTodos(data)).catch(() => {});
   }, [fetchCourses]);
 
   useEffect(() => {
@@ -114,6 +212,202 @@ export default function StudentHome() {
                 <p>{course.description || "설명 없음"}</p>
               </Link>
             ))}
+          </div>
+        )}
+        {/* ── 캘린더 ── */}
+        <div style={{ marginTop: 32 }}>
+          <div className="page-header">
+            <h2 className="section-title">일정 캘린더</h2>
+            <button className="btn btn-secondary" onClick={() => { setShowAddEvent(true); setNewEventDate(""); setNewEventTitle(""); }}>
+              + 일정 추가
+            </button>
+          </div>
+
+          {showAddEvent && (
+            <div className="card" style={{ marginBottom: 16, padding: 16, display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 150 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--on-surface-variant)", display: "block", marginBottom: 4 }}>일정 제목</label>
+                <input className="input" value={newEventTitle} onChange={(e) => setNewEventTitle(e.target.value)} placeholder="시험 준비, 과제 시작 등" />
+              </div>
+              <div style={{ minWidth: 180 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--on-surface-variant)", display: "block", marginBottom: 4 }}>날짜/시간</label>
+                <input className="input" type="datetime-local" value={newEventDate} onChange={(e) => setNewEventDate(e.target.value)} />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--on-surface-variant)", display: "block", marginBottom: 4 }}>색상</label>
+                <select className="input" value={newEventColor} onChange={(e) => setNewEventColor(e.target.value)} style={{ width: 100 }}>
+                  <option value="primary">파랑</option>
+                  <option value="success">초록</option>
+                  <option value="warning">노랑</option>
+                  <option value="error">빨강</option>
+                  <option value="tertiary">보라</option>
+                </select>
+              </div>
+              <button className="btn btn-primary" disabled={!newEventTitle.trim() || !newEventDate || addingEvent}
+                onClick={async () => {
+                  setAddingEvent(true);
+                  try {
+                    const { data } = await api.post("/events", {
+                      title: newEventTitle.trim(),
+                      event_date: new Date(newEventDate).toISOString(),
+                      color: newEventColor,
+                    });
+                    setCalItems((prev) => [...prev, { ...data, kind: "event" }]);
+                    setShowAddEvent(false);
+                  } catch { toast.error("일정 추가 실패"); }
+                  finally { setAddingEvent(false); }
+                }}>{addingEvent ? "..." : "추가"}</button>
+              <button className="btn btn-ghost" onClick={() => setShowAddEvent(false)}>취소</button>
+            </div>
+          )}
+
+          {(() => {
+            const year = calMonth.getFullYear();
+            const month = calMonth.getMonth();
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const today = new Date();
+            const todayStr = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
+
+            // 공휴일 추가
+            const holidays = getKoreanHolidays(year);
+            const allItems: CalendarItem[] = [
+              ...calItems,
+              ...holidays.map((h) => ({
+                id: `holiday-${h.date}`,
+                title: h.title,
+                kind: "holiday" as const,
+                event_date: h.date,
+                color: "error",
+              })),
+            ];
+
+            // 날짜별 그룹화
+            const byDate: Record<string, CalendarItem[]> = {};
+            for (const item of allItems) {
+              const dateStr = item.kind === "assignment" ? item.due_date : item.event_date;
+              if (!dateStr) continue;
+              const d = new Date(dateStr);
+              if (d.getFullYear() === year && d.getMonth() === month) {
+                const key = d.getDate().toString();
+                if (!byDate[key]) byDate[key] = [];
+                byDate[key].push(item);
+              }
+            }
+
+            // 공휴일 날짜 세트
+            const holidayDates = new Set<number>();
+            for (const h of holidays) {
+              const d = new Date(h.date);
+              if (d.getFullYear() === year && d.getMonth() === month) {
+                holidayDates.add(d.getDate());
+              }
+            }
+
+            const cells: React.ReactNode[] = [];
+            for (let i = 0; i < firstDay; i++) cells.push(<div key={`e-${i}`} className="cal-cell cal-empty" />);
+            for (let d = 1; d <= daysInMonth; d++) {
+              const isToday = `${year}-${month}-${d}` === todayStr;
+              const isHoliday = holidayDates.has(d);
+              const items = byDate[d.toString()] || [];
+              cells.push(
+                <div key={d} className={`cal-cell${isToday ? " cal-today" : ""}${items.length > 0 ? " cal-has-items" : ""}${isHoliday ? " cal-holiday" : ""}`}>
+                  <div className={`cal-date${isHoliday ? " cal-date-holiday" : ""}`}>{d}</div>
+                  <div className="cal-items">
+                    {items.map((item) => {
+                      const isAssignment = item.kind === "assignment";
+                      const isHol = item.kind === "holiday";
+                      const colorVar = isAssignment
+                        ? (item.type === "quiz" ? "var(--warning)" : item.type === "writing" ? "var(--tertiary)" : item.type === "algorithm" ? "var(--success)" : "var(--primary)")
+                        : isHol ? "var(--error)" : `var(--${item.color || "primary"})`;
+                      const isOverdue = isAssignment && item.due_date && new Date(item.due_date) < new Date();
+                      return (
+                        <div key={item.id} className={`cal-item${isOverdue ? " cal-overdue" : ""}${isHol ? " cal-item-holiday" : ""}`}
+                          title={isAssignment ? `${item.course_title} — ${item.title}` : (item.description || item.title)}
+                          onClick={() => {
+                            if (isAssignment && item.course_id) {
+                              if (item.type === "quiz") navigate(`/assignments/${item.id}/quiz`);
+                              else if (item.type === "writing") navigate(`/assignments/${item.id}/write`);
+                              else navigate(`/assignments/${item.id}/code`);
+                            }
+                          }}>
+                          <span className="cal-item-dot" style={{ background: colorVar }} />
+                          <span className="cal-item-title">{item.title}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div className="assignment-calendar">
+                <div className="cal-nav">
+                  <button className="btn btn-ghost" onClick={() => setCalMonth(new Date(year, month - 1, 1))}>&lt;</button>
+                  <span className="cal-nav-title">{year}년 {month + 1}월</span>
+                  <button className="btn btn-ghost" onClick={() => setCalMonth(new Date(year, month + 1, 1))}>&gt;</button>
+                </div>
+                <div className="cal-header">
+                  {["일", "월", "화", "수", "목", "금", "토"].map((d) => (
+                    <div key={d} className="cal-header-cell">{d}</div>
+                  ))}
+                </div>
+                <div className="cal-grid">{cells}</div>
+              </div>
+            );
+          })()}
+        </div>
+        {/* ── 할 일 ── */}
+        {todos.length > 0 && (
+          <div style={{ marginTop: 32 }}>
+            <h2 className="section-title">할 일</h2>
+            <div className="course-grid">
+              {todos.map((todo) => {
+                const now = new Date();
+                const due = todo.due_date ? new Date(todo.due_date) : null;
+                const hoursLeft = due ? (due.getTime() - now.getTime()) / (60 * 60 * 1000) : null;
+                const urgency = hoursLeft !== null && hoursLeft < 0 ? "urgent" : hoursLeft !== null && hoursLeft < 48 ? "soon" : "normal";
+                const dueLabel = due
+                  ? due.toLocaleDateString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+                  : null;
+                const dotColor = todo.type === "quiz" ? "var(--warning)" : todo.type === "writing" ? "var(--tertiary)" : todo.type === "algorithm" ? "var(--success)" : "var(--primary)";
+
+                const typeLabel = todo.type === "quiz" ? "퀴즈" : todo.type === "writing" ? "글쓰기" : todo.type === "both" ? "코딩+글쓰기" : todo.type === "algorithm" ? "알고리즘" : "코딩";
+                const typeBg = todo.type === "writing" ? "rgba(99,46,205,0.1)" : todo.type === "both" ? "rgba(0,74,198,0.1)" : todo.type === "algorithm" ? "rgba(16,185,129,0.1)" : todo.type === "quiz" ? "rgba(245,158,11,0.1)" : "rgba(0,74,198,0.06)";
+                const typeColor = todo.type === "writing" ? "var(--tertiary)" : todo.type === "both" ? "var(--primary)" : todo.type === "algorithm" ? "var(--success)" : todo.type === "quiz" ? "var(--warning)" : "var(--primary)";
+                const policyLabels: Record<string, string> = { free: "자유", normal: "보통", strict: "엄격", exam: "시험" };
+
+                return (
+                  <div key={todo.id} className="card course-card todo-card-item" onClick={() => {
+                    if (todo.kind === "assignment" && todo.course_id) {
+                      if (todo.type === "quiz") navigate(`/assignments/${todo.id}/quiz`);
+                      else if (todo.type === "writing") navigate(`/assignments/${todo.id}/write`);
+                      else navigate(`/assignments/${todo.id}/code`);
+                    }
+                  }}>
+                    <h3>{todo.title}</h3>
+                    <p>{todo.course_title}</p>
+                    <div className="course-meta">
+                      <span className="badge" style={{ background: typeBg, color: typeColor }}>{typeLabel}</span>
+                      {todo.ai_policy && <span className="badge badge-policy">{policyLabels[todo.ai_policy] || todo.ai_policy}</span>}
+                      {todo.language && todo.type !== "writing" && todo.type !== "quiz" && <span className="badge">{todo.language}</span>}
+                      {todo.problem_count != null && todo.problem_count > 0 && todo.type !== "writing" && (
+                        <span className="badge">문제 {todo.problem_count}개</span>
+                      )}
+                      {dueLabel && (
+                        <span className="badge" style={{
+                          background: urgency === "urgent" ? "rgba(220,38,38,0.08)" : urgency === "soon" ? "rgba(245,158,11,0.1)" : undefined,
+                          color: urgency === "urgent" ? "var(--error)" : urgency === "soon" ? "#d97706" : undefined,
+                        }}>
+                          {hoursLeft !== null && hoursLeft < 0 ? "마감됨" : `~${dueLabel}`}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </main>

@@ -40,6 +40,7 @@ export interface Assignment {
   grading_strictness: "mild" | "normal" | "strict";
   grading_note: string | null;
   generation_status?: "generating" | "completed" | "failed";
+  has_submitted?: boolean;
   exam_mode?: boolean;
   exam_config?: {
     screenshot_interval: number;
@@ -115,6 +116,7 @@ export interface GraphNode {
   parent_id: string | null;
   understanding_score: number | null;
   tags: string[];
+  categories?: string[];
   updated_at: string;
   created_at: string;
   content_length: number;
@@ -124,6 +126,7 @@ export interface GraphEdge {
   source: string;
   target: string;
   type: "parent" | "link" | "similar";
+  weight?: number;
 }
 
 export interface GraphData {

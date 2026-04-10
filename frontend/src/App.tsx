@@ -1,31 +1,43 @@
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "./store/authStore";
-import Landing from "./pages/Landing";
-import AuthCallback from "./pages/AuthCallback";
-import SelectRole from "./pages/SelectRole";
-import ProfessorHome from "./pages/ProfessorHome";
-import StudentHome from "./pages/StudentHome";
-import CodeEditor from "./pages/CodeEditor";
-import WritingEditor from "./pages/WritingEditor";
-import Dashboard from "./pages/Dashboard";
-import NoteEditor from "./pages/NoteEditor";
-import NotesList from "./pages/NotesList";
-import CourseDetail from "./pages/CourseDetail";
-import StudentDetail from "./pages/StudentDetail";
-import AssignmentDetail from "./pages/AssignmentDetail";
-import Settings from "./pages/Settings";
-import JoinCourse from "./pages/JoinCourse";
-import Workspace from "./pages/Workspace";
-import NoteGraph from "./pages/NoteGraph";
-import PersonalHome from "./pages/PersonalHome";
-import PersonalAssignmentDetail from "./pages/PersonalAssignmentDetail";
-import QuizEditor from "./pages/QuizEditor";
-import Profile from "./pages/Profile";
-import Messenger from "./pages/Messenger";
-import StudentNotes from "./pages/StudentNotes";
+import ErrorBoundary from "./components/common/ErrorBoundary";
 import TutorialProvider from "./components/common/TutorialProvider";
 import "./App.css";
+
+// Lazy-loaded pages
+const Landing = lazy(() => import("./pages/Landing"));
+const AuthCallback = lazy(() => import("./pages/AuthCallback"));
+const SelectRole = lazy(() => import("./pages/SelectRole"));
+const ProfessorHome = lazy(() => import("./pages/ProfessorHome"));
+const StudentHome = lazy(() => import("./pages/StudentHome"));
+const CodeEditor = lazy(() => import("./pages/CodeEditor"));
+const WritingEditor = lazy(() => import("./pages/WritingEditor"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const NoteEditor = lazy(() => import("./pages/NoteEditor"));
+const NotesList = lazy(() => import("./pages/NotesList"));
+const CourseDetail = lazy(() => import("./pages/CourseDetail"));
+const StudentDetail = lazy(() => import("./pages/StudentDetail"));
+const AssignmentDetail = lazy(() => import("./pages/AssignmentDetail"));
+const Settings = lazy(() => import("./pages/Settings"));
+const JoinCourse = lazy(() => import("./pages/JoinCourse"));
+const Workspace = lazy(() => import("./pages/Workspace"));
+const NoteGraph = lazy(() => import("./pages/NoteGraph"));
+const PersonalHome = lazy(() => import("./pages/PersonalHome"));
+const PersonalAssignmentDetail = lazy(() => import("./pages/PersonalAssignmentDetail"));
+const QuizEditor = lazy(() => import("./pages/QuizEditor"));
+const Profile = lazy(() => import("./pages/Profile"));
+const Messenger = lazy(() => import("./pages/Messenger"));
+const StudentNotes = lazy(() => import("./pages/StudentNotes"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+
+function PageLoader() {
+  return (
+    <div className="page-loading">
+      <div className="page-loading-spinner" />
+    </div>
+  );
+}
 
 function ProtectedRoute({
   children,
@@ -53,189 +65,195 @@ export default function App() {
   }, [fetchUser]);
 
   return (
-    <BrowserRouter>
-      <TutorialProvider />
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/auth/callback" element={<AuthCallback />} />
-        <Route path="/join/:inviteCode" element={<JoinCourse />} />
-        <Route
-          path="/select-role"
-          element={
-            <ProtectedRoute>
-              <SelectRole />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/professor"
-          element={
-            <ProtectedRoute role="professor">
-              <ProfessorHome />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/student"
-          element={
-            <ProtectedRoute role="student">
-              <StudentHome />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/personal"
-          element={
-            <ProtectedRoute role="personal">
-              <PersonalHome />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/courses/:courseId"
-          element={
-            <ProtectedRoute>
-              <CourseDetail />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/assignments/:assignmentId/code"
-          element={
-            <ProtectedRoute>
-              <CodeEditor />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/assignments/:assignmentId/quiz"
-          element={
-            <ProtectedRoute>
-              <QuizEditor />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/assignments/:assignmentId/write"
-          element={
-            <ProtectedRoute>
-              <WritingEditor />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/courses/:courseId/dashboard"
-          element={
-            <ProtectedRoute role="professor">
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/courses/:courseId/dashboard/students/:studentId"
-          element={
-            <ProtectedRoute role="professor">
-              <StudentDetail />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/courses/:courseId/assignments/:assignmentId"
-          element={
-            <ProtectedRoute role="professor">
-              <AssignmentDetail />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/personal/courses/:courseId/assignments/:assignmentId"
-          element={
-            <ProtectedRoute role="personal">
-              <PersonalAssignmentDetail />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/courses/:courseId/notes"
-          element={
-            <ProtectedRoute>
-              <NotesList />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/courses/:courseId/notes/:noteId"
-          element={
-            <ProtectedRoute>
-              <NoteEditor />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/courses/:courseId/graph"
-          element={
-            <ProtectedRoute>
-              <NoteGraph />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/courses/:courseId/workspace"
-          element={
-            <ProtectedRoute>
-              <Workspace />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/courses/:courseId/messenger"
-          element={
-            <ProtectedRoute>
-              <Messenger />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/courses/:courseId/messenger/:partnerId"
-          element={
-            <ProtectedRoute>
-              <Messenger />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/courses/:courseId/student-notes"
-          element={
-            <ProtectedRoute role="professor">
-              <StudentNotes />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/courses/:courseId/student-notes/:studentId/:noteId"
-          element={
-            <ProtectedRoute role="professor">
-              <NoteEditor />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/profile/:userId"
-          element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <ProtectedRoute>
-              <Settings />
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <TutorialProvider />
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route path="/join/:inviteCode" element={<JoinCourse />} />
+            <Route
+              path="/select-role"
+              element={
+                <ProtectedRoute>
+                  <SelectRole />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/professor"
+              element={
+                <ProtectedRoute role="professor">
+                  <ProfessorHome />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/student"
+              element={
+                <ProtectedRoute role="student">
+                  <StudentHome />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/personal"
+              element={
+                <ProtectedRoute role="personal">
+                  <PersonalHome />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/courses/:courseId"
+              element={
+                <ProtectedRoute>
+                  <CourseDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/assignments/:assignmentId/code"
+              element={
+                <ProtectedRoute>
+                  <CodeEditor />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/assignments/:assignmentId/quiz"
+              element={
+                <ProtectedRoute>
+                  <QuizEditor />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/assignments/:assignmentId/write"
+              element={
+                <ProtectedRoute>
+                  <WritingEditor />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/courses/:courseId/dashboard"
+              element={
+                <ProtectedRoute role="professor">
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/courses/:courseId/dashboard/students/:studentId"
+              element={
+                <ProtectedRoute role="professor">
+                  <StudentDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/courses/:courseId/assignments/:assignmentId"
+              element={
+                <ProtectedRoute role="professor">
+                  <AssignmentDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/personal/courses/:courseId/assignments/:assignmentId"
+              element={
+                <ProtectedRoute role="personal">
+                  <PersonalAssignmentDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/courses/:courseId/notes"
+              element={
+                <ProtectedRoute>
+                  <NotesList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/courses/:courseId/notes/:noteId"
+              element={
+                <ProtectedRoute>
+                  <NoteEditor />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/courses/:courseId/graph"
+              element={
+                <ProtectedRoute>
+                  <NoteGraph />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/courses/:courseId/workspace"
+              element={
+                <ProtectedRoute>
+                  <Workspace />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/courses/:courseId/messenger"
+              element={
+                <ProtectedRoute>
+                  <Messenger />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/courses/:courseId/messenger/:partnerId"
+              element={
+                <ProtectedRoute>
+                  <Messenger />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/courses/:courseId/student-notes"
+              element={
+                <ProtectedRoute role="professor">
+                  <StudentNotes />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/courses/:courseId/student-notes/:studentId/:noteId"
+              element={
+                <ProtectedRoute role="professor">
+                  <NoteEditor />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile/:userId"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              }
+            />
+            {/* 404 catch-all */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }

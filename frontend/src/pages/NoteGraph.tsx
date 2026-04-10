@@ -17,10 +17,10 @@ class GraphErrorBoundary extends Component<
   componentDidCatch(e: Error) { console.error("[NoteGraph]", e); }
   render() {
     if (this.state.hasError) return (
-      <div style={{ padding: 60, textAlign: "center", color: "#64748b" }}>
+      <div style={{ padding: 60, textAlign: "center", color: "var(--on-surface-variant, #64748b)" }}>
         그래프 렌더링 오류<br />
-        <span style={{ fontSize: 11, color: "#475569" }}>{this.state.msg}</span><br />
-        <button style={{ marginTop: 12, padding: "6px 16px", borderRadius: 6, border: "1px solid #334155", background: "transparent", color: "#94a3b8", cursor: "pointer" }}
+        <span style={{ fontSize: 11, color: "var(--on-surface-variant, #475569)" }}>{this.state.msg}</span><br />
+        <button style={{ marginTop: 12, padding: "6px 16px", borderRadius: 6, border: "1px solid var(--outline-variant, #334155)", background: "transparent", color: "var(--on-surface-variant, #94a3b8)", cursor: "pointer" }}
           onClick={() => window.location.reload()}>새로고침</button>
       </div>
     );
@@ -727,14 +727,14 @@ export default function NoteGraph() {
   /* ── render ── */
   if (loading) return (
     <div className="graph-page" style={{ alignItems: "center", justifyContent: "center" }}>
-      <div style={{ color: "#64748b" }}>그래프를 불러오는 중...</div>
+      <div style={{ color: "var(--on-surface-variant, #64748b)" }}>그래프를 불러오는 중...</div>
     </div>
   );
 
   if (error) return (
     <div className="graph-page" style={{ alignItems: "center", justifyContent: "center" }}>
       <div style={{ color: "#f87171", textAlign: "center" }}>{error}<br />
-        <button className="btn btn-ghost" style={{ marginTop: 12, color: "#94a3b8" }}
+        <button className="btn btn-ghost" style={{ marginTop: 12, color: "var(--on-surface-variant, #94a3b8)" }}
           onClick={() => navigate(`/courses/${courseId}/notes`)}>노트 목록으로</button>
       </div>
     </div>

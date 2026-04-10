@@ -7,6 +7,36 @@ import AppShell from "../components/common/AppShell";
 import { toast } from "../lib/toast";
 import type { Course, Assignment, CourseMaterial } from "../types";
 
+function getKoreanHolidays(year: number): { date: string; title: string }[] {
+  const fixed = [
+    { m: 1, d: 1, title: "신정" },
+    { m: 3, d: 1, title: "삼일절" },
+    { m: 5, d: 5, title: "어린이날" },
+    { m: 6, d: 6, title: "현충일" },
+    { m: 8, d: 15, title: "광복절" },
+    { m: 10, d: 3, title: "개천절" },
+    { m: 10, d: 9, title: "한글날" },
+    { m: 12, d: 25, title: "크리스마스" },
+  ];
+  const lunar: Record<number, { m: number; d: number; title: string }[]> = {
+    2025: [
+      { m: 1, d: 28, title: "설날 연휴" }, { m: 1, d: 29, title: "설날" }, { m: 1, d: 30, title: "설날 연휴" },
+      { m: 5, d: 5, title: "석가탄신일" },
+      { m: 9, d: 5, title: "추석 연휴" }, { m: 9, d: 6, title: "추석" }, { m: 9, d: 7, title: "추석 연휴" },
+    ],
+    2026: [
+      { m: 2, d: 16, title: "설날 연휴" }, { m: 2, d: 17, title: "설날" }, { m: 2, d: 18, title: "설날 연휴" },
+      { m: 5, d: 24, title: "석가탄신일" },
+      { m: 9, d: 24, title: "추석 연휴" }, { m: 9, d: 25, title: "추석" }, { m: 9, d: 26, title: "추석 연휴" },
+    ],
+  };
+  const all = [...fixed, ...(lunar[year] || [])];
+  return all.map((h) => ({
+    date: `${year}-${String(h.m).padStart(2, "0")}-${String(h.d).padStart(2, "0")}T00:00:00`,
+    title: h.title,
+  }));
+}
+
 export default function CourseDetail() {
   const { courseId } = useParams<{ courseId: string }>();
   const user = useAuthStore((s) => s.user);
@@ -42,6 +72,9 @@ export default function CourseDetail() {
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
+  const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
+  const [calMonth, setCalMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
+  const [showCompleted, setShowCompleted] = useState(false);
 
   const reloadAssignments = useCallback(() => {
     if (!courseId) return;
@@ -203,7 +236,13 @@ export default function CourseDetail() {
 
         {/* Assignments */}
         <div className="page-header" style={{ marginTop: 12 }}>
-          <h2 className="section-title">과제 목록</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <h2 className="section-title">과제 목록</h2>
+            <div className="type-chips" style={{ marginBottom: 0 }}>
+              <button className={`type-chip${viewMode === "list" ? " active" : ""}`} onClick={() => setViewMode("list")}>목록</button>
+              <button className={`type-chip${viewMode === "calendar" ? " active" : ""}`} onClick={() => setViewMode("calendar")}>캘린더</button>
+            </div>
+          </div>
           {canManage && (
             <button
               className="btn btn-primary"
@@ -451,9 +490,127 @@ export default function CourseDetail() {
               </>
             )}
           </div>
+        ) : viewMode === "calendar" ? (
+          /* ── 캘린더 뷰 ── */
+          (() => {
+            const year = calMonth.getFullYear();
+            const month = calMonth.getMonth();
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const today = new Date();
+            const todayStr = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
+
+            // 공휴일
+            const holidays = getKoreanHolidays(year);
+            const holidayByDate: Record<string, string[]> = {};
+            const holidayDates = new Set<number>();
+            for (const h of holidays) {
+              const hd = new Date(h.date);
+              if (hd.getFullYear() === year && hd.getMonth() === month) {
+                const key = hd.getDate().toString();
+                if (!holidayByDate[key]) holidayByDate[key] = [];
+                holidayByDate[key].push(h.title);
+                holidayDates.add(hd.getDate());
+              }
+            }
+
+            // 과제를 날짜별로 그룹화
+            const byDate: Record<string, Assignment[]> = {};
+            for (const a of assignments) {
+              if (a.due_date) {
+                const d = new Date(a.due_date);
+                if (d.getFullYear() === year && d.getMonth() === month) {
+                  const key = d.getDate().toString();
+                  if (!byDate[key]) byDate[key] = [];
+                  byDate[key].push(a);
+                }
+              }
+            }
+
+            const cells: React.ReactNode[] = [];
+            // 빈 칸
+            for (let i = 0; i < firstDay; i++) {
+              cells.push(<div key={`e-${i}`} className="cal-cell cal-empty" />);
+            }
+            // 날짜
+            for (let d = 1; d <= daysInMonth; d++) {
+              const isToday = `${year}-${month}-${d}` === todayStr;
+              const isHoliday = holidayDates.has(d);
+              const items = byDate[d.toString()] || [];
+              const hols = holidayByDate[d.toString()] || [];
+              cells.push(
+                <div key={d} className={`cal-cell${isToday ? " cal-today" : ""}${items.length > 0 ? " cal-has-items" : ""}${isHoliday ? " cal-holiday" : ""}`}>
+                  <div className={`cal-date${isHoliday ? " cal-date-holiday" : ""}`}>{d}</div>
+                  <div className="cal-items">
+                    {hols.map((name, hi) => (
+                      <div key={`hol-${hi}`} className="cal-item cal-item-holiday" title={name}>
+                        <span className="cal-item-dot" style={{ background: "var(--error)" }} />
+                        <span className="cal-item-title">{name}</span>
+                      </div>
+                    ))}
+                    {items.map((a) => {
+                      const isOverdue = new Date(a.due_date!) < new Date();
+                      return (
+                        <div key={a.id} className={`cal-item${isOverdue ? " cal-overdue" : ""}`}
+                          onClick={() => {
+                            if (isPersonal) navigate(`/personal/courses/${courseId}/assignments/${a.id}`);
+                            else if (isProfessor) navigate(`/courses/${courseId}/assignments/${a.id}`);
+                            else if (a.type === "quiz") navigate(`/assignments/${a.id}/quiz`);
+                            else if (a.type === "writing") navigate(`/assignments/${a.id}/write`);
+                            else navigate(`/assignments/${a.id}/code`);
+                          }}>
+                          <span className="cal-item-dot" style={{
+                            background: a.type === "quiz" ? "var(--warning)" : a.type === "writing" ? "var(--tertiary)" : a.type === "algorithm" ? "var(--success)" : "var(--primary)",
+                          }} />
+                          <span className="cal-item-title">{a.title}</span>
+                          <span className="cal-item-time">
+                            {new Date(a.due_date!).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div className="assignment-calendar">
+                <div className="cal-nav">
+                  <button className="btn btn-ghost" onClick={() => setCalMonth(new Date(year, month - 1, 1))}>&lt;</button>
+                  <span className="cal-nav-title">{year}년 {month + 1}월</span>
+                  <button className="btn btn-ghost" onClick={() => setCalMonth(new Date(year, month + 1, 1))}>&gt;</button>
+                </div>
+                <div className="cal-header">
+                  {["일", "월", "화", "수", "목", "금", "토"].map((d) => (
+                    <div key={d} className="cal-header-cell">{d}</div>
+                  ))}
+                </div>
+                <div className="cal-grid">{cells}</div>
+                {/* 기한 없는 과제 */}
+                {assignments.filter((a) => !a.due_date).length > 0 && (
+                  <div style={{ marginTop: 16 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--on-surface-variant)", marginBottom: 8 }}>기한 없음</div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {assignments.filter((a) => !a.due_date).map((a) => (
+                        <span key={a.id} className="badge" style={{ cursor: "pointer" }}
+                          onClick={() => {
+                            if (isProfessor) navigate(`/courses/${courseId}/assignments/${a.id}`);
+                            else navigate(`/assignments/${a.id}/code`);
+                          }}>{a.title}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()
         ) : (
-          <div className="course-grid">
-            {assignments.map((a) => {
+          (() => {
+            const activeAssignments = assignments.filter((a) => !a.has_submitted);
+            const completedAssignments = assignments.filter((a) => a.has_submitted);
+
+            const renderAssignmentCard = (a: Assignment) => {
               const isOverdue = a.due_date && new Date(a.due_date) < new Date();
               const dueLabel = a.due_date
                 ? new Date(a.due_date).toLocaleDateString("ko-KR", {
@@ -483,6 +640,9 @@ export default function CourseDetail() {
                 >
                   <h3 style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     {a.title}
+                    {a.has_submitted && (
+                      <span className="badge" style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)", fontSize: 11 }}>제출 완료</span>
+                    )}
                     {a.status === "draft" && (
                       <span className="badge" style={{ background: "rgba(245,158,11,0.12)", color: "#d97706", fontSize: 11 }}>초안</span>
                     )}
@@ -533,8 +693,32 @@ export default function CourseDetail() {
                   </div>
                 </div>
               );
-            })}
-          </div>
+            };
+
+            return (
+              <>
+                <div className="course-grid">
+                  {activeAssignments.map(renderAssignmentCard)}
+                </div>
+                {completedAssignments.length > 0 && (
+                  <div style={{ marginTop: 20 }}>
+                    <button
+                      className="completed-toggle"
+                      onClick={() => setShowCompleted(!showCompleted)}
+                    >
+                      <span className={`completed-toggle-arrow${showCompleted ? " open" : ""}`}>&#x25B6;</span>
+                      완료된 과제 ({completedAssignments.length})
+                    </button>
+                    {showCompleted && (
+                      <div className="course-grid" style={{ marginTop: 10 }}>
+                        {completedAssignments.map(renderAssignmentCard)}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            );
+          })()
         )}
         {/* ── 강의자료 ── */}
         <div style={{ marginTop: 32 }}>

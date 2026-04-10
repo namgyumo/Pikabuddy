@@ -116,15 +116,21 @@ export const mouseGradientEffect: ThemeEffect = {
       transition: background 0.3s ease;
     `);
 
+    let rafId = 0;
     const onMove = (e: MouseEvent) => {
-      div.style.background =
-        `radial-gradient(600px circle at ${e.clientX}px ${e.clientY}px, ${c1}18, ${c2}0a, transparent 70%)`;
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        div.style.background =
+          `radial-gradient(600px circle at ${e.clientX}px ${e.clientY}px, ${c1}18, ${c2}0a, transparent 70%)`;
+      });
     };
-    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mousemove", onMove, { passive: true });
     (this as any)._onMove = onMove;
+    (this as any)._rafId = rafId;
   },
   deactivate() {
     window.removeEventListener("mousemove", (this as any)._onMove);
+    cancelAnimationFrame((this as any)._rafId);
     removeEffectDiv("mouseGradient");
   },
 } as any;
