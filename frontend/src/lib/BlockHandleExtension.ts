@@ -4,9 +4,12 @@ import { Plugin, PluginKey } from "@tiptap/pm/state";
 /**
  * Block Handle Extension
  *
- * 각 블록(paragraph, heading, list 등) 왼쪽에 호버 시 핸들을 표시.
- * - 편집 모드: + 버튼 + 드래그 핸들 (Notion 스타일)
- * - 리뷰 모드: 💬 코멘트 버튼 (교수가 학생 노트 리뷰 시)
+ * 각 블록 왼쪽에 호버 시 핸들 표시.
+ * - 편집 모드: + 버튼 + 드래그 핸들
+ * - 리뷰 모드: 💬 코멘트 버튼
+ *
+ * 핸들의 호버 범위는 블록의 행(row) 전체로 확장됨 —
+ * 셀 밖으로 나가도 같은 줄이면 핸들이 유지됩니다.
  */
 export const BlockHandleExtension = Extension.create({
   name: "blockHandle",
@@ -24,13 +27,15 @@ export const BlockHandleExtension = Extension.create({
     let handle: HTMLDivElement | null = null;
     let currentBlockPos: number | null = null;
     let currentBlockIndex: number | null = null;
+    let currentBlockRect: DOMRect | null = null;
+    let currentEditorRect: DOMRect | null = null;
+    let isHandleHovered = false;
 
     const createHandle = () => {
       handle = document.createElement("div");
       handle.className = "block-handle";
 
       if (isReviewMode) {
-        // 리뷰 모드: 코멘트 버튼만
         handle.innerHTML = `
           <button class="block-handle-comment" title="이 블록에 코멘트 달기">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -39,7 +44,6 @@ export const BlockHandleExtension = Extension.create({
           </button>
         `;
       } else {
-        // 편집 모드: + 버튼 + 드래그 핸들
         handle.innerHTML = `
           <button class="block-handle-add" title="블록 추가 (/)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
@@ -60,8 +64,17 @@ export const BlockHandleExtension = Extension.create({
       handle.style.display = "none";
       document.body.appendChild(handle);
 
+      // 핸들 위에 마우스 올리면 사라지지 않게
+      handle.addEventListener("mouseenter", () => { isHandleHovered = true; });
+      handle.addEventListener("mouseleave", () => {
+        isHandleHovered = false;
+        // 약간의 딜레이 후 마우스가 행 범위 밖이면 숨김
+        setTimeout(() => {
+          if (!isHandleHovered && !isMouseInRow) hideHandle();
+        }, 50);
+      });
+
       if (isReviewMode) {
-        // 코멘트 버튼 클릭 → 커스텀 이벤트 발생
         handle.querySelector(".block-handle-comment")!.addEventListener("mousedown", (e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -71,7 +84,6 @@ export const BlockHandleExtension = Extension.create({
           );
         });
       } else {
-        // + button: insert paragraph below and open slash menu
         handle.querySelector(".block-handle-add")!.addEventListener("mousedown", (e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -93,6 +105,34 @@ export const BlockHandleExtension = Extension.create({
       }
     };
 
+    let isMouseInRow = false;
+
+    // 문서 전체 mousemove — 같은 행(row) 범위 안이면 핸들 유지
+    const onDocMouseMove = (event: MouseEvent) => {
+      if (!handle || handle.style.display === "none") {
+        isMouseInRow = false;
+        return;
+      }
+      if (!currentBlockRect || !currentEditorRect) {
+        isMouseInRow = false;
+        return;
+      }
+
+      const { clientX, clientY } = event;
+      // 행 범위: 블록의 Y 범위 (위아래 여유 8px)
+      const inRowY = clientY >= currentBlockRect.top - 8 && clientY <= currentBlockRect.bottom + 8;
+      // X 범위: 핸들 왼쪽부터 에디터 오른쪽까지 (넉넉하게)
+      const inRowX = clientX >= currentEditorRect.left - 80 && clientX <= currentEditorRect.right + 20;
+
+      isMouseInRow = inRowY && inRowX;
+
+      if (!isMouseInRow && !isHandleHovered) {
+        hideHandle();
+      }
+    };
+
+    document.addEventListener("mousemove", onDocMouseMove);
+
     const getBlockIndex = (view: any, blockEl: HTMLElement): number => {
       const pmDom = view.dom;
       const children = Array.from(pmDom.children);
@@ -105,14 +145,13 @@ export const BlockHandleExtension = Extension.create({
 
       currentBlockPos = pos;
       currentBlockIndex = getBlockIndex(view, blockEl);
-
-      const editorRect = view.dom.getBoundingClientRect();
-      const blockRect = blockEl.getBoundingClientRect();
+      currentBlockRect = blockEl.getBoundingClientRect();
+      currentEditorRect = view.dom.getBoundingClientRect();
 
       handle.style.display = "flex";
       handle.style.position = "fixed";
-      handle.style.left = `${editorRect.left - 52}px`;
-      handle.style.top = `${blockRect.top + 2}px`;
+      handle.style.left = `${currentEditorRect.left - 52}px`;
+      handle.style.top = `${currentBlockRect.top + 2}px`;
       handle.style.zIndex = "50";
       handle.style.opacity = "1";
     };
@@ -124,6 +163,9 @@ export const BlockHandleExtension = Extension.create({
       }
       currentBlockPos = null;
       currentBlockIndex = null;
+      currentBlockRect = null;
+      currentEditorRect = null;
+      isMouseInRow = false;
     };
 
     return [
@@ -149,16 +191,10 @@ export const BlockHandleExtension = Extension.create({
                 el = el.parentElement;
               }
 
-              if (!blockEl) {
-                hideHandle();
-                return false;
-              }
+              if (!blockEl) return false;
 
               const pos = view.posAtDOM(blockEl, 0);
-              if (pos == null) {
-                hideHandle();
-                return false;
-              }
+              if (pos == null) return false;
 
               const resolved = view.state.doc.resolve(pos);
               const blockStart = resolved.before(1);
@@ -166,10 +202,8 @@ export const BlockHandleExtension = Extension.create({
               showHandle(view, blockEl, blockStart);
               return false;
             },
-            mouseleave(_view, event) {
-              const related = event.relatedTarget as HTMLElement | null;
-              if (related?.closest(".block-handle")) return false;
-              hideHandle();
+            // mouseleave는 더 이상 즉시 숨기지 않음 — onDocMouseMove가 행 범위 체크
+            mouseleave() {
               return false;
             },
           },
@@ -177,6 +211,7 @@ export const BlockHandleExtension = Extension.create({
         view() {
           return {
             destroy() {
+              document.removeEventListener("mousemove", onDocMouseMove);
               if (handle) {
                 handle.remove();
                 handle = null;
