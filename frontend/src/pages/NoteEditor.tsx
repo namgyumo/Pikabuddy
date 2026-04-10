@@ -36,6 +36,7 @@ import { ToggleExtension } from "../lib/ToggleExtension";
 import { CalloutExtension } from "../lib/CalloutExtension";
 import MiniNoteTree from "../components/MiniNoteTree";
 import CommentsPanel from "../components/comments/CommentsPanel";
+import BlockCommentOverlay from "../components/comments/BlockCommentOverlay";
 import { useCommentStore } from "../store/commentStore";
 import type { Note } from "../types";
 
@@ -198,6 +199,7 @@ export default function NoteEditor() {
   );
   const [noteOwnerId, setNoteOwnerId] = useState<string>("");
   const [activeBlockIndex, setActiveBlockIndex] = useState<number | null>(null);
+  const editorMainRef = useRef<HTMLDivElement>(null);
   const [tags, setTags] = useState<{ id: string; tag: string }[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [noteLinkSearch, setNoteLinkSearch] = useState(false);
@@ -278,6 +280,9 @@ export default function NoteEditor() {
     }
     api.get(`/notes/${noteId}/ai-comments`).then(({ data }) => setAiComments(data));
     api.get(`/notes/${noteId}/tags`).then(({ data }) => setTags(data)).catch(() => {});
+    // 코멘트 로드 (인라인 오버레이 + 사이드바 패널)
+    useCommentStore.getState().fetchComments(noteId);
+    useCommentStore.getState().fetchCounts(noteId);
     api.get(`/courses/${courseId}/materials`).then(({ data }) => {
       setMaterials(data);
       const matParam = searchParams.get("material");
@@ -501,7 +506,7 @@ export default function NoteEditor() {
       </header>
 
       <div className="editor-layout">
-        <div className={`editor-main note-editor${isProfessor ? " show-ai-marks" : ""}`}>
+        <div ref={editorMainRef} className={`editor-main note-editor${isProfessor ? " show-ai-marks" : ""}`} style={{ position: "relative" }}>
           {/* ── 간결한 툴바 — 드롭다운 그룹 ── */}
           {editor && !isReviewMode && (
             <div className="note-toolbar compact">
@@ -607,34 +612,18 @@ export default function NoteEditor() {
             </BubbleMenu>
           )}
 
-          <div className="editor-block-gutter-wrap">
-            <EditorContent editor={editor} />
-            {/* 블록 번호 거터 (리뷰모드/코멘트 탭) */}
-            {editor && (isReviewMode || sidebarTab === "comments") && (
-              <div className="block-gutter">
-                {(editor.getJSON().content || []).map((_: unknown, i: number) => {
-                  const commentCount = useCommentStore.getState().counts.block_counts[i] || 0;
-                  return (
-                    <button
-                      key={i}
-                      className={`block-gutter-btn${activeBlockIndex === i ? " active" : ""}${commentCount > 0 ? " has-comments" : ""}`}
-                      title={`블록 ${i + 1}${commentCount > 0 ? ` (코멘트 ${commentCount}개)` : ""} — 클릭해서 코멘트`}
-                      onClick={() => {
-                        setActiveBlockIndex(i);
-                        setSidebarTab("comments");
-                      }}
-                    >
-                      {commentCount > 0 ? (
-                        <span className="block-gutter-badge">{commentCount}</span>
-                      ) : (
-                        <span className="block-gutter-num">{i + 1}</span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          <EditorContent editor={editor} />
+
+          {/* 블록별 인라인 코멘트 오버레이 */}
+          {editor && noteId && noteId !== "new" && (isReviewMode || sidebarTab === "comments") && (
+            <BlockCommentOverlay
+              editorRef={editorMainRef}
+              noteId={noteId}
+              noteOwnerId={noteOwnerId || user?.id || ""}
+              currentUserId={user?.id || ""}
+              currentUserRole={user?.role || ""}
+            />
+          )}
 
           {/* ── AI 다듬기 제안 패널 ── */}
           {polishedMarkdown !== null && (

@@ -1035,12 +1035,8 @@ textarea.input {
 
 .editor-main {
   flex: 1;
-  overflow: hidden;
+  overflow: auto;
   background: var(--editor-bg);
-  position: relative;
-}
-.editor-main .editor-block-gutter-wrap {
-  padding-left: 40px;
   position: relative;
 }
 
@@ -5447,74 +5443,139 @@ select.form-input {
   margin-left: 8px;
 }
 
-/* ── Block Gutter (블록 번호 + 코멘트 수) ── */
-.editor-block-gutter-wrap {
+/* ── Block Inline Comments (블록 우측 뱃지 + 인라인 코멘트) ── */
+.ProseMirror > * {
   position: relative;
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
 }
-.editor-block-gutter-wrap > .tiptap {
-  flex: 1;
-  min-width: 0;
-}
-.block-gutter {
+.block-comment-indicator {
   position: absolute;
-  left: -36px;
-  top: 0;
-  width: 30px;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  pointer-events: auto;
-  z-index: 5;
-}
-.block-gutter-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  margin: 1px 0;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--on-surface-variant);
-  font-size: 10px;
-  cursor: pointer;
-  opacity: 0.5;
-  transition: all 0.15s;
-}
-.block-gutter-btn:hover {
-  background: var(--surface-container);
-  opacity: 1;
-}
-.block-gutter-btn.active {
-  background: var(--primary);
-  color: #fff;
-  opacity: 1;
-}
-.block-gutter-btn.has-comments {
-  opacity: 1;
-}
-.block-gutter-badge {
+  right: -4px;
+  top: 2px;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  min-width: 16px;
-  height: 16px;
-  border-radius: 8px;
+  gap: 2px;
+  padding: 1px 7px;
+  border: 1px solid var(--outline-variant);
+  border-radius: 12px;
+  background: var(--surface-container-lowest);
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  z-index: 5;
+  transition: all 0.15s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  pointer-events: auto;
+}
+.block-comment-indicator:hover {
   background: var(--primary);
   color: #fff;
-  font-size: 9px;
-  font-weight: 700;
-  padding: 0 3px;
+  border-color: var(--primary);
 }
-.block-gutter-num {
+.block-comment-indicator.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+.bci-chevron {
+  display: inline-block;
+  transition: transform 0.2s;
+  font-size: 13px;
+  line-height: 1;
+}
+.bci-chevron.open {
+  transform: rotate(90deg);
+}
+
+/* 블록 아래 인라인 코멘트 영역 */
+.block-inline-comments {
+  margin: 6px 0 10px 0;
+  padding: 10px 14px;
+  border-left: 3px solid var(--primary);
+  background: var(--surface-container-lowest);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.block-inline-comments-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+}
+.bic-item {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--outline-variant);
+}
+.bic-item:last-child { border-bottom: none; }
+.bic-author {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--on-surface);
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.bic-role {
   font-size: 10px;
   font-weight: 500;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--primary-container, rgba(99,102,241,0.1));
+  color: var(--primary);
 }
+.bic-content {
+  font-size: 13px;
+  color: var(--on-surface);
+  line-height: 1.5;
+}
+.bic-time {
+  font-size: 10px;
+  color: var(--on-surface-variant);
+  margin-top: 2px;
+}
+.bic-input-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.bic-input-row input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--on-surface);
+  font-size: 12px;
+  outline: none;
+}
+.bic-input-row input:focus { border-color: var(--primary); }
+.bic-input-row button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.bic-input-row button:hover { opacity: 0.9; }
+.bic-input-row button:disabled { opacity: 0.5; cursor: not-allowed; }
+.bic-resolve-btn {
+  border: none;
+  background: none;
+  color: var(--on-surface-variant);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.bic-resolve-btn:hover { background: var(--surface-container); }
+.bic-resolved { opacity: 0.5; text-decoration: line-through; }
 
 /* ── Messenger — 대화 없는 파트너도 표시 ── */
 .conversation-item .conversation-preview-empty {
