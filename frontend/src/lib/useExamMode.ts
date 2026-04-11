@@ -24,6 +24,7 @@ export function useExamMode({ assignmentId, enabled }: UseExamModeOptions) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showWarning, setShowWarning] = useState("");
   const [alreadyEnded, setAlreadyEnded] = useState(false); // 재입장 차단
+  const [manualEnd, setManualEnd] = useState(false); // 학생이 직접 종료
 
   const captureIntervalRef = useRef<ReturnType<typeof setInterval>>();
   const streamRef = useRef<MediaStream | null>(null);
@@ -31,6 +32,7 @@ export function useExamMode({ assignmentId, enabled }: UseExamModeOptions) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const endedRef = useRef(false);
   const violationsRef = useRef(0);
+  const lastViolationTime = useRef(0); // 위반 중복 방지
 
   // 시험 설정 로드 + 재입장 체크
   useEffect(() => {
@@ -57,9 +59,10 @@ export function useExamMode({ assignmentId, enabled }: UseExamModeOptions) {
   }, []);
 
   // 시험 종료 처리
-  const endExam = useCallback(async (reason: string = "시험 종료") => {
+  const endExam = useCallback(async (reason: string = "시험 종료", isManual: boolean = false) => {
     if (endedRef.current) return;
     endedRef.current = true;
+    if (isManual) setManualEnd(true);
     setExamEnded(true);
     stopCapture();
     if (document.fullscreenElement) {
@@ -104,10 +107,13 @@ export function useExamMode({ assignmentId, enabled }: UseExamModeOptions) {
     }
   }, [assignmentId, config]);
 
-  // 위반 기록
+  // 위반 기록 (2초 내 중복 방지)
   const recordViolation = useCallback(
     async (type: string, detail: string = "") => {
       if (!config || endedRef.current) return;
+      const now = Date.now();
+      if (now - lastViolationTime.current < 2000) return; // 2초 내 중복 무시
+      lastViolationTime.current = now;
       const newCount = violationsRef.current + 1;
       violationsRef.current = newCount;
       setViolations(newCount);
@@ -249,6 +255,7 @@ export function useExamMode({ assignmentId, enabled }: UseExamModeOptions) {
     violations,
     examEnded,
     alreadyEnded,
+    manualEnd,
     isFullscreen,
     showWarning,
     startExam,

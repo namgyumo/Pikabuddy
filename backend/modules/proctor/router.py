@@ -6,9 +6,19 @@ from pydantic import BaseModel
 from common.supabase_client import get_supabase
 from common.r2_client import get_r2_client, generate_download_url
 from config import get_settings
-from middleware.auth import get_current_user, require_professor_or_personal
+from middleware.auth import get_current_user, require_professor_or_personal, verify_course_ownership
 
 router = APIRouter(tags=["시험 감독"])
+
+
+def _verify_assignment_ownership(user: dict, assignment_id: str):
+    """과제의 소유 강의를 확인 후 교수 소유권 검증."""
+    sb = get_supabase()
+    assignment = sb.table("assignments").select("course_id").eq("id", assignment_id).single().execute()
+    if not assignment.data:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="과제를 찾을 수 없습니다.")
+    verify_course_ownership(user, assignment.data["course_id"])
 
 
 # ── Request/Response 모델 ──
@@ -150,6 +160,7 @@ async def update_exam_config(
     assignment_id: str, body: ExamConfigRequest, user: dict = Depends(require_professor_or_personal)
 ):
     """과제의 시험 모드 설정 변경 (교수 전용)"""
+    _verify_assignment_ownership(user, assignment_id)
     supabase = get_supabase()
     supabase.table("assignments").update({
         "exam_mode": body.exam_mode,
@@ -172,6 +183,7 @@ async def get_screenshots(
     user: dict = Depends(require_professor_or_personal),
 ):
     """과제의 스크린샷 목록 조회 (교수 전용). student_id로 특정 학생 필터링 가능."""
+    _verify_assignment_ownership(user, assignment_id)
     supabase = get_supabase()
     query = supabase.table("exam_screenshots").select(
         "*, users!exam_screenshots_student_id_fkey(name, email)"
@@ -202,6 +214,7 @@ async def get_violations(
     user: dict = Depends(require_professor_or_personal),
 ):
     """과제의 위반 기록 조회 (교수 전용)"""
+    _verify_assignment_ownership(user, assignment_id)
     supabase = get_supabase()
     query = supabase.table("exam_violations").select(
         "*, users!exam_violations_student_id_fkey(name, email)"
@@ -219,6 +232,7 @@ async def get_violations(
 @router.get("/exam/summary/{assignment_id}")
 async def get_exam_summary(assignment_id: str, user: dict = Depends(require_professor_or_personal)):
     """학생별 스크린샷 수, 위반 수 요약 (교수 전용)"""
+    _verify_assignment_ownership(user, assignment_id)
     supabase = get_supabase()
 
     # 스크린샷 수
@@ -271,6 +285,7 @@ async def get_exam_summary(assignment_id: str, user: dict = Depends(require_prof
 @router.get("/exam/students/{assignment_id}")
 async def get_exam_students(assignment_id: str, user: dict = Depends(require_professor_or_personal)):
     """학생별 시험 응시 상태 (응시완료/미응시) 조회 (교수 전용)"""
+    _verify_assignment_ownership(user, assignment_id)
     supabase = get_supabase()
 
     assignment = supabase.table("assignments").select("course_id").eq(
@@ -320,6 +335,7 @@ async def get_exam_students(assignment_id: str, user: dict = Depends(require_pro
 @router.post("/exam/reset", status_code=200)
 async def reset_exam_status(body: ExamResetRequest, user: dict = Depends(require_professor_or_personal)):
     """학생의 시험 종료 상태를 리셋하여 재응시 허용 (교수 전용). 로그 기록."""
+    _verify_assignment_ownership(user, body.assignment_id)
     supabase = get_supabase()
 
     # forced_end 위반 기록 삭제

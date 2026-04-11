@@ -104,6 +104,47 @@ async def get_notifications(user: dict = Depends(get_current_user)):
     }
 
 
+@router.post("/notifications/mark-read")
+async def mark_notifications_read(user: dict = Depends(get_current_user)):
+    """알림 패널을 열었을 때 메시지 읽음 처리 + 코멘트 해결 처리."""
+    sb = get_supabase()
+    uid = user["id"]
+
+    # 1) 안 읽은 메시지 → 읽음 처리
+    sb.table("messages") \
+        .update({"is_read": True}) \
+        .eq("receiver_id", uid) \
+        .eq("is_read", False) \
+        .execute()
+
+    # 2) 미해결 코멘트 → 해결 처리 (본인 노트에 달린 것만)
+    if user["role"] == "professor":
+        courses = sb.table("courses").select("id").eq("professor_id", uid).execute()
+        course_ids = [c["id"] for c in (courses.data or [])]
+        if course_ids:
+            notes = sb.table("notes").select("id").in_("course_id", course_ids).execute()
+            note_ids = [n["id"] for n in (notes.data or [])]
+            if note_ids:
+                sb.table("note_comments") \
+                    .update({"is_resolved": True}) \
+                    .in_("note_id", note_ids) \
+                    .neq("user_id", uid) \
+                    .eq("is_resolved", False) \
+                    .execute()
+    else:
+        my_notes = sb.table("notes").select("id").eq("student_id", uid).execute()
+        note_ids = [n["id"] for n in (my_notes.data or [])]
+        if note_ids:
+            sb.table("note_comments") \
+                .update({"is_resolved": True}) \
+                .in_("note_id", note_ids) \
+                .neq("user_id", uid) \
+                .eq("is_resolved", False) \
+                .execute()
+
+    return {"ok": True}
+
+
 @router.get("/messenger/total-unread")
 async def get_total_unread(user: dict = Depends(get_current_user)):
     """전체 코스 안 읽은 메시지 수 (사이드바 뱃지용)."""

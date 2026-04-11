@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback, useLayoutEffect } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useEditor, EditorContent } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
@@ -25,6 +25,7 @@ import { renderMarkdown } from "../lib/markdown";
 import api from "../lib/api";
 import { useAuthStore, getAdminToken } from "../store/authStore";
 import { supabase } from "../lib/supabase";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import type { CourseMaterial } from "../types";
 import { ExcalidrawExtension } from "../lib/ExcalidrawExtension";
 import { AIPolishedExtension } from "../lib/AIPolishedExtension";
@@ -193,11 +194,13 @@ export default function NoteEditor() {
   const { user } = useAuthStore();
   const isProfessor = user?.role === "professor";
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
+  const fromNotification = (location.state as { fromNotification?: boolean })?.fromNotification;
   const [materials, setMaterials] = useState<CourseMaterial[]>([]);
   const [selectedMaterial, setSelectedMaterial] = useState<CourseMaterial | null>(null);
   const [sidebarTab, setSidebarTab] = useState<"ai" | "material" | "map" | "comments" | "history">(
-    isReviewMode ? "comments" : searchParams.get("material") ? "material" : "ai"
+    fromNotification ? "comments" : isReviewMode ? "comments" : searchParams.get("material") ? "material" : "ai"
   );
   const [noteOwnerId, setNoteOwnerId] = useState<string>("");
   const [noteTeamId, setNoteTeamId] = useState<string | null>(null);
@@ -210,6 +213,9 @@ export default function NoteEditor() {
   const [noteLinkQuery, setNoteLinkQuery] = useState("");
   const [noteLinkResults, setNoteLinkResults] = useState<Note[]>([]);
   const noteLinkRef = useRef<HTMLDivElement>(null);
+  const realtimeChannelRef = useRef<RealtimeChannel | null>(null);
+  const [teamPresence, setTeamPresence] = useState<{ userId: string; name: string; avatarUrl: string | null }[]>([]);
+  const [remoteUpdatePending, setRemoteUpdatePending] = useState(false);
 
   const editor = useEditor({
     extensions: [
@@ -298,6 +304,69 @@ export default function NoteEditor() {
     useCommentStore.getState().fetchCounts(noteId);
   }, [noteId, courseId, editor, searchParams, isReviewMode, studentId, user?.id]);
 
+  // ── 팀 노트 실시간 동기화 + Presence ──────────────────
+  useEffect(() => {
+    if (!noteTeamId || !noteId || noteId === "new" || !user?.id) return;
+
+    const channelName = `team-note:${noteId}`;
+    const channel = supabase.channel(channelName, { config: { presence: { key: user.id } } });
+
+    // Presence: 현재 편집 중인 팀원 표시
+    channel.on("presence", { event: "sync" }, () => {
+      const state = channel.presenceState();
+      const members: { userId: string; name: string; avatarUrl: string | null }[] = [];
+      for (const [, presences] of Object.entries(state)) {
+        for (const p of presences as { userId: string; name: string; avatarUrl: string | null }[]) {
+          if (p.userId !== user.id) {
+            members.push({ userId: p.userId, name: p.name, avatarUrl: p.avatarUrl });
+          }
+        }
+      }
+      setTeamPresence(members);
+    });
+
+    // Broadcast: 다른 멤버가 저장하면 내용 새로고침
+    channel.on("broadcast", { event: "note-saved" }, (payload) => {
+      const senderId = payload.payload?.userId;
+      if (senderId && senderId !== user.id && editor) {
+        // 원격 저장 감지 → 내용 새로고침
+        setRemoteUpdatePending(true);
+        const notesUrl = isReviewMode && studentId
+          ? `/courses/${courseId}/notes?student_id=${studentId}`
+          : `/courses/${courseId}/notes`;
+        api.get(notesUrl).then(({ data }) => {
+          const note = (data || []).find((n: { id: string }) => n.id === noteId);
+          if (note?.content) {
+            const cursorPos = editor.state.selection.from;
+            editor.commands.setContent(note.content);
+            // 커서 위치 복원 시도
+            try {
+              const maxPos = editor.state.doc.content.size;
+              editor.commands.setTextSelection(Math.min(cursorPos, maxPos));
+            } catch { /* ignore */ }
+          }
+        }).catch(() => {}).finally(() => setRemoteUpdatePending(false));
+      }
+    });
+
+    channel.subscribe(async (status) => {
+      if (status === "SUBSCRIBED") {
+        await channel.track({
+          userId: user.id,
+          name: user.name || "Unknown",
+          avatarUrl: user.avatar_url || null,
+        });
+      }
+    });
+
+    realtimeChannelRef.current = channel;
+
+    return () => {
+      channel.unsubscribe();
+      realtimeChannelRef.current = null;
+    };
+  }, [noteTeamId, noteId, user?.id, user?.name, user?.avatar_url, editor, courseId, isReviewMode, studentId]);
+
   // ── 저장 & 분석 ───────────────────────────────────────
   const handleSave = useCallback(async () => {
     if (!editor || !courseId) return;
@@ -308,9 +377,17 @@ export default function NoteEditor() {
       const { data } = await api.post(`/courses/${courseId}/notes`, { title, content });
       navigate(`/courses/${courseId}/notes/${data.id}`, { replace: true });
     }
+    // 팀 노트면 실시간 채널로 저장 알림 브로드캐스트
+    if (noteTeamId && realtimeChannelRef.current) {
+      realtimeChannelRef.current.send({
+        type: "broadcast",
+        event: "note-saved",
+        payload: { userId: user?.id, timestamp: Date.now() },
+      });
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
-  }, [editor, courseId, noteId, title, navigate]);
+  }, [editor, courseId, noteId, title, navigate, noteTeamId, user?.id]);
 
   const handleAskAi = useCallback(async () => {
     const q = chatInput.trim();
@@ -447,6 +524,25 @@ export default function NoteEditor() {
     }
   }, [noteId]);
 
+  // ── 자동 저장 (3초 idle) ──────────────────────────────
+  const autoSaveRef = useRef<ReturnType<typeof setTimeout>>();
+  const autoSaveEnabled = !isReviewMode && noteId !== "new" && !!noteId;
+
+  useEffect(() => {
+    if (!editor || !autoSaveEnabled) return;
+    const handler = () => {
+      if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
+      autoSaveRef.current = setTimeout(() => {
+        handleSave();
+      }, 3000);
+    };
+    editor.on("update", handler);
+    return () => {
+      editor.off("update", handler);
+      if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
+    };
+  }, [editor, autoSaveEnabled, handleSave]);
+
   // ── 키보드 단축키 ─────────────────────────────────────
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -536,6 +632,20 @@ export default function NoteEditor() {
             readOnly={isReviewMode}
           />
           {isReviewMode && <span className="review-mode-badge">리뷰 모드 (읽기 전용)</span>}
+          {remoteUpdatePending && (
+            <span style={{ fontSize: 11, color: "var(--primary)", fontWeight: 600, animation: "pulse 1s infinite" }}>
+              동기화 중...
+            </span>
+          )}
+          {teamPresence.length > 0 && (
+            <span style={{
+              display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px",
+              background: "rgba(0,180,0,0.1)", borderRadius: "var(--radius-sm)", fontSize: 11, color: "#22863a",
+            }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22863a", animation: "pulse 2s infinite" }} />
+              {teamPresence.map((m) => m.name).join(", ")} 편집 중
+            </span>
+          )}
           {teamInfo && (
             <span style={{
               display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 10px",
@@ -711,6 +821,7 @@ export default function NoteEditor() {
               noteOwnerId={noteOwnerId || user?.id || ""}
               currentUserId={user?.id || ""}
               currentUserRole={user?.role || ""}
+              isReviewMode={isReviewMode}
             />
           )}
 

@@ -8,6 +8,7 @@ interface Props {
   noteOwnerId: string;
   currentUserId: string;
   currentUserRole: string;
+  isReviewMode?: boolean;
 }
 
 interface BlockPos {
@@ -18,7 +19,7 @@ interface BlockPos {
 }
 
 export default function BlockCommentOverlay({
-  editorRef, noteId, currentUserId, currentUserRole,
+  editorRef, noteId, currentUserId, currentUserRole, isReviewMode,
 }: Props) {
   const { comments, counts, addComment, resolveComment, submitting } = useCommentStore();
   const [expandedBlock, setExpandedBlock] = useState<number | null>(null);
@@ -115,8 +116,8 @@ export default function BlockCommentOverlay({
         const count = blockCounts[i] || 0;
         const isExpanded = expandedBlock === i;
 
-        // 코멘트가 있는 블록에만 우측 뱃지 표시
-        const showBadge = count > 0;
+        // 리뷰 모드: 모든 블록에 코멘트 버튼 표시 / 일반 모드: 코멘트 있는 블록만
+        const showBadge = isReviewMode || count > 0;
 
         return (
           <div key={i}>
@@ -132,7 +133,7 @@ export default function BlockCommentOverlay({
                 }}
                 onClick={() => toggleBlock(i)}
               >
-                <span className="bci-count">{count}</span>
+                <span className="bci-count">{count > 0 ? count : "💬"}</span>
                 <span className={`bci-chevron${isExpanded ? " open" : ""}`}>&#8250;</span>
               </button>
             )}

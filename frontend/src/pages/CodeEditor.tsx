@@ -516,8 +516,9 @@ export default function CodeEditor() {
     );
   }
 
-  // 시험 모드: 강제 종료됨 또는 재입장 차단
+  // 시험 모드: 종료됨
   if (examMode.examEnded) {
+    const isSuccess = examMode.manualEnd;
     return (
       <div style={{
         position: "fixed", inset: 0, zIndex: 9999,
@@ -525,14 +526,17 @@ export default function CodeEditor() {
       }}>
         <div style={{
           maxWidth: 450, padding: 40, borderRadius: 16,
-          background: "var(--error-container)", textAlign: "center",
+          background: isSuccess ? "var(--primary-container, var(--surface-container))" : "var(--error-container)",
+          textAlign: "center",
         }}>
-          <h2 style={{ fontSize: 24, marginBottom: 16, color: "var(--on-error-container)" }}>
-            {examMode.alreadyEnded ? "재입장 불가" : "시험이 종료되었습니다"}
+          <h2 style={{ fontSize: 24, marginBottom: 16, color: isSuccess ? "var(--on-surface)" : "var(--on-error-container)" }}>
+            {examMode.alreadyEnded ? "재입장 불가" : isSuccess ? "시험이 정상 종료되었습니다" : "시험이 종료되었습니다"}
           </h2>
-          <p style={{ color: "var(--on-error-container)", lineHeight: 1.8, marginBottom: 24 }}>
+          <p style={{ color: isSuccess ? "var(--on-surface-variant)" : "var(--on-error-container)", lineHeight: 1.8, marginBottom: 24 }}>
             {examMode.alreadyEnded
               ? "이미 종료된 시험입니다. 시험을 나간 후에는 다시 입장할 수 없습니다."
+              : isSuccess
+              ? <>시험이 무사히 종료되었습니다.<br/>작성한 코드는 자동 저장되었습니다.</>
               : <>화면 이탈 횟수 초과로 시험이 자동 종료되었습니다.<br/>현재까지 작성한 코드는 자동 저장되었습니다.</>
             }
           </p>
@@ -585,7 +589,7 @@ export default function CodeEditor() {
               <button
                 onClick={() => {
                   customConfirm("시험을 종료하시겠습니까? 종료 후에는 다시 입장할 수 없습니다.", { danger: true, confirmText: "종료" }).then((ok) => {
-                    if (ok) examMode.endExam("학생이 직접 종료");
+                    if (ok) examMode.endExam("학생이 직접 종료", true);
                   });
                 }}
                 style={{

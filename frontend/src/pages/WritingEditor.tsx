@@ -13,7 +13,10 @@ import api from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { getAdminToken } from "../store/authStore";
 import { useTeamVote } from "../lib/useTeamVote";
+import { useExamMode } from "../lib/useExamMode";
 import TeamVotePanel from "../components/TeamVotePanel";
+import { toast } from "../lib/toast";
+import { customConfirm } from "../lib/confirm";
 import type { Assignment } from "../types";
 
 function stripScoreLine(text: string): string {
@@ -46,6 +49,13 @@ export default function WritingEditor() {
     assignmentId,
     assignment?.is_team_assignment ?? false,
   );
+
+  // 시험 모드
+  const examMode = useExamMode({
+    assignmentId: assignmentId || "",
+    enabled: !!(assignment?.exam_mode),
+  });
+  const [examStarted, setExamStarted] = useState(false);
 
   const editor = useEditor({
     extensions: [
@@ -247,8 +257,91 @@ export default function WritingEditor() {
   const pastePercent = wordCount > 0 ? Math.min(100, Math.round((pasteCharCount / wordCount) * 100)) : 0;
   const isOverdue = assignment?.due_date && new Date(assignment.due_date) < new Date();
 
+  // 시험 모드: 시작 전 오버레이
+  if (assignment?.exam_mode && !examStarted && !examMode.examEnded) {
+    return (
+      <div style={{
+        position: "fixed", inset: 0, zIndex: 9999,
+        background: "var(--surface)", display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        <div style={{
+          maxWidth: 500, padding: 40, borderRadius: 16,
+          background: "var(--surface-container)", textAlign: "center",
+        }}>
+          <h2 style={{ fontSize: 24, marginBottom: 16, color: "var(--on-surface)" }}>시험 모드</h2>
+          <p style={{ color: "var(--on-surface-variant)", lineHeight: 1.8, marginBottom: 8 }}>
+            이 과제는 <strong>시험 모드</strong>로 설정되어 있습니다.
+          </p>
+          <ul style={{ textAlign: "left", color: "var(--on-surface-variant)", lineHeight: 2, marginBottom: 24, paddingLeft: 20 }}>
+            <li>시험 중 <strong>전체화면</strong>이 유지됩니다</li>
+            <li>주기적으로 <strong>화면이 캡쳐</strong>됩니다</li>
+            <li>화면 이탈 시 <strong>경고</strong>가 누적됩니다</li>
+            <li><strong>{examMode.config?.max_violations || 3}회</strong> 이탈 시 시험이 <strong>자동 종료</strong>됩니다</li>
+          </ul>
+          <p style={{ color: "var(--on-surface-variant)", fontSize: 13, marginBottom: 24 }}>
+            "시험 시작"을 누르면 화면 공유 권한을 요청합니다.
+          </p>
+          <button
+            className="btn btn-primary"
+            style={{ padding: "12px 40px", fontSize: 16 }}
+            onClick={async () => {
+              const ok = await examMode.startExam();
+              if (ok) setExamStarted(true);
+              else toast.warning("화면 공유를 허용해야 시험을 시작할 수 있습니다.");
+            }}
+          >
+            시험 시작
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 시험 모드: 종료됨
+  if (examMode.examEnded) {
+    const isSuccess = examMode.manualEnd;
+    return (
+      <div style={{
+        position: "fixed", inset: 0, zIndex: 9999,
+        background: "var(--surface)", display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        <div style={{
+          maxWidth: 450, padding: 40, borderRadius: 16,
+          background: isSuccess ? "var(--primary-container, var(--surface-container))" : "var(--error-container)",
+          textAlign: "center",
+        }}>
+          <h2 style={{ fontSize: 24, marginBottom: 16, color: isSuccess ? "var(--on-surface)" : "var(--on-error-container)" }}>
+            {examMode.alreadyEnded ? "재입장 불가" : isSuccess ? "시험이 정상 종료되었습니다" : "시험이 종료되었습니다"}
+          </h2>
+          <p style={{ color: isSuccess ? "var(--on-surface-variant)" : "var(--on-error-container)", lineHeight: 1.8, marginBottom: 24 }}>
+            {examMode.alreadyEnded
+              ? "이미 종료된 시험입니다. 시험을 나간 후에는 다시 입장할 수 없습니다."
+              : isSuccess
+              ? <>시험이 무사히 종료되었습니다.<br/>작성한 글은 자동 저장되었습니다.</>
+              : <>화면 이탈 횟수 초과로 시험이 자동 종료되었습니다.<br/>현재까지 작성한 글은 자동 저장되었습니다.</>
+            }
+          </p>
+          <button className="btn" onClick={() => navigate(-1)} style={{ padding: "10px 30px" }}>
+            돌아가기
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="editor-page">
+      {/* 시험 모드 경고 배너 */}
+      {examMode.showWarning && (
+        <div style={{
+          padding: "10px 20px", textAlign: "center", fontWeight: 600,
+          background: "var(--error)", color: "var(--on-error)", fontSize: 14,
+          animation: "pulse 1s ease-in-out 3", flexShrink: 0,
+        }}>
+          {examMode.showWarning}
+        </div>
+      )}
+
       <header className="editor-topbar">
         <div className="topbar-left">
           <button className="btn btn-ghost" onClick={() => navigate(-1)}>&larr;</button>
@@ -259,6 +352,31 @@ export default function WritingEditor() {
           <span className="badge badge-policy">
             AI 정책: {({ free: "자유", normal: "보통", strict: "엄격", exam: "시험" } as Record<string, string>)[assignment?.ai_policy || ""] || "-"}
           </span>
+          {/* 시험 모드 상태 + 끝내기 */}
+          {assignment?.exam_mode && examStarted && (
+            <>
+              <div style={{
+                padding: "4px 12px", borderRadius: 20, fontSize: 11, fontWeight: 600,
+                background: "rgba(220,38,38,0.15)", color: "#fca5a5",
+              }}>
+                🔴 이탈 {examMode.violations}/{examMode.config?.max_violations || 3}
+              </div>
+              <button
+                onClick={() => {
+                  customConfirm("시험을 종료하시겠습니까? 종료 후에는 다시 입장할 수 없습니다.", { danger: true, confirmText: "종료" }).then((ok) => {
+                    if (ok) examMode.endExam("학생이 직접 종료", true);
+                  });
+                }}
+                style={{
+                  padding: "4px 12px", borderRadius: 20, fontSize: 11, fontWeight: 600,
+                  background: "var(--error)", color: "var(--on-error)",
+                  border: "none", cursor: "pointer",
+                }}
+              >
+                시험 끝내기
+              </button>
+            </>
+          )}
         </div>
       </header>
 

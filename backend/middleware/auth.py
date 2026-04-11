@@ -90,3 +90,18 @@ async def require_student_or_personal(user: dict = Depends(get_current_user)) ->
             detail="학생 또는 개인 권한이 필요합니다.",
         )
     return user
+
+
+def verify_course_ownership(user: dict, course_id: str) -> None:
+    """교수/개인이 해당 강의의 소유자���지 검증한다. 어드민은 통과."""
+    is_admin = user.get("email", "").endswith("@pikabuddy.admin")
+    if is_admin:
+        return
+    from common.supabase_client import get_supabase
+    sb = get_supabase()
+    course = sb.table("courses").select("professor_id").eq("id", course_id).single().execute()
+    if not course.data or course.data["professor_id"] != user["id"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="본인 소유의 강의가 아닙니다.",
+        )

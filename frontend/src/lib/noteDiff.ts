@@ -95,6 +95,12 @@ export function tiptapToLines(content: Record<string, unknown>): string[] {
     for (const line of converted.split("\n")) {
       lines.push(line);
     }
+    // 빈 줄 구분자 추가 (블록 간 구분)
+    lines.push("");
+  }
+  // 마지막 빈 줄 제거
+  while (lines.length > 0 && lines[lines.length - 1] === "") {
+    lines.pop();
   }
   return lines;
 }

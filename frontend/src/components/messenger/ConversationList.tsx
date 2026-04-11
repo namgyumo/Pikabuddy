@@ -13,7 +13,14 @@ export default function ConversationList({ conversations, activePartnerId, onSel
   }
 
   if (conversations.length === 0) {
-    return <div className="messenger-empty">아직 대화 상대가 없습니다.</div>;
+    return (
+      <div className="messenger-empty">
+        <p>대화 상대가 없습니다.</p>
+        <p style={{ fontSize: 12, color: "var(--on-surface-variant)", marginTop: 8 }}>
+          강의에 등록된 학생 또는 교수가 있어야 메신저를 사용할 수 있습니다.
+        </p>
+      </div>
+    );
   }
 
   return (

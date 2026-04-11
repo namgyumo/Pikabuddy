@@ -35,6 +35,7 @@ interface NotificationState {
   fetchNotifications: () => Promise<void>;
   fetchTotalUnread: () => Promise<void>;
   fetchMessengerCourse: () => Promise<void>;
+  markRead: () => Promise<void>;
   setOpen: (open: boolean) => void;
   toggle: () => void;
 }
@@ -79,6 +80,15 @@ export const useNotificationStore = create<NotificationState>((set) => ({
     try {
       const { data } = await api.get("/messenger/recent-course");
       set({ messengerCourseId: data.course_id || null });
+    } catch {
+      // silent
+    }
+  },
+
+  markRead: async () => {
+    try {
+      await api.post("/notifications/mark-read");
+      set({ unreadMessages: 0, unresolvedComments: 0, total: 0, items: [], totalUnreadMessages: 0 });
     } catch {
       // silent
     }

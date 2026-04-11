@@ -201,95 +201,120 @@ export default function NoteSnapshotPanel({ noteId }: Props) {
       </div>
 
       {/* Diff 뷰 */}
-      <div style={{ flex: 1, overflowY: "auto", fontSize: 12, fontFamily: "Consolas, 'Courier New', monospace" }}>
+      <div style={{ flex: 1, overflowY: "auto", fontSize: 12, fontFamily: "'Pretendard', sans-serif" }}>
         {selectedIdx !== null && snapshots.length > 0 && (
           <div style={{ padding: "8px 0" }}>
-            <div style={{ padding: "0 12px 8px", fontSize: 11, color: "var(--on-surface-variant)", borderBottom: "1px solid var(--outline-variant)" }}>
-              {selectedIdx + 1 < snapshots.length
-                ? `${snapshots[selectedIdx + 1].saved_by_name}의 저장 → ${snapshots[selectedIdx].saved_by_name}의 저장`
-                : "첫 번째 저장 (전체 추가)"}
+            <div style={{ padding: "8px 12px", fontSize: 11, color: "var(--on-surface-variant)", borderBottom: "1px solid var(--outline-variant)", display: "flex", alignItems: "center", gap: 6 }}>
+              {selectedIdx + 1 < snapshots.length ? (
+                <>
+                  <Avatar name={snapshots[selectedIdx + 1].saved_by_name} url={snapshots[selectedIdx + 1].saved_by_avatar_url} size={16} />
+                  <span>{snapshots[selectedIdx + 1].saved_by_name}</span>
+                  <span style={{ opacity: 0.5 }}>→</span>
+                  <Avatar name={snapshots[selectedIdx].saved_by_name} url={snapshots[selectedIdx].saved_by_avatar_url} size={16} />
+                  <span>{snapshots[selectedIdx].saved_by_name}</span>
+                </>
+              ) : "첫 번째 저장 (전체 추가)"}
             </div>
-            {diffLines.map((line, i) => (
-              <div key={i}>
-                <div style={{
-                  display: "flex", alignItems: "stretch",
-                  background: line.type === "add"
-                    ? "rgba(0, 180, 0, 0.08)"
-                    : line.type === "remove"
-                      ? "rgba(220, 0, 0, 0.08)"
-                      : "transparent",
-                  borderLeft: line.type === "add"
-                    ? "3px solid rgba(0, 160, 0, 0.5)"
-                    : line.type === "remove"
-                      ? "3px solid rgba(200, 0, 0, 0.5)"
-                      : "3px solid transparent",
-                }}>
-                  {/* 줄 번호 */}
-                  <span style={{ width: 28, textAlign: "right", padding: "2px 4px", color: "var(--on-surface-variant)", opacity: 0.5, flexShrink: 0, fontSize: 10 }}>
-                    {line.oldNum}
-                  </span>
-                  <span style={{ width: 28, textAlign: "right", padding: "2px 4px", color: "var(--on-surface-variant)", opacity: 0.5, flexShrink: 0, fontSize: 10 }}>
-                    {line.newNum}
-                  </span>
-                  {/* +/- 마커 */}
-                  <span style={{
-                    width: 16, textAlign: "center", padding: "2px 0", flexShrink: 0, fontWeight: 700,
-                    color: line.type === "add" ? "green" : line.type === "remove" ? "red" : "transparent",
+            {diffLines.map((line, i) => {
+              const authorVersions = line.identityKey ? (lineHistory.get(line.identityKey) || []) : [];
+              const lastAuthor = authorVersions.length > 0 ? authorVersions[authorVersions.length - 1] : null;
+
+              return (
+                <div key={i}>
+                  <div style={{
+                    display: "flex", alignItems: "flex-start",
+                    padding: "4px 0",
+                    background: line.type === "add"
+                      ? "rgba(0, 180, 0, 0.07)"
+                      : line.type === "remove"
+                        ? "rgba(220, 0, 0, 0.07)"
+                        : "transparent",
+                    borderLeft: line.type === "add"
+                      ? "3px solid rgba(0, 160, 0, 0.6)"
+                      : line.type === "remove"
+                        ? "3px solid rgba(200, 0, 0, 0.6)"
+                        : "3px solid transparent",
+                    borderBottom: "1px solid var(--outline-variant)",
+                    minHeight: 28,
                   }}>
-                    {line.type === "add" ? "+" : line.type === "remove" ? "-" : " "}
-                  </span>
-                  {/* 내용 */}
-                  <span style={{ flex: 1, padding: "2px 4px", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
-                    {line.text || " "}
-                  </span>
-                  {/* > 버튼 (여러 번 수정된 줄) */}
-                  {line.hasHistory && line.identityKey && (
-                    <button
-                      onClick={() => toggleExpand(line.identityKey)}
-                      style={{
-                        width: 22, flexShrink: 0, border: "none", cursor: "pointer",
-                        background: expandedLines.has(line.identityKey) ? "var(--primary-container)" : "transparent",
-                        color: "var(--primary)", fontWeight: 700, fontSize: 12,
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                      }}
-                      title="이전 수정 내역 보기"
-                    >
-                      {expandedLines.has(line.identityKey) ? "\u25BC" : "\u25B6"}
-                    </button>
+                    {/* +/- 마커 */}
+                    <span style={{
+                      width: 20, textAlign: "center", padding: "3px 0", flexShrink: 0, fontWeight: 700, fontSize: 13,
+                      fontFamily: "Consolas, monospace",
+                      color: line.type === "add" ? "#22863a" : line.type === "remove" ? "#cb2431" : "transparent",
+                    }}>
+                      {line.type === "add" ? "+" : line.type === "remove" ? "−" : " "}
+                    </span>
+                    {/* 작성자 아바타 */}
+                    <span style={{ width: 22, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", paddingTop: 2 }}>
+                      {lastAuthor && line.type !== "remove" ? (
+                        <Avatar name={lastAuthor.savedByName} url={lastAuthor.savedByAvatarUrl} size={16} />
+                      ) : line.type === "remove" && selectedIdx !== null && selectedIdx + 1 < snapshots.length ? (
+                        <Avatar name={snapshots[selectedIdx + 1].saved_by_name} url={snapshots[selectedIdx + 1].saved_by_avatar_url} size={16} />
+                      ) : null}
+                    </span>
+                    {/* 내용 */}
+                    <span style={{
+                      flex: 1, padding: "2px 8px 2px 6px",
+                      whiteSpace: "pre-wrap", wordBreak: "break-word",
+                      lineHeight: 1.6, fontSize: 12.5,
+                      color: line.type === "remove" ? "var(--on-surface-variant)" : "var(--on-surface)",
+                      textDecoration: line.type === "remove" ? "line-through" : "none",
+                      opacity: line.type === "remove" ? 0.7 : 1,
+                    }}>
+                      {line.text || "\u00A0"}
+                    </span>
+                    {/* > 버튼 (여러 번 수정된 줄) */}
+                    {line.hasHistory && line.identityKey && (
+                      <button
+                        onClick={() => toggleExpand(line.identityKey)}
+                        style={{
+                          width: 22, flexShrink: 0, border: "none", cursor: "pointer",
+                          background: expandedLines.has(line.identityKey) ? "var(--primary-container)" : "transparent",
+                          color: "var(--primary)", fontWeight: 700, fontSize: 11,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          borderRadius: 4,
+                        }}
+                        title="이전 수정 내역 보기"
+                      >
+                        {expandedLines.has(line.identityKey) ? "\u25BC" : "\u25B6"}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* 확장된 이전 수정 내역 */}
+                  {line.hasHistory && line.identityKey && expandedLines.has(line.identityKey) && (
+                    <div style={{
+                      marginLeft: 42, borderLeft: "2px solid var(--primary-container)",
+                      background: "var(--surface-container-lowest)", padding: "4px 0",
+                    }}>
+                      {(lineHistory.get(line.identityKey) || []).map((ver, vi) => (
+                        <div key={vi} style={{
+                          display: "flex", alignItems: "center", gap: 6,
+                          padding: "4px 8px", fontSize: 11,
+                          borderBottom: "1px solid var(--outline-variant)",
+                        }}>
+                          <Avatar name={ver.savedByName} url={ver.savedByAvatarUrl} size={14} />
+                          <span style={{ color: "var(--on-surface-variant)", fontWeight: 600, whiteSpace: "nowrap" }}>
+                            {ver.savedByName}
+                          </span>
+                          <span style={{ color: "var(--on-surface-variant)", opacity: 0.6, whiteSpace: "nowrap", fontSize: 10 }}>
+                            {relativeTime(ver.timestamp)}
+                          </span>
+                          <span style={{
+                            flex: 1, whiteSpace: "pre-wrap", wordBreak: "break-word",
+                            color: ver.changeType === "initial" ? "var(--on-surface-variant)" : "var(--on-surface)",
+                            fontStyle: ver.changeType === "initial" ? "italic" : "normal",
+                          }}>
+                            {ver.text || "\u00A0"}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
-
-                {/* 확장된 이전 수정 내역 */}
-                {line.hasHistory && line.identityKey && expandedLines.has(line.identityKey) && (
-                  <div style={{
-                    marginLeft: 72, borderLeft: "2px solid var(--primary-container)",
-                    background: "var(--surface-container-lowest)", padding: "4px 0",
-                  }}>
-                    {(lineHistory.get(line.identityKey) || []).map((ver, vi) => (
-                      <div key={vi} style={{
-                        display: "flex", alignItems: "center", gap: 6,
-                        padding: "3px 8px", fontSize: 11,
-                      }}>
-                        <Avatar name={ver.savedByName} url={ver.savedByAvatarUrl} size={14} />
-                        <span style={{ color: "var(--on-surface-variant)", fontWeight: 600, whiteSpace: "nowrap" }}>
-                          {ver.savedByName}
-                        </span>
-                        <span style={{ color: "var(--on-surface-variant)", opacity: 0.6, whiteSpace: "nowrap", fontSize: 10 }}>
-                          {relativeTime(ver.timestamp)}
-                        </span>
-                        <span style={{
-                          flex: 1, whiteSpace: "pre-wrap", wordBreak: "break-all",
-                          color: ver.changeType === "initial" ? "var(--on-surface-variant)" : "var(--on-surface)",
-                          fontStyle: ver.changeType === "initial" ? "italic" : "normal",
-                        }}>
-                          {ver.text || " "}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
             {diffLines.length === 0 && (
               <div style={{ padding: 16, textAlign: "center", color: "var(--on-surface-variant)", fontSize: 12 }}>
                 변경 사항 없음

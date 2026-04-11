@@ -7,7 +7,7 @@ import type { NotificationItem } from "../../store/notificationStore";
 export default function NotificationBell() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-  const { total, items, open, loading, fetchNotifications, toggle, setOpen } = useNotificationStore();
+  const { total, items, open, loading, fetchNotifications, markRead, toggle, setOpen } = useNotificationStore();
   const panelRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval>>();
 
@@ -37,9 +37,13 @@ export default function NotificationBell() {
     } else if (item.type === "comment" && item.note_id && item.course_id) {
       // 코멘트 → 해당 노트로 이동 (교수는 student-notes 경로)
       if (user?.role === "professor" && item.student_id) {
-        navigate(`/courses/${item.course_id}/student-notes/${item.student_id}/${item.note_id}`);
+        navigate(`/courses/${item.course_id}/student-notes/${item.student_id}/${item.note_id}`, {
+          state: { fromNotification: true, commentBlockIndex: item.block_index },
+        });
       } else {
-        navigate(`/courses/${item.course_id}/notes/${item.note_id}`);
+        navigate(`/courses/${item.course_id}/notes/${item.note_id}`, {
+          state: { fromNotification: true, commentBlockIndex: item.block_index },
+        });
       }
     }
   };
@@ -57,7 +61,7 @@ export default function NotificationBell() {
 
   return (
     <div className="notification-bell-wrap" ref={panelRef}>
-      <button className="notification-bell-btn" onClick={toggle} title="알림">
+      <button className="notification-bell-btn" onClick={() => { toggle(); if (!open && total > 0) markRead(); }} title="알림">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
           <path d="M13.73 21a2 2 0 0 1-3.46 0"/>

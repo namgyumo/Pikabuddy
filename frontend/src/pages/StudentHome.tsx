@@ -387,7 +387,10 @@ export default function StudentHome() {
                             }
                           }}>
                           <span className="cal-item-dot" style={{ background: colorVar }} />
-                          <span className="cal-item-title">{item.title}</span>
+                          <span className="cal-item-title">
+                            {isAssignment && item.course_title && <span style={{ opacity: 0.7, fontSize: "0.85em" }}>{item.course_title} </span>}
+                            {item.title}
+                          </span>
                         </div>
                       );
                     })}

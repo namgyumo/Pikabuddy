@@ -58,6 +58,7 @@ app.include_router(notifications_router, prefix="/api")
 app.include_router(events_router, prefix="/api")
 app.include_router(teams_router, prefix="/api")
 app.include_router(voting_router, prefix="/api")
+app.include_router(agents_router, prefix="/api")
 app.include_router(seed_router, prefix="/api")
 
 

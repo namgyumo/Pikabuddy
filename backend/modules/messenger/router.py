@@ -60,6 +60,44 @@ def _validate_messenger_access(user: dict, course: dict, partner_id: str):
 
 # ── Endpoints ──
 
+@router.get("/messenger/total-unread")
+async def get_total_unread(user: dict = Depends(get_current_user)):
+    """전체 코스에서 안 읽은 메시지 총 수."""
+    sb = get_supabase()
+    result = sb.table("messages") \
+        .select("id", count="exact") \
+        .eq("receiver_id", user["id"]) \
+        .eq("is_read", False) \
+        .execute()
+    return {"count": result.count or 0}
+
+
+@router.get("/messenger/recent-course")
+async def get_recent_course(user: dict = Depends(get_current_user)):
+    """가장 최근 메시지가 있는 코스 ID 반환 (메신저 바로가기용)."""
+    sb = get_supabase()
+    result = sb.table("messages") \
+        .select("course_id") \
+        .or_(f"sender_id.eq.{user['id']},receiver_id.eq.{user['id']}") \
+        .order("created_at", desc=True) \
+        .limit(1).execute()
+    if result.data:
+        return {"course_id": result.data[0]["course_id"]}
+    # 메시지가 없으면 첫 번째 코스 반환
+    role = user.get("role")
+    if role == "professor":
+        courses = sb.table("courses").select("id").eq("professor_id", user["id"]).limit(1).execute()
+    else:
+        enrollments = sb.table("enrollments").select("course_id").eq("student_id", user["id"]).limit(1).execute()
+        course_ids = [e["course_id"] for e in (enrollments.data or [])]
+        if course_ids:
+            return {"course_id": course_ids[0]}
+        return {"course_id": None}
+    if courses.data:
+        return {"course_id": courses.data[0]["id"]}
+    return {"course_id": None}
+
+
 @router.get("/courses/{course_id}/messenger/unread-count")
 async def get_unread_count(course_id: str, user: dict = Depends(get_current_user)):
     """코스 내 안 읽은 메시지 수."""
@@ -113,12 +151,16 @@ async def list_conversations(course_id: str, user: dict = Depends(get_current_us
         return []
 
     if not partner_ids:
+        logger.warning(f"[Messenger] No partner_ids found for user {user_id} (role={role}) in course {course_id}")
         return []
 
     # None 값 제거 (안전 처리)
     partner_ids = [pid for pid in partner_ids if pid is not None]
     if not partner_ids:
+        logger.warning(f"[Messenger] All partner_ids were None for user {user_id} in course {course_id}")
         return []
+
+    logger.info(f"[Messenger] Found {len(partner_ids)} partners for user {user_id} in course {course_id}")
 
     # 상대 정보 가져오기
     partners = sb.table("users") \

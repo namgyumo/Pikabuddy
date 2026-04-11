@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 from common.supabase_client import get_supabase
-from middleware.auth import get_current_user, require_professor_or_personal
+from middleware.auth import get_current_user, require_professor_or_personal, verify_course_ownership
 
 router = APIRouter(tags=["강의자료"])
 
@@ -44,6 +44,7 @@ async def upload_material(
     """교수 또는 개인 모드 유저가 강의자료 업로드 (Supabase Storage 사용)"""
     if user.get("role") not in ("professor", "personal"):
         raise HTTPException(status_code=403, detail="자료 업로드 권한이 없습니다.")
+    verify_course_ownership(user, course_id)
     supabase = get_supabase()
 
     # Read file
@@ -93,6 +94,7 @@ async def delete_material(
     course_id: str, material_id: str, user: dict = Depends(require_professor_or_personal)
 ):
     """교수가 강의자료 삭제"""
+    verify_course_ownership(user, course_id)
     supabase = get_supabase()
 
     mat = (

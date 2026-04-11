@@ -139,29 +139,44 @@ async def get_course(course_id: str, user: dict = Depends(get_current_user)):
     """강의 상세 조회"""
     supabase = get_supabase()
 
-    # 학생은 수강 등록된 강의만 접근 가능, 개인은 자기 코스만
+    # 역할별 접근 권한 검증
     is_admin = user.get("email", "").endswith("@pikabuddy.admin")
-    if user.get("role") == "personal" and not is_admin:
-        course_check = (
-            supabase.table("courses")
-            .select("id")
-            .eq("id", course_id)
-            .eq("professor_id", user["id"])
-            .eq("is_personal", True)
-            .execute()
-        )
-        if not course_check.data:
+    if not is_admin:
+        role = user.get("role")
+        if role == "personal":
+            course_check = (
+                supabase.table("courses")
+                .select("id")
+                .eq("id", course_id)
+                .eq("professor_id", user["id"])
+                .eq("is_personal", True)
+                .execute()
+            )
+            if not course_check.data:
+                raise HTTPException(status_code=403, detail="접근 권한이 없습니다.")
+        elif role == "professor":
+            # 교수는 본인 소유 강의만 접근 가능
+            course_check = (
+                supabase.table("courses")
+                .select("id")
+                .eq("id", course_id)
+                .eq("professor_id", user["id"])
+                .execute()
+            )
+            if not course_check.data:
+                raise HTTPException(status_code=403, detail="본인 소유의 강의가 아닙니다.")
+        elif role == "student":
+            enrollment = (
+                supabase.table("enrollments")
+                .select("id")
+                .eq("student_id", user["id"])
+                .eq("course_id", course_id)
+                .execute()
+            )
+            if not enrollment.data:
+                raise HTTPException(status_code=403, detail="수강하지 않은 강의입니다.")
+        else:
             raise HTTPException(status_code=403, detail="접근 권한이 없습니다.")
-    elif user.get("role") == "student" and not is_admin:
-        enrollment = (
-            supabase.table("enrollments")
-            .select("id")
-            .eq("student_id", user["id"])
-            .eq("course_id", course_id)
-            .execute()
-        )
-        if not enrollment.data:
-            raise HTTPException(status_code=403, detail="수강하지 않은 강의입니다.")
 
     result = (
         supabase.table("courses")

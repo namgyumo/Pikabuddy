@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from fastapi import APIRouter, Depends
 from common.supabase_client import get_supabase
 from common.gemini_client import get_gemini_model, MODEL_LIGHT
-from middleware.auth import require_professor_or_personal
+from middleware.auth import require_professor_or_personal, verify_course_ownership
 
 _executor = ThreadPoolExecutor(max_workers=8)
 
@@ -28,6 +28,7 @@ def _safe_avg_score(submissions: list) -> float:
 @router.get("/courses/{course_id}/dashboard")
 async def get_dashboard(course_id: str, user: dict = Depends(require_professor_or_personal)):
     """클래스 대시보드"""
+    verify_course_ownership(user, course_id)
     supabase = get_supabase()
     loop = asyncio.get_running_loop()
 
@@ -92,6 +93,7 @@ async def get_student_detail(
     course_id: str, student_id: str, user: dict = Depends(require_professor_or_personal)
 ):
     """학생별 상세 대시보드"""
+    verify_course_ownership(user, course_id)
     supabase = get_supabase()
     loop = asyncio.get_running_loop()
 
@@ -168,6 +170,7 @@ async def get_student_detail(
 @router.get("/courses/{course_id}/insights")
 async def get_insights(course_id: str, user: dict = Depends(require_professor_or_personal)):
     """AI 기반 클래스 인사이트"""
+    verify_course_ownership(user, course_id)
     supabase = get_supabase()
 
     course = supabase.table("courses").select("*").eq("id", course_id).single().execute()

@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from common.supabase_client import get_supabase
 from common.gemini_client import get_gemini_model, FALLBACK_MODELS, MODEL_LIGHT
 from google.generativeai.types import RequestOptions
-from middleware.auth import get_current_user, require_professor_or_personal
+from middleware.auth import get_current_user, require_professor_or_personal, verify_course_ownership
 
 
 def _extract_json(text: str) -> dict | list:
@@ -976,6 +976,7 @@ async def delete_assignment(
     user: dict = Depends(require_professor_or_personal),
 ):
     """과제 삭제 (관련 제출물, 스냅샷, 분석 모두 cascade 삭제)"""
+    verify_course_ownership(user, course_id)
     supabase = get_supabase()
     supabase.table("assignments").delete().eq("id", assignment_id).execute()
     return {"message": "과제가 삭제되었습니다."}
@@ -989,6 +990,7 @@ async def delete_submission(
     user: dict = Depends(require_professor_or_personal),
 ):
     """제출물 삭제 (관련 AI 분석도 cascade 삭제)"""
+    verify_course_ownership(user, course_id)
     supabase = get_supabase()
     supabase.table("submissions").delete().eq("id", submission_id).execute()
     return {"message": "제출물이 삭제되었습니다."}
@@ -1017,6 +1019,7 @@ async def update_assignment(
     user: dict = Depends(require_professor_or_personal),
 ):
     """과제 기본 정보 수정"""
+    verify_course_ownership(user, course_id)
     supabase = get_supabase()
     update_data = {k: v for k, v in body.model_dump().items() if v is not None}
     if not update_data:
@@ -1034,6 +1037,7 @@ async def publish_assignment(
     user: dict = Depends(require_professor_or_personal),
 ):
     """과제를 학생에게 공개"""
+    verify_course_ownership(user, course_id)
     supabase = get_supabase()
     supabase.table("assignments").update(
         {"status": "published"}
@@ -1048,6 +1052,7 @@ async def unpublish_assignment(
     user: dict = Depends(require_professor_or_personal),
 ):
     """과제를 비공개로 전환"""
+    verify_course_ownership(user, course_id)
     supabase = get_supabase()
     supabase.table("assignments").update(
         {"status": "draft"}
@@ -1061,6 +1066,7 @@ async def get_problem_bank(
     user: dict = Depends(require_professor_or_personal),
 ):
     """교수의 모든 과제에서 문제를 검색 (문제 은행)"""
+    verify_course_ownership(user, course_id)
     supabase = get_supabase()
     result = supabase.table("assignments").select(
         "id, title, topic, type, problems, created_at"
@@ -1092,6 +1098,7 @@ async def import_problems(
     user: dict = Depends(require_professor_or_personal),
 ):
     """다른 과제에서 문제를 복사해서 현재 과제에 추가"""
+    verify_course_ownership(user, course_id)
     supabase = get_supabase()
 
     # 소스 과제 가져오기
@@ -1137,6 +1144,7 @@ async def update_policy(
     user: dict = Depends(require_professor_or_personal),
 ):
     """AI 정책 설정 변경"""
+    verify_course_ownership(user, course_id)
     if body.ai_policy not in ("free", "normal", "strict", "exam"):
         raise HTTPException(status_code=400, detail="유효하지 않은 AI 정책입니다.")
 
@@ -1156,6 +1164,7 @@ async def update_writing_prompt(
     user: dict = Depends(require_professor_or_personal),
 ):
     """글쓰기 지시문 수정"""
+    verify_course_ownership(user, course_id)
     supabase = get_supabase()
     supabase.table("assignments").update(
         {"writing_prompt": body.writing_prompt}
@@ -1173,6 +1182,7 @@ async def add_problem(
     user: dict = Depends(require_professor_or_personal),
 ):
     """문제 추가"""
+    verify_course_ownership(user, course_id)
     supabase = get_supabase()
     assignment = (
         supabase.table("assignments")
@@ -1238,6 +1248,7 @@ async def update_problem(
     user: dict = Depends(require_professor_or_personal),
 ):
     """문제 수정"""
+    verify_course_ownership(user, course_id)
     supabase = get_supabase()
     assignment = (
         supabase.table("assignments")
@@ -1282,6 +1293,7 @@ async def delete_problem(
     user: dict = Depends(require_professor_or_personal),
 ):
     """문제 삭제"""
+    verify_course_ownership(user, course_id)
     supabase = get_supabase()
     assignment = (
         supabase.table("assignments")
@@ -1312,6 +1324,7 @@ async def list_submissions(
     user: dict = Depends(require_professor_or_personal),
 ):
     """과제의 모든 제출물 조회 (교수용)"""
+    verify_course_ownership(user, course_id)
     supabase = get_supabase()
     result = (
         supabase.table("submissions")
@@ -1330,6 +1343,7 @@ async def get_paste_logs(
     user: dict = Depends(require_professor_or_personal),
 ):
     """과제의 모든 복붙 로그 조회 (교수용)"""
+    verify_course_ownership(user, course_id)
     supabase = get_supabase()
     result = (
         supabase.table("snapshots")
@@ -1350,6 +1364,7 @@ async def get_student_snapshots(
     user: dict = Depends(require_professor_or_personal),
 ):
     """교수용 — 특정 학생의 글쓰기 스냅샷 조회 (paste 제외, 시간순)"""
+    verify_course_ownership(user, course_id)
     supabase = get_supabase()
     result = (
         supabase.table("snapshots")
@@ -1376,6 +1391,7 @@ async def set_final_score(
     user: dict = Depends(require_professor_or_personal),
 ):
     """교수가 최종 점수를 확정"""
+    verify_course_ownership(user, course_id)
     if body.final_score < 0 or body.final_score > 100:
         raise HTTPException(status_code=400, detail="점수는 0~100 사이여야 합니다.")
 
