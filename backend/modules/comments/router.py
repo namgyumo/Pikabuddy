@@ -51,7 +51,7 @@ def _get_note_with_access(note_id: str, user: dict):
 
 def _get_comment(comment_id: str):
     sb = get_supabase()
-    result = sb.table("note_comments").select("*").eq("id", comment_id).single().execute()
+    result = sb.table("note_comments").select("*").eq("id", comment_id).maybe_single().execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="코멘트를 찾을 수 없습니다.")
     return result.data
