@@ -41,8 +41,9 @@ export default function AppShell({ children, courseTitle }: Props) {
 
   const courses = useCourseStore((s) => s.courses);
   const fetchCourses = useCourseStore((s) => s.fetchCourses);
-  // 메신저 바로가기: messengerCourseId 우선, 없으면 첫 번째 코스
-  const messengerLink = messengerCourseId || (courses.length > 0 ? courses[0].id : null);
+  // 메신저 바로가기: messengerCourseId 우선, 없으면 첫 번째 비개인 코스
+  const nonPersonalCourse = courses.find(c => !c.is_personal);
+  const messengerLink = messengerCourseId || nonPersonalCourse?.id || null;
 
   // Supabase Realtime 구독 — 메시지/코멘트 즉시 알림
   useRealtimeNotifications(user?.id);

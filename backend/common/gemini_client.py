@@ -155,36 +155,46 @@ def get_embeddings(texts: list[str]) -> list[list[float]]:
     return output
 
 
+def _dot(a: list[float], b: list[float]) -> float:
+    return sum(x * y for x, y in zip(a, b))
+
+
+def _norm(a: list[float]) -> float:
+    import math
+    return math.sqrt(sum(x * x for x in a))
+
+
 def cosine_similarity(a: list[float], b: list[float]) -> float:
     """두 벡터의 코사인 유사도."""
     if not a or not b:
         return 0.0
-    import numpy as np
-    va, vb = np.array(a), np.array(b)
-    na, nb = np.linalg.norm(va), np.linalg.norm(vb)
+    na, nb = _norm(a), _norm(b)
     if na == 0 or nb == 0:
         return 0.0
-    return float(np.dot(va, vb) / (na * nb))
+    return _dot(a, b) / (na * nb)
 
 
 def pairwise_similarities(embeddings: list[list[float]], threshold: float = 0.65) -> list[tuple[int, int, float]]:
-    """임베딩 리스트에서 threshold 이상인 (i, j, similarity) 쌍을 반환. numpy 행렬 연산."""
-    import numpy as np
+    """임베딩 리스트에서 threshold 이상인 (i, j, similarity) 쌍을 반환."""
     valid = [(i, e) for i, e in enumerate(embeddings) if e]
     if len(valid) < 2:
         return []
-    indices = [v[0] for v in valid]
-    mat = np.array([v[1] for v in valid], dtype=np.float32)
-    # L2 정규화 → dot product = cosine similarity
-    norms = np.linalg.norm(mat, axis=1, keepdims=True)
-    norms[norms == 0] = 1
-    mat = mat / norms
-    sim_matrix = mat @ mat.T
+
+    # L2 정규화
+    normed = []
+    indices = []
+    for i, emb in valid:
+        n = _norm(emb)
+        if n == 0:
+            normed.append(emb)
+        else:
+            normed.append([x / n for x in emb])
+        indices.append(i)
 
     results = []
     for a in range(len(indices)):
         for b in range(a + 1, len(indices)):
-            s = float(sim_matrix[a, b])
+            s = _dot(normed[a], normed[b])
             if s >= threshold:
                 results.append((indices[a], indices[b], round(s, 3)))
     return results

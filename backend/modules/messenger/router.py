@@ -1,9 +1,12 @@
 """교수↔학생 1:1 메신저 API"""
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from middleware.auth import get_current_user
 from common.supabase_client import get_supabase
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["메신저"])
 
@@ -33,9 +36,11 @@ def _validate_messenger_access(user: dict, course: dict, partner_id: str):
     if course.get("is_personal"):
         raise HTTPException(status_code=403, detail="개인 모드에서는 메신저를 사용할 수 없습니다.")
 
+    is_admin = user.get("email", "").endswith("@pikabuddy.admin")
+
     if user["role"] == "professor":
         # 교수: 자기 코스인지 + 상대가 수강생인지
-        if course["professor_id"] != user["id"]:
+        if course["professor_id"] != user["id"] and not is_admin:
             raise HTTPException(status_code=403, detail="본인 코스가 아닙니다.")
         enrolled = sb.table("enrollments").select("id").eq("course_id", course_id).eq("student_id", partner_id).execute()
         if not enrolled.data:
@@ -78,28 +83,46 @@ async def list_conversations(course_id: str, user: dict = Depends(get_current_us
         return []
 
     user_id = user["id"]
+    role = user.get("role")
 
     # 대화 상대 결정
-    if user["role"] == "professor":
-        if course["professor_id"] != user_id:
+    if role == "professor":
+        is_admin = user.get("email", "").endswith("@pikabuddy.admin")
+        if course["professor_id"] != user_id and not is_admin:
             raise HTTPException(status_code=403, detail="본인 코스가 아닙니다.")
         # 수강생 전체가 잠재 대화 상대
         enrollments = sb.table("enrollments") \
             .select("student_id") \
             .eq("course_id", course_id).execute()
         partner_ids = [e["student_id"] for e in (enrollments.data or [])]
-    elif user["role"] == "student":
+    elif role == "student":
+        # 수강 중인 코스인지 확인
+        enrolled = sb.table("enrollments").select("id") \
+            .eq("course_id", course_id).eq("student_id", user_id).execute()
+        if not enrolled.data:
+            logger.warning(f"[Messenger] Student {user_id} not enrolled in course {course_id}")
+            return []
         # 교수만 대화 상대
-        partner_ids = [course["professor_id"]]
+        prof_id = course.get("professor_id")
+        if not prof_id:
+            logger.warning(f"[Messenger] Course {course_id} has no professor_id")
+            return []
+        partner_ids = [prof_id]
     else:
+        logger.info(f"[Messenger] User {user_id} role={role} cannot use messenger")
         return []
 
     if not partner_ids:
         return []
 
+    # None 값 제거 (안전 처리)
+    partner_ids = [pid for pid in partner_ids if pid is not None]
+    if not partner_ids:
+        return []
+
     # 상대 정보 가져오기
     partners = sb.table("users") \
-        .select("id, name, avatar_url") \
+        .select("id, name, avatar_url, role") \
         .in_("id", partner_ids).execute()
     partner_map = {p["id"]: p for p in (partners.data or [])}
 

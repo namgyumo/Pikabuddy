@@ -131,14 +131,15 @@ async def get_recent_messenger_course(user: dict = Depends(get_current_user)):
     if result.data:
         return {"course_id": result.data[0]["course_id"]}
 
-    # 메시지가 없으면 첫 번째 등록 코스
+    # 메시지가 없으면 첫 번째 등록 코스 (개인 코스 제외)
     if user["role"] == "professor":
-        courses = sb.table("courses").select("id").eq("professor_id", uid).limit(1).execute()
+        courses = sb.table("courses").select("id, is_personal").eq("professor_id", uid).execute()
+        non_personal = [c for c in (courses.data or []) if not c.get("is_personal")]
+        if non_personal:
+            return {"course_id": non_personal[0]["id"]}
     else:
         enrollments = sb.table("enrollments").select("course_id").eq("student_id", uid).limit(1).execute()
-        courses = type("R", (), {"data": [{"id": e["course_id"]} for e in (enrollments.data or [])]})()
-
-    if courses.data:
-        return {"course_id": courses.data[0]["id"]}
+        if enrollments.data:
+            return {"course_id": enrollments.data[0]["course_id"]}
 
     return {"course_id": None}

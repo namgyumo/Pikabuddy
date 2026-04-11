@@ -20,6 +20,7 @@ export interface Course {
   description: string | null;
   objectives: string[] | null;
   invite_code: string;
+  is_personal?: boolean;
   created_at: string;
 }
 
@@ -211,6 +212,7 @@ export interface ConversationPartner {
   id: string;
   name: string;
   avatar_url: string | null;
+  role?: string;
 }
 
 export interface ConversationItem {
