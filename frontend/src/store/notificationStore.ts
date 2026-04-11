@@ -12,6 +12,7 @@ export interface NotificationItem {
   sender_avatar?: string | null;
   // comment fields
   note_id?: string;
+  student_id?: string;
   note_title?: string;
   commenter_name?: string;
   commenter_avatar?: string | null;

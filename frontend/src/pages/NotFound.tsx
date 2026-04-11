@@ -1,20 +1,30 @@
 import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "../store/authStore";
 
 export default function NotFound() {
   const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
+
+  const getHomePath = () => {
+    if (!user) return "/";
+    if (user.role === "professor") return "/professor";
+    if (user.role === "personal") return "/personal";
+    return "/student";
+  };
+
   return (
     <div className="not-found-page">
       <div className="not-found-code">404</div>
-      <h1 className="not-found-title">{"\uD398\uC774\uC9C0\uB97C"} {"\uCC3E\uC744"} {"\uC218"} {"\uC5C6\uC2B5\uB2C8\uB2E4"}</h1>
+      <h1 className="not-found-title">페이지를 찾을 수 없습니다</h1>
       <p className="not-found-desc">
-        {"\uC694\uCCAD\uD558\uC2E0"} {"\uD398\uC774\uC9C0\uAC00"} {"\uC874\uC7AC\uD558\uC9C0"} {"\uC54A\uAC70\uB098"} {"\uC774\uB3D9\uB418\uC5C8\uC744"} {"\uC218"} {"\uC788\uC2B5\uB2C8\uB2E4"}.
+        요청하신 페이지가 존재하지 않거나 이동되었을 수 있습니다.
       </p>
       <div style={{ display: "flex", gap: 12 }}>
-        <button className="btn btn-primary" onClick={() => navigate("/")}>
-          {"\uD648\uC73C\uB85C"} {"\uAC00\uAE30"}
+        <button className="btn btn-primary" onClick={() => navigate(getHomePath())}>
+          홈으로 가기
         </button>
         <button className="btn btn-ghost" onClick={() => navigate(-1 as any)}>
-          {"\uB4A4\uB85C"} {"\uAC00\uAE30"}
+          뒤로 가기
         </button>
       </div>
     </div>

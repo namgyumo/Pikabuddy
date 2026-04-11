@@ -142,6 +142,7 @@ export default function Settings() {
               useTutorialStore.getState().resetAll();
               const home = user?.role === "professor" ? "/professor" : user?.role === "personal" ? "/personal" : "/student";
               navigate(home);
+              setTimeout(() => useTutorialStore.getState().start(), 600);
             }}
           >
             튜토리얼 다시 보기

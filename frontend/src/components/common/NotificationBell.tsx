@@ -1,10 +1,12 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useNotificationStore } from "../../store/notificationStore";
+import { useAuthStore } from "../../store/authStore";
 import type { NotificationItem } from "../../store/notificationStore";
 
 export default function NotificationBell() {
   const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
   const { total, items, open, loading, fetchNotifications, toggle, setOpen } = useNotificationStore();
   const panelRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval>>();
@@ -32,9 +34,13 @@ export default function NotificationBell() {
     setOpen(false);
     if (item.type === "message" && item.course_id && item.sender_id) {
       navigate(`/courses/${item.course_id}/messenger/${item.sender_id}`);
-    } else if (item.type === "comment" && item.note_id) {
-      // 코멘트 → 해당 노트로 이동
-      navigate(`/courses/${item.course_id || ""}/notes/${item.note_id}`);
+    } else if (item.type === "comment" && item.note_id && item.course_id) {
+      // 코멘트 → 해당 노트로 이동 (교수는 student-notes 경로)
+      if (user?.role === "professor" && item.student_id) {
+        navigate(`/courses/${item.course_id}/student-notes/${item.student_id}/${item.note_id}`);
+      } else {
+        navigate(`/courses/${item.course_id}/notes/${item.note_id}`);
+      }
     }
   };
 

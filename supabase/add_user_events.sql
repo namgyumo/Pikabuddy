@@ -5,6 +5,7 @@ CREATE TABLE user_events (
     title VARCHAR(200) NOT NULL,
     description TEXT,
     event_date TIMESTAMPTZ NOT NULL,
+    end_date TIMESTAMPTZ,  -- 기간 일정용 종료 날짜 (NULL이면 단일 일정)
     color VARCHAR(20) DEFAULT 'primary',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

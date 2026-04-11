@@ -10,6 +10,7 @@ class EventCreate(BaseModel):
     title: str
     description: str | None = None
     event_date: str  # ISO 8601
+    end_date: str | None = None  # ISO 8601, 기간 일정용
     color: str = "primary"
 
 
@@ -17,6 +18,7 @@ class EventUpdate(BaseModel):
     title: str | None = None
     description: str | None = None
     event_date: str | None = None
+    end_date: str | None = None
     color: str | None = None
 
 
@@ -34,13 +36,16 @@ async def list_events(user: dict = Depends(get_current_user)):
 async def create_event(body: EventCreate, user: dict = Depends(get_current_user)):
     """일정 생성"""
     supabase = get_supabase()
-    result = supabase.table("user_events").insert({
+    row = {
         "user_id": user["id"],
         "title": body.title,
         "description": body.description,
         "event_date": body.event_date,
         "color": body.color,
-    }).execute()
+    }
+    if body.end_date:
+        row["end_date"] = body.end_date
+    result = supabase.table("user_events").insert(row).execute()
     return result.data[0] if result.data else {}
 
 
@@ -114,6 +119,7 @@ async def get_calendar(user: dict = Depends(get_current_user)):
             "title": e["title"],
             "description": e.get("description"),
             "event_date": e["event_date"],
+            "end_date": e.get("end_date"),
             "color": e.get("color", "primary"),
             "kind": "event",
         })

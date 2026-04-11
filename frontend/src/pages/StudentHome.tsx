@@ -16,6 +16,7 @@ interface CalendarItem {
   type?: string;
   due_date?: string;
   event_date?: string;
+  end_date?: string;
   course_id?: string;
   course_title?: string;
   color?: string;
@@ -82,8 +83,10 @@ export default function StudentHome() {
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [newEventTitle, setNewEventTitle] = useState("");
   const [newEventDate, setNewEventDate] = useState("");
+  const [newEventEndDate, setNewEventEndDate] = useState("");
   const [newEventColor, setNewEventColor] = useState("primary");
   const [addingEvent, setAddingEvent] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<CalendarItem | null>(null);
 
   // 할 일
   const [todos, setTodos] = useState<TodoItem[]>([]);
@@ -224,7 +227,7 @@ export default function StudentHome() {
         <div style={{ marginTop: 32 }}>
           <div className="page-header">
             <h2 className="section-title">일정 캘린더</h2>
-            <button className="btn btn-secondary" onClick={() => { setShowAddEvent(true); setNewEventDate(""); setNewEventTitle(""); }}>
+            <button className="btn btn-secondary" onClick={() => { setShowAddEvent(true); setEditingEvent(null); setNewEventDate(""); setNewEventEndDate(""); setNewEventTitle(""); setNewEventColor("primary"); }}>
               + 일정 추가
             </button>
           </div>
@@ -236,8 +239,12 @@ export default function StudentHome() {
                 <input className="input" value={newEventTitle} onChange={(e) => setNewEventTitle(e.target.value)} placeholder="시험 준비, 과제 시작 등" />
               </div>
               <div style={{ minWidth: 180 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--on-surface-variant)", display: "block", marginBottom: 4 }}>날짜/시간</label>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--on-surface-variant)", display: "block", marginBottom: 4 }}>시작 날짜</label>
                 <input className="input" type="datetime-local" value={newEventDate} onChange={(e) => setNewEventDate(e.target.value)} />
+              </div>
+              <div style={{ minWidth: 180 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--on-surface-variant)", display: "block", marginBottom: 4 }}>종료 날짜 (선택)</label>
+                <input className="input" type="datetime-local" value={newEventEndDate} onChange={(e) => setNewEventEndDate(e.target.value)} />
               </div>
               <div>
                 <label style={{ fontSize: 12, fontWeight: 600, color: "var(--on-surface-variant)", display: "block", marginBottom: 4 }}>색상</label>
@@ -253,17 +260,38 @@ export default function StudentHome() {
                 onClick={async () => {
                   setAddingEvent(true);
                   try {
-                    const { data } = await api.post("/events", {
+                    const payload: any = {
                       title: newEventTitle.trim(),
                       event_date: new Date(newEventDate).toISOString(),
                       color: newEventColor,
-                    });
-                    setCalItems((prev) => [...prev, { ...data, kind: "event" }]);
+                    };
+                    if (newEventEndDate) payload.end_date = new Date(newEventEndDate).toISOString();
+                    if (editingEvent) {
+                      await api.patch(`/events/${editingEvent.id}`, payload);
+                      setCalItems((prev) => prev.map((it) => it.id === editingEvent.id ? { ...it, ...payload, kind: "event" } : it));
+                    } else {
+                      const { data } = await api.post("/events", payload);
+                      setCalItems((prev) => [...prev, { ...data, kind: "event" }]);
+                    }
                     setShowAddEvent(false);
-                  } catch { toast.error("일정 추가 실패"); }
+                    setEditingEvent(null);
+                  } catch { toast.error(editingEvent ? "일정 수정 실패" : "일정 추가 실패"); }
                   finally { setAddingEvent(false); }
-                }}>{addingEvent ? "..." : "추가"}</button>
-              <button className="btn btn-ghost" onClick={() => setShowAddEvent(false)}>취소</button>
+                }}>{addingEvent ? "..." : editingEvent ? "수정" : "추가"}</button>
+              {editingEvent && (
+                <button className="btn btn-ghost" style={{ color: "var(--error)" }}
+                  onClick={async () => {
+                    if (!confirm("이 일정을 삭제하시겠습니까?")) return;
+                    try {
+                      await api.delete(`/events/${editingEvent.id}`);
+                      setCalItems((prev) => prev.filter((it) => it.id !== editingEvent.id));
+                      setShowAddEvent(false);
+                      setEditingEvent(null);
+                      toast.success("일정이 삭제되었습니다");
+                    } catch { toast.error("삭제 실패"); }
+                  }}>삭제</button>
+              )}
+              <button className="btn btn-ghost" onClick={() => { setShowAddEvent(false); setEditingEvent(null); }}>취소</button>
             </div>
           )}
 
@@ -293,11 +321,18 @@ export default function StudentHome() {
             for (const item of allItems) {
               const dateStr = item.kind === "assignment" ? item.due_date : item.event_date;
               if (!dateStr) continue;
-              const d = new Date(dateStr);
-              if (d.getFullYear() === year && d.getMonth() === month) {
-                const key = d.getDate().toString();
-                if (!byDate[key]) byDate[key] = [];
-                byDate[key].push(item);
+              const startD = new Date(dateStr);
+              const endD = item.end_date ? new Date(item.end_date) : startD;
+              // 기간 일정: 시작~종료 사이 모든 날짜에 표시
+              const cur = new Date(startD.getFullYear(), startD.getMonth(), startD.getDate());
+              const last = new Date(endD.getFullYear(), endD.getMonth(), endD.getDate());
+              while (cur <= last) {
+                if (cur.getFullYear() === year && cur.getMonth() === month) {
+                  const key = cur.getDate().toString();
+                  if (!byDate[key]) byDate[key] = [];
+                  if (!byDate[key].includes(item)) byDate[key].push(item);
+                }
+                cur.setDate(cur.getDate() + 1);
               }
             }
 
@@ -330,11 +365,25 @@ export default function StudentHome() {
                       return (
                         <div key={item.id} className={`cal-item${isOverdue ? " cal-overdue" : ""}${isHol ? " cal-item-holiday" : ""}`}
                           title={isAssignment ? `${item.course_title} — ${item.title}` : (item.description || item.title)}
+                          style={{ cursor: isHol ? "default" : "pointer" }}
                           onClick={() => {
                             if (isAssignment && item.course_id) {
                               if (item.type === "quiz") navigate(`/assignments/${item.id}/quiz`);
                               else if (item.type === "writing") navigate(`/assignments/${item.id}/write`);
                               else navigate(`/assignments/${item.id}/code`);
+                            } else if (item.kind === "event") {
+                              setEditingEvent(item);
+                              setNewEventTitle(item.title);
+                              const toLocal = (iso?: string) => {
+                                if (!iso) return "";
+                                const d = new Date(iso);
+                                d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+                                return d.toISOString().slice(0, 16);
+                              };
+                              setNewEventDate(toLocal(item.event_date));
+                              setNewEventEndDate(toLocal(item.end_date));
+                              setNewEventColor(item.color || "primary");
+                              setShowAddEvent(true);
                             }
                           }}>
                           <span className="cal-item-dot" style={{ background: colorVar }} />

@@ -210,7 +210,7 @@ export default function ThemeEditor({ onClose, editingTheme }: Props) {
   const tabs: { key: Tab; label: string; icon: string }[] = [
     { key: "gui", label: "GUI 에디터", icon: "🎨" },
     { key: "effects", label: "이펙트", icon: "✨" },
-    { key: "assets", label: "��셋", icon: "🖼️" },
+    { key: "assets", label: "에셋", icon: "🖼️" },
     { key: "json", label: "JSON", icon: "{ }" },
     { key: "css", label: "CSS", icon: "</>" },
   ];

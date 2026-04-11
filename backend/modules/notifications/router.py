@@ -33,7 +33,7 @@ async def get_notifications(user: dict = Depends(get_current_user)):
         if course_ids:
             # 교수 코스 노트에 달린 남의 코멘트 (본인 제외)
             comment_result = sb.table("note_comments") \
-                .select("id, note_id, content, created_at, block_index, users(name, avatar_url), notes!inner(title, course_id)", count="exact") \
+                .select("id, note_id, content, created_at, block_index, users(name, avatar_url), notes!inner(title, course_id, student_id)", count="exact") \
                 .in_("notes.course_id", course_ids) \
                 .neq("user_id", uid) \
                 .eq("is_resolved", False) \
@@ -48,7 +48,7 @@ async def get_notifications(user: dict = Depends(get_current_user)):
         note_ids = [n["id"] for n in (my_notes.data or [])]
         if note_ids:
             comment_result = sb.table("note_comments") \
-                .select("id, note_id, content, created_at, block_index, users(name, avatar_url), notes!inner(title)") \
+                .select("id, note_id, content, created_at, block_index, users(name, avatar_url), notes!inner(title, course_id, student_id)") \
                 .in_("note_id", note_ids) \
                 .neq("user_id", uid) \
                 .eq("is_resolved", False) \
@@ -83,6 +83,8 @@ async def get_notifications(user: dict = Depends(get_current_user)):
             "type": "comment",
             "id": cmt["id"],
             "note_id": cmt["note_id"],
+            "course_id": note.get("course_id", ""),
+            "student_id": note.get("student_id", ""),
             "note_title": note.get("title", ""),
             "commenter_name": commenter.get("name", ""),
             "commenter_avatar": commenter.get("avatar_url"),
