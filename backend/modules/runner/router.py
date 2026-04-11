@@ -139,8 +139,8 @@ def _judge_single(code: str, language: str, stdin_data: str, expected: str,
             result = _run_python_judge(code, stdin_data, time_limit)
         elif language in ("javascript", "js"):
             result = _run_js_judge(code, stdin_data, time_limit)
-        elif language == "c":
-            result = _run_c_judge(code, stdin_data, time_limit)
+        elif language in ("c", "cpp"):
+            result = _run_c_judge(code, stdin_data, time_limit, cpp=(language == "cpp"))
         elif language == "java":
             result = _run_java_judge(code, stdin_data, time_limit)
         else:
@@ -239,13 +239,15 @@ def _run_js_judge(code: str, stdin_data: str, timeout: float) -> dict:
         finally: os.unlink(f.name)
 
 
-def _run_c_judge(code: str, stdin_data: str, timeout: float) -> dict:
+def _run_c_judge(code: str, stdin_data: str, timeout: float, cpp: bool = False) -> dict:
     tmpdir = tempfile.mkdtemp()
-    src = os.path.join(tmpdir, "main.c")
+    ext = ".cpp" if cpp else ".c"
+    compiler = "g++" if cpp else "gcc"
+    src = os.path.join(tmpdir, f"main{ext}")
     exe = os.path.join(tmpdir, "main.exe")
     try:
         with open(src, "w", encoding="utf-8") as f: f.write(code)
-        compile_res = _run_with_timeout(["gcc", src, "-o", exe, "-lm"], "", 10)
+        compile_res = _run_with_timeout([compiler, src, "-o", exe, "-lm"], "", 10)
         if not compile_res["success"]:
             return {"success": False, "output": "", "error": "컴파일 에러:\n" + compile_res["error"], "timeout": False}
         return _run_with_timeout([exe], stdin_data, timeout)
@@ -293,8 +295,8 @@ async def run_code(body: RunRequest, user: dict = Depends(get_current_user)):
             result = _run_python(code, stdin_data)
         elif language in ("javascript", "js"):
             result = _run_javascript(code, stdin_data)
-        elif language == "c":
-            result = _run_c(code, stdin_data)
+        elif language in ("c", "cpp"):
+            result = _run_c(code, stdin_data, cpp=(language == "cpp"))
         elif language == "java":
             result = _run_java(code, stdin_data)
         else:
@@ -352,9 +354,11 @@ def _run_javascript(code: str, stdin_data: str) -> dict:
             os.unlink(f.name)
 
 
-def _run_c(code: str, stdin_data: str) -> dict:
+def _run_c(code: str, stdin_data: str, cpp: bool = False) -> dict:
     tmpdir = tempfile.mkdtemp()
-    src = os.path.join(tmpdir, "main.c")
+    ext = ".cpp" if cpp else ".c"
+    compiler = "g++" if cpp else "gcc"
+    src = os.path.join(tmpdir, f"main{ext}")
     exe = os.path.join(tmpdir, "main.exe")
 
     try:
@@ -362,7 +366,7 @@ def _run_c(code: str, stdin_data: str) -> dict:
             f.write(code)
 
         # Compile
-        compile_result = _execute(["gcc", src, "-o", exe, "-lm"])
+        compile_result = _execute([compiler, src, "-o", exe, "-lm"])
         if not compile_result["success"]:
             compile_result["error"] = "컴파일 에러:\n" + compile_result["error"]
             return compile_result
