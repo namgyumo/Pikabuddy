@@ -96,7 +96,7 @@
 
 <div class="hero">
   <h1><span>PikaBuddy</span> Custom Theme Guide</h1>
-  <p>CSS 변수 + Custom CSS + 파티클 이펙트 + 이벤트 트리거까지,<br>JSON 하나로 테마 전체를 표현하는 5계층 테마 엔진 가이드</p>
+  <p>CSS 변수 + Custom CSS + 파티클 이펙트 + 이미지/영상 에셋 + 마스코트 AI + 이벤트 트리거까지,<br>JSON 하나로 테마 전체를 표현하는 5계층 테마 엔진 가이드</p>
 </div>
 
 <div class="container">
@@ -108,13 +108,15 @@
   <li><a href="#variables">2. CSS 변수 레퍼런스 (47개)</a></li>
   <li><a href="#customcss">3. Custom CSS 작성법</a></li>
   <li><a href="#animation">4. 애니메이션 프리셋</a></li>
-  <li><a href="#effects">5. 이펙트 전체 카탈로그 (55개)</a></li>
-  <li><a href="#layers">6. 레이어 시스템 (z-index)</a></li>
-  <li><a href="#triggers">7. 트리거 시스템 (이벤트 이펙트)</a></li>
-  <li><a href="#performance">8. 성능 자동 조절</a></li>
-  <li><a href="#howto">9. 테마 만들기 / 가져오기 / 공유하기</a></li>
-  <li><a href="#examples">10. 예시 테마 8종</a></li>
-  <li><a href="#tips">11. 디자인 팁</a></li>
+  <li><a href="#effects">5. 이펙트 전체 카탈로그 (58개)</a></li>
+  <li><a href="#assets">6. 이미지/영상 에셋 활용법 (커서/배경/마스코트)</a></li>
+  <li><a href="#mascot">7. 마스코트 행동 시스템 (30개 함수 + JSON 스크립트)</a></li>
+  <li><a href="#layers">8. 레이어 시스템 (z-index)</a></li>
+  <li><a href="#triggers">9. 트리거 시스템 (이벤트 이펙트)</a></li>
+  <li><a href="#performance">10. 성능 자동 조절</a></li>
+  <li><a href="#howto">11. 테마 만들기 / 가져오기 / 공유하기</a></li>
+  <li><a href="#examples">12. 예시 테마 11종</a></li>
+  <li><a href="#tips">13. 디자인 팁</a></li>
 </ol>
 
 <!-- 1. Structure -->
@@ -324,7 +326,7 @@
 
 
 <!-- 5. Effects -->
-<h2 id="effects">5. 이펙트 전체 카탈로그 (55개)</h2>
+<h2 id="effects">5. 이펙트 전체 카탈로그 (58개)</h2>
 <p><code>effects</code> 객체에서 ID를 키로, <code>enabled</code> / <code>params</code> / <code>layer</code>를 지정합니다.</p>
 
 <h3>5.1 배경 효과 (Background) — 9개</h3>
@@ -424,16 +426,390 @@
 </div>
 
 
-<!-- 6. Layers -->
-<h2 id="layers">6. 레이어 시스템 (z-index)</h2>
+<h3>5.11 이미지/에셋 (Asset) — 3개</h3>
+<p>직접 이미지 파일을 업로드하거나 URL을 지정하여 커서, 배경, 마스코트 캐릭터를 커스터마이징합니다.</p>
+<div class="grid">
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🖱️</span><span class="effect-name">customCursorImage</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">나만의 커서 이미지 (기본/포인터/텍스트 상태별)</div><div class="effect-params">default: image, pointer: image, text: image</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🏞️</span><span class="effect-name">backgroundImage</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">커스텀 배경 이미지/일러스트 오버레이</div><div class="effect-params">url: image, opacity: 0.02~1, blendMode, size, position</div></div>
+  <div class="effect-card"><div class="effect-header"><span class="effect-icon">🐾</span><span class="effect-name">mascotSprite</span><span class="effect-mode mode-ambient">ambient</span></div><div class="effect-desc">움직이는 캐릭터 마스코트 (드래그/클릭 가능)</div><div class="effect-params">spriteUrl: image, frameCount, frameWidth, frameHeight, fps, scale, layout, cols, posX, posY</div></div>
+</div>
+
+<div class="tip">
+  <strong>이미지 입력:</strong> URL 직접 입력 또는 파일 업로드(자동 data URI 변환) 두 가지 방식을 지원합니다. 큰 이미지는 URL 방식이 localStorage 용량 절약에 유리합니다.
+</div>
+
+
+<!-- 6. Asset Guide -->
+<h2 id="assets">6. 이미지/영상 에셋 활용법</h2>
+<p>커서 이미지, 배경 미디어(이미지/GIF/동영상), 마스코트 스프라이트를 활용하면 완전히 독창적인 테마를 만들 수 있습니다.</p>
+
+<h3>6.1 커서 이미지 (customCursorImage)</h3>
+<p>마우스 커서를 나만의 이미지로 교체합니다. 3가지 상태별로 다른 커서를 지정할 수 있습니다.</p>
+<table>
+  <tr><th>파라미터</th><th>적용 대상</th><th>권장 크기</th></tr>
+  <tr><td><code>default</code></td><td>일반 영역 (배경, 본문)</td><td>32x32px</td></tr>
+  <tr><td><code>pointer</code></td><td>클릭 가능 요소 (버튼, 링크, 카드)</td><td>32x32px</td></tr>
+  <tr><td><code>text</code></td><td>텍스트 입력 영역 (인풋, 에디터)</td><td>32x32px</td></tr>
+</table>
+
+<div class="warn">
+  <strong>주의:</strong> 커서 이미지는 128x128px 이하여야 하며, 32x32px PNG가 가장 안정적입니다. 투명 배경 PNG를 사용하세요.
+</div>
+
+<pre><span class="key">"customCursorImage"</span>: {
+  <span class="key">"enabled"</span>: true,
+  <span class="key">"params"</span>: {
+    <span class="key">"default"</span>: <span class="str">"https://example.com/cursor-normal.png"</span>,
+    <span class="key">"pointer"</span>: <span class="str">"https://example.com/cursor-pointer.png"</span>,
+    <span class="key">"text"</span>: <span class="str">"https://example.com/cursor-text.png"</span>
+  }
+}</pre>
+
+<h3>6.2 배경 미디어 (backgroundImage) — 이미지 / GIF / 동영상</h3>
+<p>배경에 이미지, GIF 애니메이션, 동영상(mp4/webm)을 오버레이합니다. 미디어 타입은 URL에서 자동 감지됩니다.</p>
+<table>
+  <tr><th>파라미터</th><th>설명</th><th>옵션</th></tr>
+  <tr><td><code>url</code></td><td>미디어 URL 또는 data URI</td><td>PNG, JPG, SVG, WebP, <strong>GIF, MP4, WebM</strong></td></tr>
+  <tr><td><code>opacity</code></td><td>불투명도</td><td>0.02 ~ 1 (기본 0.15)</td></tr>
+  <tr><td><code>blendMode</code></td><td>혼합 모드</td><td>normal, multiply, screen, overlay, soft-light, luminosity</td></tr>
+  <tr><td><code>size</code></td><td>이미지/영상 크기</td><td>cover(채우기), contain(맞추기), auto(원본), 200px/400px(타일)</td></tr>
+  <tr><td><code>position</code></td><td>위치 정렬</td><td>center, top, bottom, left, right</td></tr>
+</table>
+
+<h4>미디어 타입별 동작</h4>
+<table>
+  <tr><th>타입</th><th>감지 기준</th><th>렌더링 방식</th></tr>
+  <tr><td><strong>이미지</strong> (PNG, JPG 등)</td><td>기본값</td><td><code>background-image</code> — 정적 오버레이</td></tr>
+  <tr><td><strong>GIF</strong></td><td>확장자 <code>.gif</code> 또는 <code>data:image/gif</code></td><td><code>background-image</code> — 브라우저가 자동 재생</td></tr>
+  <tr><td><strong>동영상</strong> (MP4, WebM)</td><td>확장자 <code>.mp4</code> / <code>.webm</code> 또는 <code>data:video/</code></td><td><code>&lt;video&gt;</code> 요소 — 자동 반복 재생, 음소거</td></tr>
+</table>
+
+<pre><span class="comment">// 정적 이미지</span>
+<span class="key">"backgroundImage"</span>: {
+  <span class="key">"enabled"</span>: true,
+  <span class="key">"params"</span>: {
+    <span class="key">"url"</span>: <span class="str">"https://example.com/bg-pattern.png"</span>,
+    <span class="key">"opacity"</span>: <span class="num">0.1</span>,
+    <span class="key">"blendMode"</span>: <span class="str">"soft-light"</span>
+  }
+}
+
+<span class="comment">// GIF 애니메이션 배경</span>
+<span class="key">"backgroundImage"</span>: {
+  <span class="key">"enabled"</span>: true,
+  <span class="key">"params"</span>: {
+    <span class="key">"url"</span>: <span class="str">"https://example.com/rain-loop.gif"</span>,
+    <span class="key">"opacity"</span>: <span class="num">0.2</span>,
+    <span class="key">"size"</span>: <span class="str">"cover"</span>
+  }
+}
+
+<span class="comment">// 동영상 배경 (자동 반복, 음소거)</span>
+<span class="key">"backgroundImage"</span>: {
+  <span class="key">"enabled"</span>: true,
+  <span class="key">"params"</span>: {
+    <span class="key">"url"</span>: <span class="str">"https://example.com/ambient-loop.mp4"</span>,
+    <span class="key">"opacity"</span>: <span class="num">0.15</span>,
+    <span class="key">"blendMode"</span>: <span class="str">"screen"</span>,
+    <span class="key">"size"</span>: <span class="str">"cover"</span>
+  }
+}</pre>
+
+<div class="tip">
+  <strong>활용 팁:</strong>
+  <ul style="margin-top:6px">
+    <li>타일 모드(200px/400px) + 패턴 이미지 = 반복 배경</li>
+    <li>opacity 0.05~0.15 + multiply 블렌드 = 은은한 텍스처</li>
+    <li>GIF: 루프 애니메이션 배경 (비/눈/파도 등) — 파일 크기 주의</li>
+    <li>동영상: 고화질 앰비언트 루프 — 외부 URL 권장 (data URI는 용량이 큼)</li>
+  </ul>
+</div>
+
+<h3>6.3 마스코트 스프라이트 (mascotSprite)</h3>
+<p>화면 구석에 프레임 애니메이션으로 움직이는 캐릭터를 배치합니다. <strong>30개 행동 함수 + JSON 스크립트</strong>로 움직임, 대사, 이벤트 반응까지 프로그래밍할 수 있습니다.</p>
+
+<h4>스프라이트 시트 준비하기</h4>
+<p>스프라이트 시트는 <strong>프레임을 한 장의 이미지에 나열</strong>한 것입니다. <strong>3가지 배치</strong>를 지원합니다:</p>
+
+<div class="card" style="text-align:center">
+  <p style="font-weight:700;margin-bottom:8px">① 가로 배치 (horizontal) — 기본값</p>
+  <div style="display:flex;align-items:center;justify-content:center;gap:4px;margin:8px 0">
+    <div style="width:50px;height:50px;background:var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:20px">🧍</div>
+    <div style="width:50px;height:50px;background:var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:20px">🚶</div>
+    <div style="width:50px;height:50px;background:var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:20px">🏃</div>
+    <div style="width:50px;height:50px;background:var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:20px">🚶</div>
+  </div>
+  <p style="font-size:0.8em;color:var(--muted)">4프레임 가로 시트 (256×64px)</p>
+
+  <p style="font-weight:700;margin:12px 0 8px">② 세로 배치 (vertical)</p>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:4px;margin:8px 0">
+    <div style="width:50px;height:50px;background:var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:20px">🧍</div>
+    <div style="width:50px;height:50px;background:var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:20px">🚶</div>
+    <div style="width:50px;height:50px;background:var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:20px">🏃</div>
+    <div style="width:50px;height:50px;background:var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:20px">🚶</div>
+  </div>
+  <p style="font-size:0.8em;color:var(--muted)">4프레임 세로 시트 (64×256px)</p>
+
+  <p style="font-weight:700;margin:12px 0 8px">③ 격자 배치 (grid)</p>
+  <div style="display:grid;grid-template-columns:50px 50px 50px;gap:4px;justify-content:center;margin:8px 0">
+    <div style="width:50px;height:50px;background:var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:20px">🧍</div>
+    <div style="width:50px;height:50px;background:var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:20px">🚶</div>
+    <div style="width:50px;height:50px;background:var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:20px">🏃</div>
+    <div style="width:50px;height:50px;background:var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:20px">🚶</div>
+    <div style="width:50px;height:50px;background:var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:20px">🧎</div>
+    <div style="width:50px;height:50px;background:var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:20px">🧍</div>
+  </div>
+  <p style="font-size:0.8em;color:var(--muted)">6프레임 격자 시트 (cols=3 → 3×2, 192×128px)</p>
+</div>
+
+<table>
+  <tr><th>파라미터</th><th>설명</th><th>기본값</th></tr>
+  <tr><td><code>spriteUrl</code></td><td>기본 스프라이트 시트 이미지</td><td>(필수)</td></tr>
+  <tr><td><code>frameCount</code></td><td>총 프레임 수</td><td>4</td></tr>
+  <tr><td><code>frameWidth</code></td><td>1프레임 너비 (px)</td><td>64</td></tr>
+  <tr><td><code>frameHeight</code></td><td>1프레임 높이 (px)</td><td>64</td></tr>
+  <tr><td><code>fps</code></td><td>초당 프레임 수</td><td>8</td></tr>
+  <tr><td><code>scale</code></td><td>크기 배율 (0.5~4)</td><td>1</td></tr>
+  <tr><td><code>layout</code></td><td>시트 배치: <code>horizontal</code>(가로), <code>vertical</code>(세로), <code>grid</code>(격자)</td><td>horizontal</td></tr>
+  <tr><td><code>cols</code></td><td>격자 열 수 (layout이 grid일 때만 사용)</td><td>√frameCount</td></tr>
+  <tr><td><code>posX</code></td><td>오른쪽 여백 (px)</td><td>20</td></tr>
+  <tr><td><code>posY</code></td><td>아래쪽 여백 (px)</td><td>20</td></tr>
+  <tr><td><code>script</code></td><td>행동 스크립트 (JSON 문자열)</td><td>(선택, 없으면 기본 행동)</td></tr>
+</table>
+
+<pre><span class="comment">// 가로 배치 (기본)</span>
+<span class="key">"mascotSprite"</span>: {
+  <span class="key">"enabled"</span>: true,
+  <span class="key">"params"</span>: {
+    <span class="key">"spriteUrl"</span>: <span class="str">"https://example.com/character-walk.png"</span>,
+    <span class="key">"frameCount"</span>: <span class="num">4</span>,
+    <span class="key">"frameWidth"</span>: <span class="num">64</span>,
+    <span class="key">"frameHeight"</span>: <span class="num">64</span>,
+    <span class="key">"layout"</span>: <span class="str">"horizontal"</span>
+  }
+}
+
+<span class="comment">// 격자 배치 (12프레임, 4열×3행)</span>
+<span class="key">"mascotSprite"</span>: {
+  <span class="key">"enabled"</span>: true,
+  <span class="key">"params"</span>: {
+    <span class="key">"spriteUrl"</span>: <span class="str">"https://example.com/character-grid.png"</span>,
+    <span class="key">"frameCount"</span>: <span class="num">12</span>,
+    <span class="key">"frameWidth"</span>: <span class="num">64</span>,
+    <span class="key">"frameHeight"</span>: <span class="num">64</span>,
+    <span class="key">"layout"</span>: <span class="str">"grid"</span>,
+    <span class="key">"cols"</span>: <span class="num">4</span>
+  }
+}</pre>
+
+<div class="tip">
+  <strong>마스코트 기능:</strong>
+  <ul style="margin-top:6px">
+    <li>CSS <code>steps()</code> 애니메이션으로 구현 — GPU 부하 거의 없음</li>
+    <li><code>image-rendering: pixelated</code> — 픽셀아트 캐릭터도 선명하게 표시</li>
+    <li><strong>3가지 시트 배치</strong> — 가로(horizontal), 세로(vertical), 격자(grid) 모두 지원</li>
+    <li>마우스/터치 드래그 지원 — 원하는 위치로 이동 가능 (드래그 중 자동 일시정지, 놓으면 재개)</li>
+    <li><strong>30개 행동 함수</strong> — walkTo, bounce, say, emote, playSprite, spawn/kill 등</li>
+    <li><strong>JSON 스크립트</strong> — 시작 동작, 루프, 이벤트 리액션을 프로그래밍</li>
+    <li><strong>멀티 스프라이트</strong> — 상태별로 다른 스프라이트 시트 전환 (idle/walk/happy 등)</li>
+    <li>콘솔에서 <code>__pikabuddyMascot.dance()</code> 같은 직접 호출도 가능</li>
+  </ul>
+</div>
+
+<h4>스프라이트 시트 구하기</h4>
+<div class="card">
+  <ul>
+    <li><strong>직접 그리기:</strong> Aseprite, Piskel(무료 웹), LibreSprite로 픽셀아트 제작</li>
+    <li><strong>AI 생성:</strong> "pixel art sprite sheet, 4 frames walk cycle, transparent background" 프롬프트</li>
+    <li><strong>무료 에셋:</strong> OpenGameArt, itch.io의 무료 스프라이트 검색</li>
+    <li><strong>크기:</strong> 32x32 ~ 128x128px 권장, scale 파라미터로 확대/축소 가능</li>
+    <li><strong>멀티 시트:</strong> idle/walk/happy 등 여러 동작별 시트를 준비 → <code>sprites</code>에 등록</li>
+  </ul>
+</div>
+
+<div class="warn">
+  <strong>스프라이트 시트 vs 정지 이미지:</strong> 정지 이미지 1장만 있어도 OK! <code>frameCount: 1</code>로 설정하면 프레임 애니메이션 없이 위치 이동/대사/이모지 등 행동 함수만 사용됩니다.
+</div>
+
+
+<!-- 7. Mascot Behavior System -->
+<h2 id="mascot">7. 마스코트 행동 시스템 (30개 함수 + JSON 스크립트)</h2>
+<p>MascotController는 마스코트 캐릭터를 프로그래밍하기 위한 30개의 JS 함수를 제공합니다. JSON 스크립트로 시나리오를 구성하거나, 콘솔에서 직접 호출할 수 있습니다.</p>
+
+<h3>7.1 행동 함수 레퍼런스 (30개)</h3>
+
+<h4>이동 (6개)</h4>
+<table>
+  <tr><th>함수</th><th>설명</th><th>주요 파라미터</th></tr>
+  <tr><td><code>moveTo</code></td><td>즉시 이동</td><td><code>x</code>, <code>y</code> (px, 뷰포트 가장자리 기준)</td></tr>
+  <tr><td><code>walkTo</code></td><td>부드럽게 걸어감 (easeInOut 보간)</td><td><code>x</code>, <code>y</code>, <code>duration</code> (ms, 기본 1000)</td></tr>
+  <tr><td><code>patrol</code></td><td>웨이포인트 순회</td><td><code>waypoints</code> [{x, y, pause?}], <code>repeat</code></td></tr>
+  <tr><td><code>wander</code></td><td>범위 내 랜덤 배회</td><td><code>bounds</code> {minX, maxX, minY, maxY}, <code>steps</code></td></tr>
+  <tr><td><code>follow</code></td><td>마우스 커서 따라다님</td><td><code>offset</code> {x, y}, <code>speed</code> (0~1)</td></tr>
+  <tr><td><code>orbit</code></td><td>한 점 주위로 원형 공전</td><td><code>centerX</code>, <code>centerY</code>, <code>radius</code>, <code>revolutions</code>, <code>duration</code></td></tr>
+</table>
+
+<h4>애니메이션 (9개)</h4>
+<table>
+  <tr><th>함수</th><th>설명</th><th>주요 파라미터</th></tr>
+  <tr><td><code>bounce</code></td><td>제자리 통통 튀기</td><td><code>height</code> (px), <code>count</code>, <code>speed</code> (ms)</td></tr>
+  <tr><td><code>jump</code></td><td>한 번 높이 점프</td><td><code>height</code> (px), <code>duration</code></td></tr>
+  <tr><td><code>spin</code></td><td>회전</td><td><code>turns</code>, <code>duration</code></td></tr>
+  <tr><td><code>shake</code></td><td>좌우 흔들기 (감쇠)</td><td><code>intensity</code> (px), <code>duration</code></td></tr>
+  <tr><td><code>wave</code></td><td>손 흔들기 (좌우 기울기)</td><td><code>count</code>, <code>duration</code></td></tr>
+  <tr><td><code>dance</code></td><td>춤 (bounce + spin 콤보)</td><td><code>duration</code></td></tr>
+  <tr><td><code>nod</code></td><td>끄덕이기</td><td><code>count</code>, <code>speed</code></td></tr>
+  <tr><td><code>float</code></td><td>부드럽게 떠다니기</td><td><code>amplitude</code> (px), <code>duration</code></td></tr>
+  <tr><td><code>surprise</code></td><td>놀람 (jump + shake 콤보)</td><td>(없음)</td></tr>
+</table>
+
+<h4>표시 (5개)</h4>
+<table>
+  <tr><th>함수</th><th>설명</th><th>주요 파라미터</th></tr>
+  <tr><td><code>flip</code></td><td>좌우 반전</td><td><code>direction</code> ("left" | "right")</td></tr>
+  <tr><td><code>setScale</code></td><td>크기 변경</td><td><code>scale</code> (배율)</td></tr>
+  <tr><td><code>setOpacity</code></td><td>투명도 변경</td><td><code>opacity</code> (0~1)</td></tr>
+  <tr><td><code>hide</code></td><td>페이드 아웃 후 숨김</td><td><code>duration</code></td></tr>
+  <tr><td><code>show</code></td><td>페이드 인으로 표시</td><td><code>duration</code></td></tr>
+</table>
+
+<h4>소통 (2개)</h4>
+<table>
+  <tr><th>함수</th><th>설명</th><th>주요 파라미터</th></tr>
+  <tr><td><code>say</code></td><td>말풍선 표시</td><td><code>text</code> (문자열), <code>duration</code> (ms)</td></tr>
+  <tr><td><code>emote</code></td><td>머리 위 이모지</td><td><code>emoji</code>, <code>duration</code></td></tr>
+</table>
+
+<h4>스프라이트 관리 (5개)</h4>
+<table>
+  <tr><th>함수</th><th>설명</th><th>주요 파라미터</th></tr>
+  <tr><td><code>addSprite</code></td><td>이름으로 스프라이트 시트 등록</td><td><code>name</code>, <code>config</code> {url, frameCount, frameWidth, frameHeight, fps, layout?, cols?}</td></tr>
+  <tr><td><code>playSprite</code></td><td>등록된 스프라이트로 전환</td><td><code>name</code></td></tr>
+  <tr><td><code>setSpriteSheet</code></td><td>직접 스프라이트 교체</td><td><code>url</code>, <code>frameCount</code>, <code>frameWidth</code>, <code>frameHeight</code>, <code>fps</code></td></tr>
+  <tr><td><code>spawn</code></td><td>마스코트 등장 (페이드인)</td><td><code>name</code> (선택, 스프라이트 이름)</td></tr>
+  <tr><td><code>kill</code></td><td>마스코트 퇴장 (페이드아웃 + 축소)</td><td>(없음)</td></tr>
+</table>
+
+<h4>제어 (3개)</h4>
+<table>
+  <tr><th>함수</th><th>설명</th><th>주요 파라미터</th></tr>
+  <tr><td><code>sleep</code></td><td>수면 (어두워지며 떠다님 + 💤)</td><td><code>duration</code></td></tr>
+  <tr><td><code>idle</code></td><td>대기 (미세 호흡 애니메이션)</td><td><code>duration</code></td></tr>
+  <tr><td><code>wait</code></td><td>지정 시간 대기</td><td><code>duration</code> (ms)</td></tr>
+</table>
+
+<h3>7.2 JSON 스크립트 구조</h3>
+<p><code>script</code> 파라미터에 JSON 문자열을 넣어 마스코트 행동 시나리오를 구성합니다.</p>
+
+<pre>{
+  <span class="comment">// 여러 스프라이트 시트 등록 (선택)</span>
+  <span class="key">"sprites"</span>: {
+    <span class="key">"idle"</span>:  { <span class="key">"url"</span>: <span class="str">"idle.png"</span>,  <span class="key">"frameCount"</span>: <span class="num">4</span>, <span class="key">"frameWidth"</span>: <span class="num">64</span>, <span class="key">"frameHeight"</span>: <span class="num">64</span>, <span class="key">"fps"</span>: <span class="num">6</span> },
+    <span class="key">"walk"</span>:  { <span class="key">"url"</span>: <span class="str">"walk.png"</span>,  <span class="key">"frameCount"</span>: <span class="num">6</span>, <span class="key">"frameWidth"</span>: <span class="num">64</span>, <span class="key">"frameHeight"</span>: <span class="num">64</span>, <span class="key">"fps"</span>: <span class="num">10</span>, <span class="key">"layout"</span>: <span class="str">"vertical"</span> },
+    <span class="key">"happy"</span>: { <span class="key">"url"</span>: <span class="str">"happy.png"</span>, <span class="key">"frameCount"</span>: <span class="num">12</span>, <span class="key">"frameWidth"</span>: <span class="num">64</span>, <span class="key">"frameHeight"</span>: <span class="num">64</span>, <span class="key">"fps"</span>: <span class="num">8</span>, <span class="key">"layout"</span>: <span class="str">"grid"</span>, <span class="key">"cols"</span>: <span class="num">4</span> }
+  },
+
+  <span class="comment">// 시작 시 1회 실행 (순차)</span>
+  <span class="key">"onStart"</span>: [
+    { <span class="key">"action"</span>: <span class="str">"spawn"</span>, <span class="key">"params"</span>: { <span class="key">"name"</span>: <span class="str">"idle"</span> } },
+    { <span class="key">"action"</span>: <span class="str">"say"</span>, <span class="key">"params"</span>: { <span class="key">"text"</span>: <span class="str">"안녕! 👋"</span>, <span class="key">"duration"</span>: <span class="num">2000</span> } },
+    { <span class="key">"action"</span>: <span class="str">"bounce"</span>, <span class="key">"params"</span>: { <span class="key">"height"</span>: <span class="num">15</span>, <span class="key">"count"</span>: <span class="num">2</span> } }
+  ],
+
+  <span class="comment">// 반복 루프 (무한 반복)</span>
+  <span class="key">"loop"</span>: [
+    { <span class="key">"action"</span>: <span class="str">"playSprite"</span>, <span class="key">"params"</span>: { <span class="key">"name"</span>: <span class="str">"idle"</span> } },
+    { <span class="key">"action"</span>: <span class="str">"idle"</span>, <span class="key">"params"</span>: { <span class="key">"duration"</span>: <span class="num">8000</span> } },
+    { <span class="key">"action"</span>: <span class="str">"playSprite"</span>, <span class="key">"params"</span>: { <span class="key">"name"</span>: <span class="str">"walk"</span> } },
+    { <span class="key">"action"</span>: <span class="str">"wander"</span>, <span class="key">"params"</span>: { <span class="key">"steps"</span>: <span class="num">2</span> } }
+  ],
+
+  <span class="comment">// 이벤트 리액션</span>
+  <span class="key">"reactions"</span>: {
+    <span class="key">"onClick"</span>: [
+      { <span class="key">"action"</span>: <span class="str">"playSprite"</span>, <span class="key">"params"</span>: { <span class="key">"name"</span>: <span class="str">"happy"</span> } },
+      { <span class="key">"action"</span>: <span class="str">"bounce"</span>, <span class="key">"params"</span>: { <span class="key">"height"</span>: <span class="num">20</span> } },
+      { <span class="key">"action"</span>: <span class="str">"emote"</span>, <span class="key">"params"</span>: { <span class="key">"emoji"</span>: <span class="str">"😊"</span> } }
+    ],
+    <span class="key">"onCorrect"</span>: [
+      { <span class="key">"action"</span>: <span class="str">"playSprite"</span>, <span class="key">"params"</span>: { <span class="key">"name"</span>: <span class="str">"happy"</span> } },
+      { <span class="key">"action"</span>: <span class="str">"jump"</span>, <span class="key">"params"</span>: { <span class="key">"height"</span>: <span class="num">40</span> } },
+      { <span class="key">"action"</span>: <span class="str">"dance"</span>, <span class="key">"params"</span>: { <span class="key">"duration"</span>: <span class="num">1500</span> } }
+    ],
+    <span class="key">"onWrong"</span>: [
+      { <span class="key">"action"</span>: <span class="str">"shake"</span> },
+      { <span class="key">"action"</span>: <span class="str">"emote"</span>, <span class="key">"params"</span>: { <span class="key">"emoji"</span>: <span class="str">"😢"</span> } }
+    ],
+    <span class="key">"onLevelUp"</span>: [
+      { <span class="key">"action"</span>: <span class="str">"spin"</span>, <span class="key">"params"</span>: { <span class="key">"turns"</span>: <span class="num">2</span> } },
+      { <span class="key">"action"</span>: <span class="str">"say"</span>, <span class="key">"params"</span>: { <span class="key">"text"</span>: <span class="str">"레벨업! 🎊"</span> } }
+    ],
+    <span class="key">"onHover"</span>: [{ <span class="key">"action"</span>: <span class="str">"nod"</span> }],
+    <span class="key">"onIdle"</span>: [{ <span class="key">"action"</span>: <span class="str">"sleep"</span>, <span class="key">"params"</span>: { <span class="key">"duration"</span>: <span class="num">5000</span> } }]
+  }
+}</pre>
+
+<h3>7.3 실행 흐름</h3>
+<div class="card">
+<pre style="background:transparent;border:none;padding:0;margin:0;color:var(--text)">마스코트 활성화
+  ├── sprites 등록 (idle, walk, happy 등)
+  ├── onStart 실행 (순차) → spawn → 말풍선 → 바운스
+  ├── loop 반복 실행 → idle 대기 → walk 스프라이트 → 배회 → ...
+  └── reactions 대기
+       ├── 클릭 → happy 스프라이트 + bounce + emote
+       ├── 정답 → happy + jump + dance
+       ├── 오답 → shake + emote 😢
+       ├── 레벨업 → spin + say "레벨업!"
+       ├── 호버 → nod
+       └── 30초 무입력 → sleep</pre>
+</div>
+
+<div class="tip">
+  <strong>드래그 안전장치:</strong> 마스코트를 드래그하면 현재 애니메이션이 자동 일시정지되고, 놓으면 루프가 재개됩니다. 드래그 vs 클릭은 3px 이동 기준으로 자동 구분됩니다.
+</div>
+
+<h3>7.4 spawn/kill로 동적 등장/퇴장</h3>
+<p><code>spawn</code>과 <code>kill</code>을 조합하면 마스코트가 이벤트에 맞춰 등장/퇴장하는 연출이 가능합니다.</p>
+
+<pre><span class="comment">// 정답 시: 다른 캐릭터로 변신 → 축하 → 원래로 복귀</span>
+<span class="key">"onCorrect"</span>: [
+  { <span class="key">"action"</span>: <span class="str">"kill"</span> },
+  { <span class="key">"action"</span>: <span class="str">"spawn"</span>, <span class="key">"params"</span>: { <span class="key">"name"</span>: <span class="str">"happy"</span> } },
+  { <span class="key">"action"</span>: <span class="str">"dance"</span>, <span class="key">"params"</span>: { <span class="key">"duration"</span>: <span class="num">2000</span> } },
+  { <span class="key">"action"</span>: <span class="str">"kill"</span> },
+  { <span class="key">"action"</span>: <span class="str">"spawn"</span>, <span class="key">"params"</span>: { <span class="key">"name"</span>: <span class="str">"idle"</span> } }
+]</pre>
+
+<h3>7.5 콘솔에서 직접 제어</h3>
+<p>마스코트가 활성화되어 있으면 브라우저 개발자 도구 콘솔에서 직접 함수를 호출할 수 있습니다.</p>
+
+<pre><span class="comment">// 전역 변수로 접근</span>
+__pikabuddyMascot.dance()
+__pikabuddyMascot.say(<span class="str">"안녕하세요!"</span>)
+__pikabuddyMascot.walkTo(<span class="num">100</span>, <span class="num">50</span>, <span class="num">2000</span>)
+__pikabuddyMascot.playSprite(<span class="str">"walk"</span>)
+__pikabuddyMascot.spawn(<span class="str">"happy"</span>)
+__pikabuddyMascot.kill()
+
+<span class="comment">// 등록된 스프라이트 목록 확인</span>
+__pikabuddyMascot.getSpriteNames()
+
+<span class="comment">// 현재 스프라이트</span>
+__pikabuddyMascot.getCurrentSprite()</pre>
+
+
+<!-- 8. Layers -->
+<h2 id="layers">8. 레이어 시스템 (z-index)</h2>
 <p>이펙트가 겹칠 때 <code>layer</code> 값으로 렌더링 순서를 제어합니다. 낮을수록 뒤(배경), 높을수록 앞(전경).</p>
 
 <div class="layer-diagram">
   <div class="layer-stack">
+    <div class="layer-row" style="background:rgba(251,191,36,0.15)"><span>마스코트 (mascotSprite)</span><span>z-index: 9999</span></div>
     <div class="layer-row" style="background:rgba(129,140,248,0.2)"><span>커서 효과 (cursorGlow, mouseTrail)</span><span>layer: 3</span></div>
     <div class="layer-row" style="background:rgba(129,140,248,0.15)"><span>요소 스타일 (glow, glassMorphism)</span><span>layer: 2</span></div>
     <div class="layer-row" style="background:rgba(129,140,248,0.1)"><span>중간 효과 (aurora, fadeInScroll)</span><span>layer: 1</span></div>
-    <div class="layer-row" style="background:rgba(129,140,248,0.05)"><span>배경 효과 (starfield, particles)</span><span>layer: 0</span></div>
+    <div class="layer-row" style="background:rgba(129,140,248,0.05)"><span>배경 이미지 (backgroundImage)</span><span>layer: 0</span></div>
+    <div class="layer-row" style="background:rgba(129,140,248,0.03)"><span>배경 효과 (starfield, particles)</span><span>layer: 0</span></div>
   </div>
 </div>
 
@@ -445,8 +821,8 @@
 }</pre>
 
 
-<!-- 7. Triggers -->
-<h2 id="triggers">7. 트리거 시스템 (이벤트 이펙트)</h2>
+<!-- 9. Triggers -->
+<h2 id="triggers">9. 트리거 시스템 (이벤트 이펙트)</h2>
 <p>게이미피케이션 이펙트(confetti, wrongShake 등)는 항상 켜져있는 게 아니라 특정 이벤트에 반응합니다.</p>
 
 <h3>사용 가능한 이벤트</h3>
@@ -470,8 +846,8 @@
 }</pre>
 
 
-<!-- 8. Performance -->
-<h2 id="performance">8. 성능 자동 조절</h2>
+<!-- 10. Performance -->
+<h2 id="performance">10. 성능 자동 조절</h2>
 <p>PikaBuddy 테마 엔진은 자동 성능 관리 기능이 내장되어 있습니다.</p>
 
 <div class="card">
@@ -499,13 +875,13 @@
 </div>
 
 
-<!-- 9. How-to -->
-<h2 id="howto">9. 테마 만들기 / 가져오기 / 공유하기</h2>
+<!-- 11. How-to -->
+<h2 id="howto">11. 테마 만들기 / 가져오기 / 공유하기</h2>
 
 <h3>방법 1: GUI 에디터 (권장)</h3>
 <ol>
   <li>설정 > 테마에서 <strong>"만들기"</strong> 클릭</li>
-  <li>4개 탭(GUI / JSON / CSS / Effects)에서 편집</li>
+  <li>5개 탭(GUI / Effects / Assets / JSON / CSS)에서 편집</li>
   <li><strong>저장</strong>하면 자동으로 커스텀 테마로 등록</li>
 </ol>
 
@@ -530,73 +906,83 @@
 </ol>
 
 
-<!-- 10. Examples -->
-<h2 id="examples">10. 예시 테마 8종</h2>
+<!-- 12. Examples -->
+<h2 id="examples">12. 예시 테마 11종</h2>
 <p>내장 프리셋 커스텀 테마입니다. 각각의 JSON 파일은 <code>/themes/</code> 경로에서 다운로드 가능합니다.</p>
 
 <table>
-  <tr><th>테마</th><th>스타일</th><th>상시 이펙트</th><th>트리거</th><th>파일</th></tr>
+  <tr><th>테마</th><th>스타일</th><th>주요 이펙트</th><th>파일</th></tr>
   <tr>
     <td><strong>Neon Galaxy</strong></td>
-    <td>다크 우주 + 네온 퍼플/시안</td>
-    <td>starfield(0), aurora(1), glow(2), neonText(3), gradientBorder(2)</td>
-    <td>onCorrect, onWrong, onLevelUp, onBadge</td>
-    <td><code>neon-galaxy.pikabuddy-theme.json</code></td>
+    <td>딥 스페이스 + 네온 퍼플/시안</td>
+    <td>starfield, aurora, neonText, glow, gradientBorder, cursorGlow, clickExplosion</td>
+    <td><code>neon-galaxy.json</code></td>
   </tr>
   <tr>
-    <td><strong>Ocean Deep</strong></td>
-    <td>깊은 바다 다크 블루</td>
-    <td>bubbles(0), fogMist(1), glassMorphism(2), cursorGlow(3)</td>
-    <td>onCorrect, onWrong, onLevelUp, onCombo</td>
-    <td><code>ocean-deep.pikabuddy-theme.json</code></td>
+    <td><strong>Deep Ocean Abyss</strong></td>
+    <td>심해 어비스 + 바이오루미네선스</td>
+    <td>bubbles, fogMist, glow, softShadow, cursorGlow, clickExplosion</td>
+    <td><code>deep-ocean-abyss.json</code></td>
   </tr>
   <tr>
-    <td><strong>Cherry Blossom</strong></td>
-    <td>소프트 사쿠라 핑크</td>
-    <td>cherryBlossom(0), fadeInScroll(1), softShadow(2), mouseTrail(3)</td>
-    <td>onCorrect, onWrong, onLevelUp, onStreak</td>
-    <td><code>cherry-blossom.pikabuddy-theme.json</code></td>
+    <td><strong>Vintage Leather Craft</strong></td>
+    <td>가죽 공방 + 빈티지 크래프트</td>
+    <td>noiseTexture, dotGrid, softShadow, fadeInScroll, drawBorder</td>
+    <td><code>vintage-leather-craft.json</code></td>
   </tr>
   <tr>
     <td><strong>Matrix Terminal</strong></td>
-    <td>블랙/그린 해커</td>
-    <td>matrixRain(0), typewriterTitle(1), glitchText(2), cursorGlow(3)</td>
-    <td>onCorrect, onWrong, onLevelUp, onCombo</td>
-    <td><code>matrix-terminal.pikabuddy-theme.json</code></td>
+    <td>해커 터미널 + 매트릭스</td>
+    <td>matrixRain, glitchText, neonText, cursorGlow, clickExplosion, textScramble</td>
+    <td><code>matrix-terminal.json</code></td>
   </tr>
   <tr>
-    <td><strong>Sunset Warmth</strong></td>
-    <td>따뜻한 앰버/골드</td>
-    <td>particles(0), parallaxScroll(1), cardTilt(2), softShadow(2)</td>
-    <td>onCorrect, onWrong, onLevelUp, onDaily</td>
-    <td><code>sunset-warmth.pikabuddy-theme.json</code></td>
+    <td><strong>Thunderstorm</strong></td>
+    <td>폭풍우 + 번개</td>
+    <td>lightning, fogMist, vignetteOverlay, softShadow, cursorGlow</td>
+    <td><code>thunderstorm.json</code></td>
   </tr>
   <tr>
-    <td><strong>Arctic Aurora</strong></td>
-    <td>아이시 화이트/블루</td>
-    <td>aurora(0), fadeInScroll(1), glassMorphism(2), chromaticAberration(3)</td>
-    <td>onCorrect, onWrong, onLevelUp, onRankUp</td>
-    <td><code>arctic-aurora.pikabuddy-theme.json</code></td>
+    <td><strong>Steampunk Workshop</strong></td>
+    <td>스팀펑크 기어 + 세피아</td>
+    <td>noiseTexture, dotGrid, softShadow, glow, drawBorder</td>
+    <td><code>steampunk-workshop.json</code></td>
   </tr>
   <tr>
-    <td><strong>Candy Pop</strong></td>
-    <td>비비드 컬러풀</td>
-    <td>dotGrid(0), magneticButton(1), rainbowText(2)</td>
-    <td>onCorrect, onWrong, onLevelUp, onBadge, onStreak</td>
-    <td><code>candy-pop.pikabuddy-theme.json</code></td>
+    <td><strong>Retro Arcade</strong></td>
+    <td>8비트 아케이드 + 네온</td>
+    <td>noiseTexture, dotGrid, neonText, glow, glitchText, cursorGlow, clickExplosion</td>
+    <td><code>retro-arcade.json</code></td>
   </tr>
   <tr>
-    <td><strong>Midnight Studio</strong></td>
-    <td>프로페셔널 다크</td>
-    <td>particles(0), drawBorder(1), glow(2), fadeInScroll(1)</td>
-    <td>onCorrect, onWrong, onLevelUp, onCombo</td>
-    <td><code>midnight-studio.pikabuddy-theme.json</code></td>
+    <td><strong>Enchanted Forest</strong></td>
+    <td>마법의 숲 + 에메랄드</td>
+    <td>particles, aurora, glow, fadeInScroll, cursorGlow</td>
+    <td><code>enchanted-forest.json</code></td>
+  </tr>
+  <tr>
+    <td><strong>Cosmic Voyage</strong></td>
+    <td>우주 ���해 + 네뷸라</td>
+    <td>starfield, aurora, glow, neonText, cursorGlow, clickExplosion, mouseTrail</td>
+    <td><code>cosmic-voyage.json</code></td>
+  </tr>
+  <tr>
+    <td><strong>Paper Craft</strong></td>
+    <td>종이 공예 + 파스텔</td>
+    <td>dotGrid, noiseTexture, softShadow, fadeInScroll, drawBorder</td>
+    <td><code>paper-craft.json</code></td>
+  </tr>
+  <tr>
+    <td><strong>Northern Lights</strong></td>
+    <td>오로라 보레알리스 + 아이시</td>
+    <td>aurora, starfield, fogMist, glow, cursorGlow, clickExplosion</td>
+    <td><code>northern-lights.json</code></td>
   </tr>
 </table>
 
 
-<!-- 11. Tips -->
-<h2 id="tips">11. 디자인 팁</h2>
+<!-- 13. Tips -->
+<h2 id="tips">13. 디자인 팁</h2>
 
 <div class="card">
   <h4>색상 대비 확인</h4>
@@ -629,7 +1015,7 @@
 
 
 <div style="text-align:center; padding: 60px 0 40px; color: var(--muted); font-size: 0.9em;">
-  <p>PikaBuddy Theme Engine v1 &mdash; 47 Variables / 55 Effects / 5-Layer Architecture</p>
+  <p>PikaBuddy Theme Engine v1 &mdash; 47 Variables / 58 Effects / 30 Mascot Functions / 5-Layer Architecture + Media Assets</p>
   <p style="margin-top:8px">Built with AI-powered Vibe Coding</p>
 </div>
 

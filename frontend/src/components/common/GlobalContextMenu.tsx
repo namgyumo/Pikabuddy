@@ -56,6 +56,8 @@ export default function GlobalContextMenu() {
       const menuH = 350;
       if (x + menuW > window.innerWidth) x = window.innerWidth - menuW - 8;
       if (y + menuH > window.innerHeight) y = window.innerHeight - menuH - 8;
+      if (x < 8) x = 8;
+      if (y < 8) y = 8;
 
       setPos({ x, y });
     },

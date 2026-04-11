@@ -12,6 +12,8 @@ import { renderMarkdown } from "../lib/markdown";
 import api from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { getAdminToken } from "../store/authStore";
+import { useTeamVote } from "../lib/useTeamVote";
+import TeamVotePanel from "../components/TeamVotePanel";
 import type { Assignment } from "../types";
 
 function stripScoreLine(text: string): string {
@@ -39,6 +41,11 @@ export default function WritingEditor() {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const lastInternalCopyRef = useRef("");
   const navigate = useNavigate();
+
+  const { isTeamAssignment, voteStatus, loading: voteLoading, initiateVote, castVote } = useTeamVote(
+    assignmentId,
+    assignment?.is_team_assignment ?? false,
+  );
 
   const editor = useEditor({
     extensions: [
@@ -334,6 +341,18 @@ export default function WritingEditor() {
               }}>
                 기한이 마감되었습니다
               </div>
+            ) : isTeamAssignment ? (
+              <TeamVotePanel
+                voteStatus={voteStatus}
+                loading={voteLoading}
+                onInitiateVote={() => {
+                  if (!editor) return;
+                  const content = editor.getJSON();
+                  const text = editor.getText();
+                  initiateVote({ code: text, content, problem_index: 0 });
+                }}
+                onCastVote={castVote}
+              />
             ) : (
               <>
                 <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting}>

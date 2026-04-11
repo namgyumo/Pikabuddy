@@ -71,16 +71,16 @@ def _build_paste_context(snapshots_data: list, code: str) -> str:
 
 
 POLICY_DESCRIPTIONS = {
-    "free": "자유 모드 - AI 사용 및 복붙을 허용합니다. 복붙 여부는 참고만 하세요.",
-    "normal": "보통 모드 - 복붙은 감지되며, 과도한 복붙은 감점 요소입니다.",
-    "strict": "엄격 모드 - AI 사용과 복붙이 제한됩니다. 복붙이 있으면 상당한 감점이 필요합니다.",
-    "exam": "시험 모드 - 모든 외부 도구와 복붙이 금지됩니다. 복붙이 발견되면 부정행위로 간주하여 큰 감점을 하세요.",
+    "free": "Free mode - AI use and copy-paste are allowed. Note paste occurrences for reference only.",
+    "normal": "Normal mode - Pastes are detected; excessive pasting is a deduction factor.",
+    "strict": "Strict mode - AI use and pasting are restricted. Significant deduction if pasting is found.",
+    "exam": "Exam mode - All external tools and pasting are forbidden. Pasting is treated as cheating with major deduction.",
 }
 
 STRICTNESS_DESCRIPTIONS = {
-    "mild": "순한맛 - 관대하게 채점하세요. 노력과 시도를 높이 평가하고, 작은 실수는 크게 감점하지 마세요. 격려 위주로 피드백하세요.",
-    "normal": "보통맛 - 균형 잡힌 채점을 하세요. 잘한 점은 칭찬하되 부족한 점도 명확히 지적하세요.",
-    "strict": "매운맛 - 엄격하게 채점하세요. 높은 기준을 적용하고, 사소한 부분도 꼼꼼히 평가하세요. 80점 이상은 정말 잘한 경우에만 부여하세요.",
+    "mild": "Mild grading - Be lenient. Value effort and attempts; do not heavily penalize minor mistakes. Focus on encouragement.",
+    "normal": "Normal grading - Balanced grading. Praise strengths but also clearly point out weaknesses.",
+    "strict": "Strict grading - Apply high standards. Evaluate even minor details carefully. Only give 80+ for truly excellent work.",
 }
 
 
@@ -160,105 +160,107 @@ async def feedback_stream(submission_id: str, user: dict = Depends(get_current_u
         writing_prompt = assignment.get("writing_prompt", "")
         paste_context = _build_paste_context(snapshots.data, writing_text)
 
-        prompt = f"""당신은 친절한 글쓰기 튜터입니다. 학생의 글을 분석하고 피드백을 작성하세요.
+        prompt = f"""You are a friendly writing tutor. Analyze the student's essay and provide feedback.
 
-과제: {assignment.get('title', '')} / 주제: {assignment.get('topic', '')}
-글쓰기 지시문: {writing_prompt}
+Assignment: {assignment.get('title', '')} / Topic: {assignment.get('topic', '')}
+Writing prompt: {writing_prompt}
 
-=== AI 정책 ===
+=== AI Policy ===
 {policy_desc}
 
-=== 채점 기준 ===
+=== Grading Criteria ===
 {strictness_desc}
-{f'교수 유의사항: {grading_note}' if grading_note else ''}
+{f'Professor note: {grading_note}' if grading_note else ''}
 
-=== 복붙 분석 ===
+=== Paste Analysis ===
 {paste_context}
 
-학생 제출 글:
+Student submission:
 \"\"\"
 {writing_text}
 \"\"\"
 
-글자 수: {len(writing_text)}자
+Character count: {len(writing_text)}
 
-아래 형식을 Markdown으로 작성하세요. 각 섹션 제목은 ##으로, 소제목은 ###으로, 중요 키워드는 **굵게**, 리스트는 - 기호를 사용하세요.
+Write in Markdown. Use ## for sections, ### for subsections, **bold** for keywords, - for lists.
 
 ## 🤖 피카버디의 추천 점수는 **[0~100점]점**이에요!
 
 ## 📝 종합 피드백
-[2~3문장으로 전반적인 평가]
+[2-3 sentence overall assessment]
 
 ## 📖 논리 구조
-[서론-본론-결론 구성, 문단 연결, 논리 흐름 분석]
+[Intro-body-conclusion structure, paragraph flow, logical coherence]
 
 ## ✍️ 표현력
-[어휘 다양성, 문장 구조, 문법 정확성]
+[Vocabulary diversity, sentence structure, grammar accuracy]
 
 ## 🎯 주제 적합도
-[과제 지시문에 얼마나 부합하는지]
+[How well the submission matches the assignment prompt]
 
 ## 📋 복붙 분석
-[위 복붙 데이터를 바탕으로 복붙 여부와 그에 따른 감점 사유를 설명. 복붙이 없으면 "외부 복붙 없이 직접 작성했습니다"라고 표시]
+[Based on paste data above, explain paste occurrences and deductions. If none, say "외부 복붙 없이 직접 작성했습니다"]
 
 ## 💡 개선 제안
-[구체적인 개선 방법 2~3개를 번호로]
+[2-3 specific improvement suggestions, numbered]
 
-중요: 추천 점수에는 AI 정책에 따른 복붙 감점과 채점 기준(순한맛/보통맛/매운맛)을 반영하세요.
-교수 유의사항이 있다면 반드시 점수에 반영하세요.
-말투는 친근하고 격려하는 톤으로. 학생이 잘한 점도 반드시 언급하세요.
-점수는 교수님이 최종 확정하므로, 추천 점수라고 표현하세요."""
+Important: Reflect AI policy paste deductions and grading strictness in the recommended score.
+If professor notes exist, factor them into the score.
+Use a warm, encouraging tone. Always mention what the student did well.
+The score is a recommendation — the professor makes the final decision.
+IMPORTANT: Write the entire output in Korean."""
     else:
         paste_context = _build_paste_context(snapshots.data, sub.get("code", ""))
 
-        prompt = f"""당신은 친절한 코딩 튜터입니다. 학생의 코드를 분석하고 피드백을 작성하세요.
+        prompt = f"""You are a friendly coding tutor. Analyze the student's code and provide feedback.
 
-과제: {assignment.get('title', '')} / 주제: {assignment.get('topic', '')}
-루브릭: {json.dumps(assignment.get('rubric', {}), ensure_ascii=False)}
+Assignment: {assignment.get('title', '')} / Topic: {assignment.get('topic', '')}
+Rubric: {json.dumps(assignment.get('rubric', {}), ensure_ascii=False)}
 
-=== AI 정책 ===
+=== AI Policy ===
 {policy_desc}
 
-=== 채점 기준 ===
+=== Grading Criteria ===
 {strictness_desc}
-{f'교수 유의사항: {grading_note}' if grading_note else ''}
+{f'Professor note: {grading_note}' if grading_note else ''}
 
-=== 복붙 분석 ===
+=== Paste Analysis ===
 {paste_context}
 
-{f'기본 제공 코드 (starter code):\n```\n{starter_code}\n```\n' if starter_code else ''}
-학생 제출 코드:
+{f'Starter code (provided):\n```\n{starter_code}\n```\n' if starter_code else ''}
+Student submitted code:
 ```
 {sub['code']}
 ```
 
-코딩 스냅샷: {len(snapshots.data)}개
+Coding snapshots: {len(snapshots.data)}
 
-{f'중요: 기본 제공 코드는 평가하지 마세요. 학생이 직접 작성하거나 수정한 부분만 분석하세요.' if starter_code else ''}
+{f'Important: Do NOT evaluate the starter code. Only analyze parts the student wrote or modified.' if starter_code else ''}
 
-아래 형식을 Markdown으로 작성하세요. 각 섹션 제목은 ##으로, 소제목은 ###으로, 중요 키워드는 **굵게**, 리스트는 - 기호를 사용하세요.
+Write in Markdown. Use ## for sections, ### for subsections, **bold** for keywords, - for lists.
 
 ## 🤖 피카버디의 추천 점수는 **[0~100점]점**이에요!
 
 ## 📝 종합 피드백
-[2~3문장으로 전반적인 평가]
+[2-3 sentence overall assessment]
 
 ## 🔍 로직 분석
-[학생이 작성한 로직의 장단점]
+[Pros and cons of the student's logic]
 
 ## ✨ 코드 품질
-[변수명, 구조, 가독성 등]
+[Variable naming, structure, readability, etc.]
 
 ## 📋 복붙 분석
-[위 복붙 데이터를 바탕으로 어떤 부분이 복붙인지, 몇 줄인지 구체적으로 설명. 복붙이 없으면 "외부 복붙 없이 직접 작성했습니다"라고 표시]
+[Based on paste data above, specify which parts were pasted and how many lines. If none, say "외부 복붙 없이 직접 작성했습니다"]
 
 ## 💡 개선 제안
-[구체적인 개선 방법 2~3개를 번호로]
+[2-3 specific improvement suggestions, numbered]
 
-중요: 추천 점수에는 AI 정책에 따른 복붙 감점과 채점 기준(순한맛/보통맛/매운맛)을 반영하세요.
-교수 유의사항이 있다면 반드시 점수에 반영하세요.
-말투는 친근하고 격려하는 톤으로. 학생이 잘한 점도 반드시 언급하세요.
-점수는 교수님이 최종 확정하므로, 추천 점수라고 표현하세요."""
+Important: Reflect AI policy paste deductions and grading strictness in the recommended score.
+If professor notes exist, factor them into the score.
+Use a warm, encouraging tone. Always mention what the student did well.
+The score is a recommendation — the professor makes the final decision.
+IMPORTANT: Write the entire output in Korean."""
 
     async def generate():
         loop = asyncio.get_running_loop()

@@ -30,11 +30,15 @@ async def admin_login(body: AdminLoginRequest):
     settings = get_settings()
     supabase = get_supabase()
 
-    # Match credentials
+    # Match credentials (admin + test accounts)
     role = None
     if hmac.compare_digest(body.username, settings.studentAdminId) and hmac.compare_digest(body.password, settings.studentAdminPassword):
         role = "student"
     elif hmac.compare_digest(body.username, settings.teacherAdminId) and hmac.compare_digest(body.password, settings.teacherAdminPassword):
+        role = "professor"
+    elif settings.studenttestid and hmac.compare_digest(body.username, settings.studenttestid) and hmac.compare_digest(body.password, settings.studenttestpassword):
+        role = "student"
+    elif settings.teachertestid and hmac.compare_digest(body.username, settings.teachertestid) and hmac.compare_digest(body.password, settings.teachertestpassword):
         role = "professor"
     else:
         raise HTTPException(status_code=401, detail="아이디 또는 비밀번호가 올바르지 않습니다.")
@@ -108,6 +112,18 @@ async def admin_login(body: AdminLoginRequest):
         "refresh_token": data.get("refresh_token", ""),
         "user": user_data.data,
     }
+
+
+@router.get("/test-accounts")
+async def get_test_accounts():
+    """테스트 계정 정보 반환 (로그인 화면에 표시)"""
+    settings = get_settings()
+    accounts = []
+    if settings.teachertestid:
+        accounts.append({"role": "professor", "label": "교수 테스트", "username": settings.teachertestid, "password": settings.teachertestpassword})
+    if settings.studenttestid:
+        accounts.append({"role": "student", "label": "학생 테스트", "username": settings.studenttestid, "password": settings.studenttestpassword})
+    return {"accounts": accounts}
 
 
 @router.post("/callback")

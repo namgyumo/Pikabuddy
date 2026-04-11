@@ -38,8 +38,9 @@ import { CalloutExtension } from "../lib/CalloutExtension";
 import MiniNoteTree from "../components/MiniNoteTree";
 import CommentsPanel from "../components/comments/CommentsPanel";
 import BlockCommentOverlay from "../components/comments/BlockCommentOverlay";
+import NoteSnapshotPanel from "../components/NoteSnapshotPanel";
 import { useCommentStore } from "../store/commentStore";
-import type { Note } from "../types";
+import type { Note, Team } from "../types";
 
 interface AiComment {
   id: string;
@@ -195,10 +196,12 @@ export default function NoteEditor() {
   const [searchParams] = useSearchParams();
   const [materials, setMaterials] = useState<CourseMaterial[]>([]);
   const [selectedMaterial, setSelectedMaterial] = useState<CourseMaterial | null>(null);
-  const [sidebarTab, setSidebarTab] = useState<"ai" | "material" | "map" | "comments">(
+  const [sidebarTab, setSidebarTab] = useState<"ai" | "material" | "map" | "comments" | "history">(
     isReviewMode ? "comments" : searchParams.get("material") ? "material" : "ai"
   );
   const [noteOwnerId, setNoteOwnerId] = useState<string>("");
+  const [noteTeamId, setNoteTeamId] = useState<string | null>(null);
+  const [teamInfo, setTeamInfo] = useState<Team | null>(null);
   const [activeBlockIndex, setActiveBlockIndex] = useState<number | null>(null);
   const editorMainRef = useRef<HTMLDivElement>(null);
   const [tags, setTags] = useState<{ id: string; tag: string }[]>([]);
@@ -250,48 +253,49 @@ export default function NoteEditor() {
   useEffect(() => {
     if (!noteId || noteId === "new" || !courseId) return;
 
-    // 리뷰 모드: 교수가 학생 노트 열람 (student-notes 경로)
-    if (isReviewMode && studentId) {
-      // student-notes 경로에서는 직접 노트 로드
-      api.get(`/courses/${courseId}/notes?student_id=${studentId}`).then(({ data }) => {
-        const note = data.find((n: { id: string }) => n.id === noteId);
-        if (note) {
-          setTitle(note.title);
-          setNoteOwnerId(note.student_id || studentId);
-          if (note.content && editor) {
-            editor.commands.setContent(note.content);
-            // 리뷰 모드에서는 읽기 전용
-            editor.setEditable(false);
-          }
-          if (note.understanding_score != null) setScore(note.understanding_score);
-          if (note.gap_analysis?.feedback) setFeedbackText(note.gap_analysis.feedback);
-        }
-      }).catch(() => {});
-    } else {
-      api.get(`/courses/${courseId}/notes`).then(({ data }) => {
-        const note = data.find((n: { id: string }) => n.id === noteId);
-        if (note) {
-          setTitle(note.title);
-          setNoteOwnerId(note.student_id || user?.id || "");
-          if (note.content && editor) editor.commands.setContent(note.content);
-          if (note.understanding_score != null) setScore(note.understanding_score);
-          if (note.gap_analysis?.feedback) setFeedbackText(note.gap_analysis.feedback);
-        }
-      });
-    }
-    api.get(`/notes/${noteId}/ai-comments`).then(({ data }) => setAiComments(data));
-    api.get(`/notes/${noteId}/tags`).then(({ data }) => setTags(data)).catch(() => {});
-    // 코멘트 로드 (인라인 오버레이 + 사이드바 패널)
-    useCommentStore.getState().fetchComments(noteId);
-    useCommentStore.getState().fetchCounts(noteId);
-    api.get(`/courses/${courseId}/materials`).then(({ data }) => {
-      setMaterials(data);
+    // Helper to apply note data once loaded
+    const applyNote = (note: Record<string, unknown>, ownerFallback: string) => {
+      setTitle(note.title as string);
+      setNoteOwnerId((note.student_id as string) || ownerFallback);
+      setNoteTeamId((note.team_id as string) || null);
+      if (note.content && editor) {
+        editor.commands.setContent(note.content as Record<string, unknown>);
+        if (isReviewMode) editor.setEditable(false);
+      }
+      if (note.understanding_score != null) setScore(note.understanding_score as number);
+      if ((note.gap_analysis as Record<string, unknown>)?.feedback) setFeedbackText((note.gap_analysis as Record<string, unknown>).feedback as string);
+      if (note.team_id) {
+        api.get(`/courses/${courseId}/teams/${note.team_id}`).then(({ data: t }) => setTeamInfo(t)).catch(() => {});
+      }
+    };
+
+    // Fire all independent requests in parallel
+    const notesUrl = isReviewMode && studentId
+      ? `/courses/${courseId}/notes?student_id=${studentId}`
+      : `/courses/${courseId}/notes`;
+
+    Promise.all([
+      api.get(notesUrl).catch(() => ({ data: [] })),
+      api.get(`/notes/${noteId}/ai-comments`).catch(() => ({ data: [] })),
+      api.get(`/notes/${noteId}/tags`).catch(() => ({ data: [] })),
+      api.get(`/courses/${courseId}/materials`).catch(() => ({ data: [] })),
+    ]).then(([notesRes, aiCommentsRes, tagsRes, matsRes]) => {
+      // Apply note
+      const note = (notesRes.data || []).find((n: { id: string }) => n.id === noteId);
+      if (note) applyNote(note, isReviewMode && studentId ? studentId : user?.id || "");
+      // Apply side data
+      setAiComments(aiCommentsRes.data);
+      setTags(tagsRes.data);
+      setMaterials(matsRes.data);
       const matParam = searchParams.get("material");
       if (matParam) {
-        const found = data.find((m: CourseMaterial) => m.id === matParam);
+        const found = matsRes.data.find((m: CourseMaterial) => m.id === matParam);
         if (found) setSelectedMaterial(found);
       }
-    }).catch(() => {});
+    });
+    // Comments are in their own store — fire in parallel
+    useCommentStore.getState().fetchComments(noteId);
+    useCommentStore.getState().fetchCounts(noteId);
   }, [noteId, courseId, editor, searchParams, isReviewMode, studentId, user?.id]);
 
   // ── 저장 & 분석 ───────────────────────────────────────
@@ -532,6 +536,34 @@ export default function NoteEditor() {
             readOnly={isReviewMode}
           />
           {isReviewMode && <span className="review-mode-badge">리뷰 모드 (읽기 전용)</span>}
+          {teamInfo && (
+            <span style={{
+              display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 10px",
+              background: "var(--tertiary-container)", color: "var(--on-tertiary-container)",
+              borderRadius: "var(--radius-sm)", fontSize: 12, fontWeight: 600, marginLeft: 8,
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+              {teamInfo.name}
+              <span style={{ display: "inline-flex", gap: 2 }}>
+                {(teamInfo.members || []).slice(0, 5).map((m) => (
+                  <span key={m.student_id} title={m.name} style={{
+                    width: 18, height: 18, borderRadius: "50%", overflow: "hidden",
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    background: "var(--primary)", color: "#fff", fontSize: 9, fontWeight: 700,
+                    border: "1.5px solid var(--tertiary-container)",
+                  }}>
+                    {m.avatar_url
+                      ? <img src={m.avatar_url} alt="" style={{ width: "100%", height: "100%" }} />
+                      : m.name.charAt(0)}
+                  </span>
+                ))}
+              </span>
+            </span>
+          )}
         </div>
         <div className="topbar-right">
           {!isReviewMode && (
@@ -740,6 +772,12 @@ export default function NoteEditor() {
                 )}
               </button>
             )}
+            {noteTeamId && noteId && noteId !== "new" && (
+              <button className={`sidebar-tab${sidebarTab === "history" ? " active" : ""}`}
+                onClick={() => setSidebarTab("history")}>
+                히스토리
+              </button>
+            )}
           </div>
 
           {/* ── 자료 탭 ── */}
@@ -879,6 +917,12 @@ export default function NoteEditor() {
                 activeBlockIndex={activeBlockIndex}
                 onBlockClick={(idx) => setActiveBlockIndex(idx)}
               />
+            </div>
+          )}
+
+          {sidebarTab === "history" && noteId && noteId !== "new" && noteTeamId && (
+            <div className="sidebar-tab-content" style={{ padding: 0 }}>
+              <NoteSnapshotPanel noteId={noteId} />
             </div>
           )}
         </div>

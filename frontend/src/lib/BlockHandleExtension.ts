@@ -50,9 +50,23 @@ export const BlockHandleExtension = Extension.create({
       blockMenu = document.createElement("div");
       blockMenu.className = "block-add-menu";
       blockMenu.style.position = "fixed";
-      blockMenu.style.left = `${rect.left}px`;
-      blockMenu.style.top = `${rect.bottom + 4}px`;
       blockMenu.style.zIndex = "9999";
+
+      // Position with viewport boundary detection
+      const menuH = 360;
+      const menuW = 260;
+      let menuLeft = rect.left;
+      let menuTop = rect.bottom + 4;
+      if (menuTop + menuH > window.innerHeight) {
+        menuTop = rect.top - menuH - 4;
+        if (menuTop < 0) menuTop = Math.max(8, window.innerHeight - menuH - 8);
+      }
+      if (menuLeft + menuW > window.innerWidth) {
+        menuLeft = window.innerWidth - menuW - 8;
+      }
+      if (menuLeft < 0) menuLeft = 8;
+      blockMenu.style.left = `${menuLeft}px`;
+      blockMenu.style.top = `${menuTop}px`;
 
       const searchWrap = document.createElement("div");
       searchWrap.className = "block-add-menu-search";

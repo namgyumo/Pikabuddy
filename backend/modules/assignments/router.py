@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from common.supabase_client import get_supabase
-from common.gemini_client import get_gemini_model, FALLBACK_MODELS
+from common.gemini_client import get_gemini_model, FALLBACK_MODELS, MODEL_LIGHT
 from google.generativeai.types import RequestOptions
 from middleware.auth import get_current_user, require_professor_or_personal
 
@@ -97,6 +97,7 @@ class AssignmentCreateRequest(BaseModel):
     due_date: str | None = None  # ISO 8601
     grading_strictness: str = "normal"  # mild / normal / strict
     grading_note: str | None = None  # 교수 유의사항
+    is_team_assignment: bool = False  # 조별과제 여부
 
 
 class PolicyUpdateRequest(BaseModel):
@@ -151,34 +152,35 @@ class AssignmentUpdateRequest(BaseModel):
 def _generate_writing_prompt(topic: str, difficulty: str) -> str:
     """Gemini로 글쓰기 지시문을 생성한다."""
     model = get_gemini_model()
-    prompt = f"""당신은 대학교 교수입니다. 다음 주제로 글쓰기 과제 지시문을 작성하세요.
-주제: {topic}
-난이도: {difficulty}
+    prompt = f"""You are a university professor. Create a writing assignment prompt for the following topic.
+Topic: {topic}
+Difficulty: {difficulty}
 
-학생에게 명확한 글쓰기 방향, 분량 가이드(최소 글자수), 평가 기준을 포함해서
-3~5문장으로 작성하세요. JSON 없이 텍스트만 출력하세요."""
+Include clear writing direction, length guide (minimum character count), and grading criteria.
+Write 3-5 sentences. Output plain text only, no JSON.
+IMPORTANT: Write the entire output in Korean."""
     response = model.generate_content(prompt, request_options=RequestOptions(timeout=60))
     return (response.text or "").strip()
 
 
 def _generate_bulk_test_cases_baekjoon(problem: dict) -> list[dict]:
     """Flash Lite로 표준 입출력형 문제의 랜덤 테스트케이스를 추가 생성한다."""
-    model = get_gemini_model(model_name="gemini-2.5-flash-lite", json_mode=True)
-    prompt = f"""다음 알고리즘 문제에 대한 랜덤 테스트케이스 8개를 생성하세요.
-기존 엣지 케이스와 겹치지 않는 다양한 일반적인 입력을 만드세요.
+    model = get_gemini_model(model_name=MODEL_LIGHT, json_mode=True)
+    prompt = f"""Generate 8 random test cases for the following algorithm problem.
+Create diverse general inputs that do NOT overlap with existing edge cases.
 
-문제: {problem.get('title', '')}
-설명: {problem.get('description', '')[:300]}
-입력 형식: {problem.get('input_description', '')}
-출력 형식: {problem.get('output_description', '')}
-제약 조건: {problem.get('constraints', '')}
+Problem: {problem.get('title', '')}
+Description: {problem.get('description', '')[:300]}
+Input format: {problem.get('input_description', '')}
+Output format: {problem.get('output_description', '')}
+Constraints: {problem.get('constraints', '')}
 
-응답 형식 (JSON 배열만):
+Response format (JSON array only):
 [
-  {{"input": "테스트 입력", "expected_output": "기대 출력", "is_hidden": true}}
+  {{"input": "test input", "expected_output": "expected output", "is_hidden": true}}
 ]
 
-모든 테스트케이스는 is_hidden: true로 설정하세요. 제약 조건 범위 내에서 다양한 크기의 입력을 생성하세요."""
+Set all test cases to is_hidden: true. Generate inputs of various sizes within the constraints."""
 
     response = model.generate_content(prompt, request_options=RequestOptions(timeout=60))
     cases = _extract_json(response.text or "")
@@ -189,22 +191,22 @@ def _generate_bulk_test_cases_baekjoon(problem: dict) -> list[dict]:
 
 def _generate_bulk_test_cases_programmers(problem: dict) -> list[dict]:
     """Flash Lite로 함수 구현형 문제의 랜덤 테스트케이스를 추가 생성한다."""
-    model = get_gemini_model(model_name="gemini-2.5-flash-lite", json_mode=True)
+    model = get_gemini_model(model_name=MODEL_LIGHT, json_mode=True)
     params_desc = ", ".join(f"{p['name']}: {p.get('type','')}" for p in problem.get("parameters", []))
-    prompt = f"""다음 함수 기반 알고리즘 문제에 대한 랜덤 테스트케이스 8개를 생성하세요.
-기존 엣지 케이스와 겹치지 않는 다양한 일반적인 입력을 만드세요.
+    prompt = f"""Generate 8 random test cases for the following function-based algorithm problem.
+Create diverse general inputs that do NOT overlap with existing edge cases.
 
-문제: {problem.get('title', '')}
-설명: {problem.get('description', '')[:300]}
-함수 시그니처: {problem.get('function_name', 'solution')}({params_desc}) -> {problem.get('return_type', '')}
-제약 조건: {problem.get('constraints', '')}
+Problem: {problem.get('title', '')}
+Description: {problem.get('description', '')[:300]}
+Function signature: {problem.get('function_name', 'solution')}({params_desc}) -> {problem.get('return_type', '')}
+Constraints: {problem.get('constraints', '')}
 
-응답 형식 (JSON 배열만):
+Response format (JSON array only):
 [
   {{"input": {{"param1": value1, "param2": value2}}, "expected_output": value, "is_hidden": true}}
 ]
 
-모든 테스트케이스는 is_hidden: true로 설정하세요. 제약 조건 범위 내에서 다양한 크기의 입력을 생성하세요."""
+Set all test cases to is_hidden: true. Generate inputs of various sizes within the constraints."""
 
     response = model.generate_content(prompt, request_options=RequestOptions(timeout=60))
     cases = _extract_json(response.text or "")
@@ -216,15 +218,16 @@ def _generate_bulk_test_cases_programmers(problem: dict) -> list[dict]:
 def _generate_algorithm_problems(topic: str, difficulty: str, count: int, language: str, _model_name: str = "gemini-2.5-flash") -> dict:
     """Gemini로 표준 입출력형 알고리즘 문제를 생성한다. (엣지 케이스만 flash, 랜덤은 lite)"""
     model = get_gemini_model(_model_name, json_mode=True)
-    prompt = f"""표준 입출력형(백준 스타일) 알고리즘 문제 {count}개를 JSON으로 생성하세요.
-점진적 난이도 (1번=쉬움 → 마지막=어려움).
+    prompt = f"""Generate {count} standard I/O (Baekjoon-style) algorithm problems in JSON.
+Progressive difficulty (problem 1 = easiest → last = hardest).
 
-주제: {topic} | 난이도: {difficulty} | 언어: {language}
+Topic: {topic} | Difficulty: {difficulty} | Language: {language}
 
-규칙: starter_code=""(빈 문자열), 학생이 전체 코드 작성. 엣지 테스트케이스 3개만(공개1+히든2).
+Rules: starter_code="" (empty string), student writes entire code. Only 3 edge test cases (1 public + 2 hidden).
+IMPORTANT: All text content (title, description, hints, etc.) must be written in Korean.
 
-JSON 형식:
-{{"problems":[{{"id":1,"title":"","description":"마크다운","input_description":"","output_description":"","constraints":"","examples":[{{"input":"","output":"","explanation":""}}],"test_cases":[{{"input":"","expected_output":"","is_hidden":false}}],"time_limit_ms":1000,"memory_limit_mb":256,"difficulty_level":3,"tags":[],"starter_code":"","hints":[]}}],"rubric":{{"criteria":[{{"name":"정확성","weight":50,"description":"테스트케이스 통과"}},{{"name":"효율성","weight":30,"description":"복잡도 최적화"}},{{"name":"코드 품질","weight":20,"description":"가독성"}}]}}}}"""
+JSON format:
+{{"problems":[{{"id":1,"title":"","description":"markdown","input_description":"","output_description":"","constraints":"","examples":[{{"input":"","output":"","explanation":""}}],"test_cases":[{{"input":"","expected_output":"","is_hidden":false}}],"time_limit_ms":1000,"memory_limit_mb":256,"difficulty_level":3,"tags":[],"starter_code":"","hints":[]}}],"rubric":{{"criteria":[{{"name":"정확성","weight":50,"description":"테스트케이스 통과"}},{{"name":"효율성","weight":30,"description":"복잡도 최적화"}},{{"name":"코드 품질","weight":20,"description":"가독성"}}]}}}}"""
 
     response = model.generate_content(prompt, request_options=RequestOptions(timeout=60))
     result = _extract_json(response.text or "")
@@ -257,51 +260,52 @@ def _generate_programmers_problems(topic: str, difficulty: str, count: int, lang
     """Gemini로 함수 구현형 문제를 생성한다. (엣지 케이스만 flash, 랜덤은 lite)"""
     model = get_gemini_model(_model_name, json_mode=True)
 
-    prompt = f"""당신은 함수 구현형(프로그래머스 스타일) 알고리즘 문제 출제자입니다.
-다음 조건에 맞는 함수 기반 알고리즘 문제 {count}개를 JSON으로 생성하세요.
-문제는 점진적으로 난이도가 올라가야 합니다.
+    prompt = f"""You are a function-based (Programmers-style) algorithm problem creator.
+Generate {count} function-based algorithm problems in JSON with progressive difficulty.
 
-주제: {topic}
-기본 난이도: {difficulty}
-프로그래밍 언어: {language}
+Topic: {topic}
+Base difficulty: {difficulty}
+Language: {language}
 
-★ 함수 구현형 핵심 규칙:
-1. starter_code에는 전체 코드 구조(import, 입출력 처리, 헬퍼 함수 등)가 다 포함되어야 합니다.
-2. 단, 핵심 solution 함수의 내부(body)만 비워두세요 (pass 또는 return 0 등).
-3. 학생은 solution 함수 내부만 채우면 됩니다.
-4. 입력은 함수 매개변수로, 출력은 return 값으로.
+★ Function-based core rules:
+1. starter_code must include the full code structure (imports, I/O handling, helpers).
+2. Only leave the core solution function body empty (pass or return 0).
+3. Student fills in only the solution function body.
+4. Input via function parameters, output via return value.
 
-★ 테스트케이스 요구사항:
-- 각 문제당 정확히 3개의 핵심 엣지 케이스만 생성하세요 (공개 1개 + 히든 2개).
-- 반드시 극단적인 엣지케이스로 구성하세요:
-  * 최솟값 입력 (n=0, n=1, 빈 배열 등)
-  * 답이 0이거나 없는 경우 (-1 반환 등)
-  * 특수한 경우 (모든 원소 동일, 음수만, 정렬된 입력 등)
-- 나머지 랜덤 테스트케이스는 별도로 생성됩니다. 여기서는 엣지만 만드세요.
+★ Test case requirements:
+- Exactly 3 edge test cases per problem (1 public + 2 hidden).
+- Must be extreme edge cases:
+  * Minimum inputs (n=0, n=1, empty array, etc.)
+  * Zero or no-answer cases (-1 return, etc.)
+  * Special cases (all elements same, negatives only, sorted input, etc.)
+- Random test cases will be generated separately. Only create edges here.
 
-★ 예외 처리:
-- 문제 설명에 예외 상황을 명시하세요 (입력이 비어있을 때, 답이 없을 때 등의 반환값).
+★ Exception handling:
+- Problem description must specify edge case behavior (empty input, no answer, etc.).
 
-응답 형식 (JSON만 출력):
+IMPORTANT: All text content (title, description, hints, explanations, tags) must be in Korean.
+
+Response format (JSON only):
 {{
   "problems": [
     {{
       "id": 1,
-      "title": "문제 제목",
-      "description": "문제 설명 (마크다운). 예외 상황과 반환값 명시 포함",
+      "title": "Problem title",
+      "description": "Problem description (markdown). Include exception cases and return values",
       "function_name": "solution",
       "parameters": [
-        {{"name": "n", "type": "int", "description": "배열 크기"}},
-        {{"name": "arr", "type": "list[int]", "description": "정수 배열"}}
+        {{"name": "n", "type": "int", "description": "array size"}},
+        {{"name": "arr", "type": "list[int]", "description": "integer array"}}
       ],
       "return_type": "int",
-      "return_description": "결과값 설명. 답이 없으면 -1 반환 등 예외 명시",
-      "constraints": "제약 조건 (예: 0 <= n <= 100000, -10^9 <= arr[i] <= 10^9)",
+      "return_description": "Result description. Specify exception returns like -1",
+      "constraints": "Constraints (e.g., 0 <= n <= 100000, -10^9 <= arr[i] <= 10^9)",
       "examples": [
         {{
           "input": {{"n": 5, "arr": [1,2,3,4,5]}},
           "output": 15,
-          "explanation": "모든 원소의 합"
+          "explanation": "Sum of all elements"
         }}
       ],
       "test_cases": [
@@ -312,9 +316,9 @@ def _generate_programmers_problems(topic: str, difficulty: str, count: int, lang
       "time_limit_ms": 1000,
       "memory_limit_mb": 256,
       "difficulty_level": 3,
-      "tags": ["태그1"],
-      "starter_code": "전체 코드 구조 (solution 함수 내부만 비워둠)",
-      "hints": ["힌트1"]
+      "tags": ["tag1"],
+      "starter_code": "Full code structure (solution function body left empty)",
+      "hints": ["hint1"]
     }}
   ],
   "rubric": {{
@@ -327,8 +331,8 @@ def _generate_programmers_problems(topic: str, difficulty: str, count: int, lang
   }}
 }}
 
-starter_code는 반드시 {language}로, 전체 코드 틀을 제공하되 solution 함수 body만 비워두세요.
-난이도 레벨은 1(매우 쉬움)~10(매우 어려움) 스케일입니다."""
+starter_code must be in {language}, providing the full code scaffold with only the solution function body left empty.
+Difficulty level scale: 1 (very easy) ~ 10 (very hard)."""
 
     response = model.generate_content(prompt, request_options=RequestOptions(timeout=60))
     result = _extract_json(response.text or "")
@@ -386,56 +390,58 @@ def _generate_quiz_problems(
             distribution.append(f"{t}: {n}개")
 
     type_desc = {
-        "multiple_choice": "객관식 (4지선다, correct_answer는 정답 인덱스 0~3)",
-        "short_answer": "주관식 단답형 (correct_answer + acceptable_answers 배열)",
-        "essay": "서술형 (rubric_criteria 배열로 채점 기준 제공)",
+        "multiple_choice": "Multiple choice (4 options, correct_answer is index 0~3)",
+        "short_answer": "Short answer (correct_answer + acceptable_answers array)",
+        "essay": "Essay (rubric_criteria array for grading criteria)",
     }
     types_prompt = "\n".join(f"- {type_desc[t]}" for t in quiz_types if t in type_desc)
 
     model = get_gemini_model(_model_name, json_mode=True)
-    prompt = f"""당신은 대학교 교수입니다. 다음 조건으로 퀴즈 문제 {count}개를 JSON으로 생성하세요.
-점진적 난이도 (1번=쉬움 → 마지막=어려움).
+    prompt = f"""You are a university professor. Generate {count} quiz problems in JSON.
+Progressive difficulty (problem 1 = easiest → last = hardest).
 
-주제: {topic} | 난이도: {difficulty}
-문제 유형 분배: {', '.join(distribution)}
+Topic: {topic} | Difficulty: {difficulty}
+Type distribution: {', '.join(distribution)}
 
-포함할 유형:
+Types to include:
 {types_prompt}
 
-JSON 형식:
+IMPORTANT: All text content (questions, options, answers, explanations) must be in Korean.
+
+JSON format:
 {{
   "problems": [
     {{
       "id": 1,
       "type": "multiple_choice",
-      "question": "문제 내용",
-      "options": ["선택지1", "선택지2", "선택지3", "선택지4"],
+      "question": "Question content",
+      "options": ["Option1", "Option2", "Option3", "Option4"],
       "correct_answer": 0,
-      "explanation": "정답 해설",
+      "explanation": "Answer explanation",
       "points": 10,
       "difficulty_level": 3
     }},
     {{
       "id": 2,
       "type": "short_answer",
-      "question": "문제 내용",
-      "correct_answer": "정답",
-      "acceptable_answers": ["정답", "다른 표현"],
-      "explanation": "정답 해설",
+      "question": "Question content",
+      "correct_answer": "Answer",
+      "acceptable_answers": ["Answer", "Alternative"],
+      "explanation": "Answer explanation",
       "points": 10,
       "difficulty_level": 5
     }},
     {{
       "id": 3,
       "type": "essay",
-      "question": "서술형 문제 내용",
-      "correct_answer": "모범 답안 요약",
+      "question": "Essay question content",
+      "correct_answer": "Model answer summary",
       "rubric_criteria": [
         {{"name": "핵심 개념", "weight": 40, "description": "핵심 개념을 정확히 설명했는가"}},
         {{"name": "논리성", "weight": 30, "description": "논리적으로 서술했는가"}},
         {{"name": "완성도", "weight": 30, "description": "충분한 분량과 구체적 예시"}}
       ],
-      "explanation": "정답 해설",
+      "explanation": "Answer explanation",
       "points": 20,
       "difficulty_level": 7
     }}
@@ -467,27 +473,29 @@ JSON 형식:
 def _generate_block_problems(topic: str, difficulty: str, count: int, language: str, _model_name: str = "gemini-2.5-flash") -> dict:
     """Gemini로 블록 코딩용 문제를 생성한다. 초급자 친화적."""
     model = get_gemini_model(_model_name, json_mode=True)
-    prompt = f"""당신은 프로그래밍 교수입니다. 블록 코딩(Blockly) 환경에 적합한 초급 문제 {count}개를 JSON으로 생성하세요.
-점진적 난이도 (1번=쉬움 → 마지막=어려움).
+    prompt = f"""You are a programming professor. Generate {count} beginner-friendly block coding (Blockly) problems in JSON.
+Progressive difficulty (problem 1 = easiest → last = hardest).
 
-주제: {topic} | 난이도: {difficulty} | 언어: {language}
+Topic: {topic} | Difficulty: {difficulty} | Language: {language}
 
-규칙:
-- 문제는 시각적 블록으로 풀 수 있어야 합니다 (반복문, 조건문, 변수, 간단한 함수)
-- 복잡한 자료구조(트리, 그래프 등)는 사용하지 마세요
-- starter_code는 비워두세요 (블록으로 시작)
-- expected_output은 명확하게 지정하세요
+Rules:
+- Problems must be solvable with visual blocks (loops, conditionals, variables, simple functions)
+- Do NOT use complex data structures (trees, graphs, etc.)
+- starter_code must be empty (start from blocks)
+- expected_output must be clearly specified
 
-JSON 형식:
+IMPORTANT: All text content (title, description, hints) must be in Korean.
+
+JSON format:
 {{
   "problems": [
     {{
       "id": 1,
-      "title": "문제 제목",
-      "description": "문제 설명 (마크다운)",
+      "title": "Problem title",
+      "description": "Problem description (markdown)",
       "starter_code": "",
-      "expected_output": "예상 출력",
-      "hints": ["힌트1"],
+      "expected_output": "Expected output",
+      "hints": ["hint1"],
       "difficulty_level": 2
     }}
   ],
@@ -517,14 +525,16 @@ def _generate_problem_outlines(topic: str, difficulty: str, count: int, language
     }
     curve = difficulty_curves.get(difficulty, difficulty_curves["medium"])
     model = get_gemini_model(_model_name, json_mode=True)
-    prompt = f"""당신은 프로그래밍 교수입니다.
-다음 조건으로 문제 {count}개의 제목과 핵심 개념만 간략히 JSON 배열로 생성하세요.
-문제는 점진적으로 난이도가 올라가야 합니다.
+    prompt = f"""You are a programming professor.
+Generate a JSON array with only titles and key concepts for {count} problems.
+Problems must have progressive difficulty.
 
-주제: {topic}, 언어: {language}
+Topic: {topic}, Language: {language}
 
-응답 형식 (JSON 배열만):
-[{{"id": 1, "title": "문제 제목", "key_concept": "핵심 개념 한줄", "difficulty_level": 3}}]"""
+IMPORTANT: title and key_concept must be in Korean.
+
+Response format (JSON array only):
+[{{"id": 1, "title": "Problem title", "key_concept": "One-line key concept", "difficulty_level": 3}}]"""
 
     response = model.generate_content(prompt, request_options=RequestOptions(timeout=60))
     outlines = _extract_json(response.text or "")
@@ -538,22 +548,24 @@ def _generate_problem_outlines(topic: str, difficulty: str, count: int, language
 def _generate_single_problem(outline: dict, language: str, _model_name: str = "gemini-2.5-flash") -> dict:
     """Phase 2: 개별 문제 상세 생성"""
     model = get_gemini_model(_model_name, json_mode=True)
-    prompt = f"""당신은 프로그래밍 교수입니다.
-다음 문제 아웃라인을 기반으로 완전한 문제를 JSON으로 생성하세요.
+    prompt = f"""You are a programming professor.
+Generate a complete problem in JSON based on the following outline.
 
-제목: {outline['title']}
-핵심 개념: {outline.get('key_concept', '')}
-난이도 레벨: {outline['difficulty_level']}/10
-프로그래밍 언어: {language}
+Title: {outline['title']}
+Key concept: {outline.get('key_concept', '')}
+Difficulty level: {outline['difficulty_level']}/10
+Language: {language}
 
-응답 형식 (JSON만):
+IMPORTANT: All text content (description, hints) must be in Korean.
+
+Response format (JSON only):
 {{
   "id": {outline['id']},
   "title": "{outline['title']}",
-  "description": "상세한 문제 설명",
-  "starter_code": "시작 코드",
-  "expected_output": "예상 출력",
-  "hints": ["힌트1", "힌트2"]
+  "description": "Detailed problem description",
+  "starter_code": "Starter code",
+  "expected_output": "Expected output",
+  "hints": ["hint1", "hint2"]
 }}"""
 
     response = model.generate_content(prompt, request_options=RequestOptions(timeout=60))
@@ -612,24 +624,26 @@ async def _generate_problems_progressive(topic: str, difficulty: str, count: int
 def _generate_problems(topic: str, difficulty: str, count: int, language: str, _model_name: str = "gemini-2.5-flash") -> dict:
     """Gemini로 문제와 루브릭을 생성한다. (폴백용 단일 호출)"""
     model = get_gemini_model(_model_name, json_mode=True)
-    prompt = f"""당신은 대학교 프로그래밍 교수입니다.
-다음 조건에 맞는 실습 문제 {count}개와 채점 루브릭을 JSON으로 생성하세요.
-문제는 점진적으로 난이도가 올라가야 합니다 (1번이 가장 쉽고 마지막이 가장 어려움).
+    prompt = f"""You are a university programming professor.
+Generate {count} practice problems and a grading rubric in JSON.
+Problems must have progressive difficulty (problem 1 = easiest, last = hardest).
 
-주제: {topic}
-난이도: {difficulty}
-프로그래밍 언어: {language}
+Topic: {topic}
+Difficulty: {difficulty}
+Language: {language}
 
-응답 형식 (JSON만 출력):
+IMPORTANT: All text content (title, description, hints) must be in Korean.
+
+Response format (JSON only):
 {{
   "problems": [
     {{
       "id": 1,
-      "title": "문제 제목",
-      "description": "문제 설명",
-      "starter_code": "시작 코드",
-      "expected_output": "예상 출력",
-      "hints": ["힌트1", "힌트2"]
+      "title": "Problem title",
+      "description": "Problem description",
+      "starter_code": "Starter code",
+      "expected_output": "Expected output",
+      "hints": ["hint1", "hint2"]
     }}
   ],
   "rubric": {{
@@ -858,6 +872,8 @@ async def create_assignment(
         insert_data["due_date"] = body.due_date
     if body.grading_note:
         insert_data["grading_note"] = body.grading_note
+    if body.is_team_assignment:
+        insert_data["is_team_assignment"] = True
 
     # 글쓰기 과제: 지시문 생성 (빠르므로 동기로 처리)
     if body.type in ("writing", "both"):
@@ -874,11 +890,12 @@ async def create_assignment(
                 print(f"[ERROR] 글쓰기 지시문 생성 실패: {e}")
                 insert_data["writing_prompt"] = f"{body.topic}에 대해 자유롭게 글을 작성하세요."
 
-    # INSERT — generation_status 컬럼이 없으면 제외 후 재시도
+    # INSERT — 신규 컬럼이 없으면 제외 후 재시도
     try:
         result = supabase.table("assignments").insert(insert_data).execute()
     except Exception:
         insert_data.pop("generation_status", None)
+        insert_data.pop("is_team_assignment", None)
         result = supabase.table("assignments").insert(insert_data).execute()
     assignment = result.data[0]
 
@@ -1323,6 +1340,27 @@ async def get_paste_logs(
         .execute()
     )
     return result.data
+
+
+@router.get("/{assignment_id}/submissions/{student_id}/snapshots")
+async def get_student_snapshots(
+    course_id: str,
+    assignment_id: str,
+    student_id: str,
+    user: dict = Depends(require_professor_or_personal),
+):
+    """교수용 — 특정 학생의 글쓰기 스냅샷 조회 (paste 제외, 시간순)"""
+    supabase = get_supabase()
+    result = (
+        supabase.table("snapshots")
+        .select("id, student_id, code_diff, created_at")
+        .eq("assignment_id", assignment_id)
+        .eq("student_id", student_id)
+        .eq("is_paste", False)
+        .order("created_at")
+        .execute()
+    )
+    return result.data or []
 
 
 class FinalScoreRequest(BaseModel):

@@ -256,9 +256,23 @@ export const SlashCommandExtension = Extension.create({
       }
 
       popup.style.position = "fixed";
-      popup.style.left = `${coords.left}px`;
-      popup.style.top = `${coords.bottom + 6}px`;
       popup.style.zIndex = "9999";
+
+      // Position with viewport boundary detection
+      const menuH = 320;
+      const menuW = 280;
+      let left = coords.left;
+      let top = coords.bottom + 6;
+      if (top + menuH > window.innerHeight) {
+        top = coords.top - menuH - 6;
+        if (top < 0) top = Math.max(8, window.innerHeight - menuH - 8);
+      }
+      if (left + menuW > window.innerWidth) {
+        left = window.innerWidth - menuW - 8;
+      }
+      if (left < 0) left = 8;
+      popup.style.left = `${left}px`;
+      popup.style.top = `${top}px`;
 
       const onSelect = (item: SlashItem) => {
         // Delete the /query text

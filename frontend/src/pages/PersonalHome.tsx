@@ -100,37 +100,43 @@ export default function PersonalHome() {
           setAssignments(asgnsRes.data);
           setMaterials(matsRes.data);
 
-          // Build dashboard stats
+          // Build dashboard stats — fetch all submissions in parallel
           const allSubs: (SubmissionBrief & { assignmentTitle: string })[] = [];
           const scoresByDate = new Map<string, number[]>();
           const perAssign: { name: string; score: number; count: number }[] = [];
           let totalProblems = 0;
           const solvedProblemSet = new Set<string>();
 
-          for (const a of asgnsRes.data as Assignment[]) {
+          const assignments = asgnsRes.data as Assignment[];
+          const subsResults = await Promise.all(
+            assignments.map((a) =>
+              api.get(`/courses/${personal.id}/assignments/${a.id}/submissions`).catch(() => ({ data: [] }))
+            )
+          );
+
+          for (let i = 0; i < assignments.length; i++) {
+            const a = assignments[i];
+            const subs = subsResults[i].data || [];
             totalProblems += a.problems?.length || 0;
-            try {
-              const { data: subs } = await api.get(`/courses/${personal.id}/assignments/${a.id}/submissions`);
-              const scores: number[] = [];
-              for (const s of subs) {
-                const sc = s.ai_analyses?.[0]?.final_score ?? s.ai_analyses?.[0]?.score ?? null;
-                allSubs.push({ ...s, assignmentTitle: a.title });
-                if (sc != null) {
-                  scores.push(sc);
-                  const day = new Date(s.submitted_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
-                  if (!scoresByDate.has(day)) scoresByDate.set(day, []);
-                  scoresByDate.get(day)!.push(sc);
-                }
-                if (s.problem_index != null) solvedProblemSet.add(`${a.id}_${s.problem_index}`);
+            const scores: number[] = [];
+            for (const s of subs) {
+              const sc = s.ai_analyses?.[0]?.final_score ?? s.ai_analyses?.[0]?.score ?? null;
+              allSubs.push({ ...s, assignmentTitle: a.title });
+              if (sc != null) {
+                scores.push(sc);
+                const day = new Date(s.submitted_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
+                if (!scoresByDate.has(day)) scoresByDate.set(day, []);
+                scoresByDate.get(day)!.push(sc);
               }
-              if (scores.length > 0) {
-                perAssign.push({
-                  name: a.title.length > 10 ? a.title.slice(0, 10) + "…" : a.title,
-                  score: Math.round(scores.reduce((x, y) => x + y, 0) / scores.length),
-                  count: subs.length,
-                });
-              }
-            } catch { /* skip */ }
+              if (s.problem_index != null) solvedProblemSet.add(`${a.id}_${s.problem_index}`);
+            }
+            if (scores.length > 0) {
+              perAssign.push({
+                name: a.title.length > 10 ? a.title.slice(0, 10) + "…" : a.title,
+                score: Math.round(scores.reduce((x, y) => x + y, 0) / scores.length),
+                count: subs.length,
+              });
+            }
           }
 
           allSubs.sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime());

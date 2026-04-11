@@ -27,6 +27,11 @@ export default function Settings() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [roleConfirm, setRoleConfirm] = useState<"professor" | "student" | "personal" | null>(null);
 
+  // Test account reset
+  const isTestAccount = (user?.email || "").endsWith("@pikabuddy.admin");
+  const [resetting, setResetting] = useState(false);
+  const [resetResult, setResetResult] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
   // Avatar crop state
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -353,6 +358,86 @@ export default function Settings() {
           {saving ? "저장 중..." : "저장"}
         </button>
       </div>
+
+      {/* ── 테스트 계정 관리 (테스트 계정만 표시) ── */}
+      {isTestAccount && (
+        <div style={{ marginTop: 32, paddingTop: 24, borderTop: "2px solid var(--outline-variant)" }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, color: "var(--error)", display: "flex", alignItems: "center", gap: 8 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+            테스트 계정 관리
+          </h2>
+          <p style={{ fontSize: 13, color: "var(--on-surface-variant)", marginBottom: 16, lineHeight: 1.6 }}>
+            테스트 데이터를 초기 상태로 되돌립니다. 교수/학생 두 테스트 계정의 모든 강의, 과제, 노트,
+            제출물, AI 분석 데이터가 삭제된 후 미리 준비된 데모 데이터로 다시 채워집니다.
+          </p>
+          <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+            <button
+              onClick={async () => {
+                if (!confirm("정말 테스트 계정을 초기화하시겠습니까?\n모든 데이터가 삭제되고 시드 데이터로 재설정됩니다.")) return;
+                setResetting(true);
+                setResetResult(null);
+                try {
+                  const res = await api.post("/seed/reset");
+                  setResetResult({
+                    type: "success",
+                    text: `초기화 완료! 강의 ${res.data.data.courses}개, 과제 ${res.data.data.assignments}개, 노트 ${res.data.data.notes}개, 제출물 ${res.data.data.submissions}개, 메시지 ${res.data.data.messages}개, 코멘트 ${res.data.data.note_comments}개, 뱃지 ${res.data.data.badges}개 생성됨`,
+                  });
+                } catch (err: any) {
+                  setResetResult({
+                    type: "error",
+                    text: err?.response?.data?.detail || "초기화에 실패했습니다.",
+                  });
+                } finally {
+                  setResetting(false);
+                }
+              }}
+              disabled={resetting}
+              style={{
+                padding: "10px 24px",
+                background: resetting ? "var(--on-surface-variant)" : "var(--error)",
+                color: "#fff",
+                border: "none",
+                borderRadius: "var(--radius-sm)",
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: resetting ? "not-allowed" : "pointer",
+                opacity: resetting ? 0.7 : 1,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              {resetting ? (
+                <>
+                  <span style={{ display: "inline-block", width: 14, height: 14, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} />
+                  초기화 중...
+                </>
+              ) : (
+                "테스트 계정 초기화"
+              )}
+            </button>
+            <span style={{ fontSize: 12, color: "var(--on-surface-variant)" }}>
+              현재 계정: {user?.email}
+            </span>
+          </div>
+          {resetResult && (
+            <div style={{
+              marginTop: 12,
+              padding: "10px 14px",
+              borderRadius: "var(--radius-sm)",
+              fontSize: 13,
+              background: resetResult.type === "success" ? "var(--success-light)" : "var(--error-light)",
+              color: resetResult.type === "success" ? "var(--success)" : "var(--error)",
+              lineHeight: 1.5,
+            }}>
+              {resetResult.text}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 아바타 크롭 모달 */}
       {cropSrc && (

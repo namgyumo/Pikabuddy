@@ -9,6 +9,7 @@ import {
   sanitizeCSS,
   toHex,
   getCurrentVariableValues,
+  loadGoogleFont,
 } from "../../themes";
 import type { VariableGroup, VariableDefinition } from "../../themes";
 import { useThemeStore } from "../../store/themeStore";
@@ -22,7 +23,7 @@ interface Props {
   editingTheme?: CustomTheme | null;
 }
 
-type Tab = "gui" | "json" | "css" | "effects";
+type Tab = "gui" | "json" | "css" | "effects" | "assets";
 
 export default function ThemeEditor({ onClose, editingTheme }: Props) {
   const { saveCustomTheme, setTheme } = useThemeStore();
@@ -206,79 +207,96 @@ export default function ThemeEditor({ onClose, editingTheme }: Props) {
     });
   };
 
-  const tabs: { key: Tab; label: string; desc: string }[] = [
-    { key: "gui", label: "GUI 에디터", desc: "시각적 도구" },
-    { key: "effects", label: "이펙트", desc: "55개 효과" },
-    { key: "json", label: "JSON 편집", desc: "변수 직접 편집" },
-    { key: "css", label: "CSS 주입", desc: "고급 커스텀" },
+  const tabs: { key: Tab; label: string; icon: string }[] = [
+    { key: "gui", label: "GUI 에디터", icon: "🎨" },
+    { key: "effects", label: "이펙트", icon: "✨" },
+    { key: "assets", label: "��셋", icon: "🖼️" },
+    { key: "json", label: "JSON", icon: "{ }" },
+    { key: "css", label: "CSS", icon: "</>" },
   ];
 
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 10000,
-      background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)",
+      background: "rgba(0,0,0,0.55)", backdropFilter: "blur(8px)",
       display: "flex", alignItems: "center", justifyContent: "center",
     }}>
       <div style={{
-        background: "var(--surface-container-lowest)", borderRadius: 16,
-        width: "min(95vw, 720px)", maxHeight: "90vh",
+        background: "var(--surface-container-lowest)", borderRadius: 20,
+        width: "min(95vw, 740px)", maxHeight: "90vh",
         display: "flex", flexDirection: "column", overflow: "hidden",
-        boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+        boxShadow: "0 25px 80px rgba(0,0,0,0.35), 0 0 0 1px var(--outline-variant)",
       }}>
-        {/* Header */}
+        {/* Header with gradient accent */}
         <div style={{
-          padding: "16px 24px", borderBottom: "1px solid var(--outline-variant)",
-          display: "flex", alignItems: "center", gap: 12,
+          background: "linear-gradient(135deg, var(--primary), var(--tertiary, var(--primary-container)))",
+          padding: "18px 24px 14px",
+          display: "flex", alignItems: "center", gap: 14,
+          position: "relative", overflow: "hidden",
         }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 16, fontWeight: 700 }}>
+          <div style={{
+            position: "absolute", inset: 0, opacity: 0.08,
+            background: "repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.1) 10px, rgba(255,255,255,0.1) 20px)",
+          }} />
+          <div style={{ flex: 1, position: "relative", zIndex: 1 }}>
+            <div style={{ fontSize: 17, fontWeight: 800, color: "#fff", letterSpacing: "-0.01em" }}>
               {editingTheme?.id ? "테마 편집" : "새 커스텀 테마"}
             </div>
-            <div style={{ fontSize: 12, color: "var(--on-surface-variant)", marginTop: 2 }}>
-              실시간으로 변경사항이 적용됩니다
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", marginTop: 3 }}>
+              실시간 미리보기 · 변경사항이 바로 적용됩니다
             </div>
           </div>
-          <button onClick={handleExport} style={btnGhost}>내보내기</button>
-          <button onClick={handleCancel} style={btnGhost}>취소</button>
-          <button onClick={handleSave} style={btnPrimary}>저장</button>
+          <button onClick={handleExport} style={btnHeaderGhost}>내보내기</button>
+          <button onClick={handleCancel} style={btnHeaderGhost}>취소</button>
+          <button onClick={handleSave} style={btnHeaderSave}>저장</button>
         </div>
 
-        {/* Theme name */}
-        <div style={{ padding: "12px 24px", borderBottom: "1px solid var(--outline-variant)" }}>
+        {/* Theme name + Tabs combined bar */}
+        <div style={{
+          padding: "12px 24px 0",
+          background: "var(--surface-container-lowest)",
+          borderBottom: "1px solid var(--outline-variant)",
+        }}>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="테마 이름"
+            placeholder="테마 이름을 입력하세요"
             style={{
-              width: "100%", padding: "8px 12px", border: "1px solid var(--outline-variant)",
-              borderRadius: 8, fontSize: 14, fontWeight: 600, boxSizing: "border-box",
+              width: "100%", padding: "9px 14px", border: "1.5px solid var(--outline-variant)",
+              borderRadius: 10, fontSize: 14, fontWeight: 600, boxSizing: "border-box",
               background: "var(--surface-container-low)", color: "var(--on-surface)",
+              transition: "border-color 0.15s",
+              outline: "none",
             }}
+            onFocus={(e) => e.currentTarget.style.borderColor = "var(--primary)"}
+            onBlur={(e) => e.currentTarget.style.borderColor = "var(--outline-variant)"}
           />
-        </div>
-
-        {/* Tabs */}
-        <div style={{
-          display: "flex", borderBottom: "1px solid var(--outline-variant)", padding: "0 24px",
-        }}>
-          {tabs.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              style={{
-                padding: "10px 16px", border: "none", background: "transparent", cursor: "pointer",
-                fontSize: 13, fontWeight: tab === t.key ? 700 : 500,
-                color: tab === t.key ? "var(--primary)" : "var(--on-surface-variant)",
-                borderBottom: tab === t.key ? "2px solid var(--primary)" : "2px solid transparent",
-                marginBottom: -1, transition: "all 0.15s",
-              }}
-            >
-              {t.label}
-              <span style={{ display: "block", fontSize: 10, fontWeight: 400, marginTop: 1, opacity: 0.7 }}>
-                {t.desc}
-              </span>
-            </button>
-          ))}
+          <div style={{
+            display: "flex", gap: 4, marginTop: 12, paddingBottom: 0,
+          }}>
+            {tabs.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                style={{
+                  padding: "8px 14px", border: "none", cursor: "pointer",
+                  borderRadius: "10px 10px 0 0",
+                  background: tab === t.key
+                    ? "var(--surface-container-low)"
+                    : "transparent",
+                  fontSize: 12, fontWeight: tab === t.key ? 700 : 500,
+                  color: tab === t.key ? "var(--primary)" : "var(--on-surface-variant)",
+                  transition: "all 0.15s",
+                  display: "flex", alignItems: "center", gap: 5,
+                  borderBottom: tab === t.key ? "2px solid var(--primary)" : "2px solid transparent",
+                  marginBottom: -1,
+                }}
+              >
+                <span style={{ fontSize: 13, lineHeight: 1 }}>{t.icon}</span>
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Tab content */}
@@ -288,11 +306,12 @@ export default function ThemeEditor({ onClose, editingTheme }: Props) {
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               {/* Load from built-in theme */}
               <div style={{
-                border: "1px solid var(--outline-variant)", borderRadius: 10,
-                padding: "10px 14px", marginBottom: 4,
+                border: "1px solid var(--outline-variant)", borderRadius: 12,
+                padding: "14px 16px", marginBottom: 6,
+                background: "var(--surface-container-low)",
               }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: "var(--on-surface)" }}>
-                  기본 테마에서 시작
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, color: "var(--on-surface)", display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 15 }}>🎯</span> 기본 테마에서 시작
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {THEMES.map((t) => (
@@ -300,20 +319,27 @@ export default function ThemeEditor({ onClose, editingTheme }: Props) {
                       key={t.id}
                       onClick={() => loadBuiltinTheme(t.id, t.nameKo)}
                       style={{
-                        padding: "5px 12px", borderRadius: 16, cursor: "pointer",
-                        border: "1px solid var(--outline-variant)",
-                        background: "var(--surface-container-low)",
+                        padding: "6px 12px 6px 8px", borderRadius: 20, cursor: "pointer",
+                        border: "1.5px solid var(--outline-variant)",
+                        background: "var(--surface-container-lowest)",
                         color: "var(--on-surface)", fontSize: 12, fontWeight: 500,
-                        display: "flex", alignItems: "center", gap: 6,
-                        transition: "all 0.15s",
+                        display: "flex", alignItems: "center", gap: 7,
+                        transition: "all 0.2s",
                       }}
                       title={t.nameEn}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = t.preview[0]; e.currentTarget.style.boxShadow = `0 2px 8px ${t.preview[0]}33`; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--outline-variant)"; e.currentTarget.style.boxShadow = "none"; }}
                     >
+                      {/* 4-color mini preview strip */}
                       <span style={{
-                        width: 10, height: 10, borderRadius: "50%",
-                        background: t.preview[0], border: "1px solid var(--outline-variant)",
-                        flexShrink: 0,
-                      }} />
+                        display: "flex", borderRadius: 10, overflow: "hidden",
+                        width: 32, height: 16, flexShrink: 0,
+                        border: "1px solid var(--outline-variant)",
+                      }}>
+                        {t.preview.map((c, i) => (
+                          <span key={i} style={{ width: 8, height: 16, background: c }} />
+                        ))}
+                      </span>
                       {t.nameKo}
                     </button>
                   ))}
@@ -333,28 +359,34 @@ export default function ThemeEditor({ onClose, editingTheme }: Props) {
 
               {/* Animation preset */}
               <div style={{
-                border: "1px solid var(--outline-variant)", borderRadius: 10,
-                padding: "12px 14px", marginTop: 4,
+                border: "1px solid var(--outline-variant)", borderRadius: 12,
+                padding: "14px 16px", marginTop: 6,
+                background: "var(--surface-container-low)",
               }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: "var(--on-surface)" }}>
-                  배경 애니메이션
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, color: "var(--on-surface)", display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 15 }}>🎬</span> 배경 애니메이션
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                  {ANIMATION_PRESETS.map((a) => (
+                  {ANIMATION_PRESETS.map((a) => {
+                    const active = animation === a.id;
+                    return (
                     <button
                       key={a.id}
                       onClick={() => setAnimation(a.id)}
                       style={{
-                        padding: "6px 14px", borderRadius: 20, border: "1px solid var(--outline-variant)",
-                        background: animation === a.id ? "var(--primary)" : "transparent",
-                        color: animation === a.id ? "#fff" : "var(--on-surface)",
-                        fontSize: 12, fontWeight: animation === a.id ? 600 : 400,
-                        cursor: "pointer", transition: "all 0.15s",
+                        padding: "6px 16px", borderRadius: 20,
+                        border: active ? "1.5px solid var(--primary)" : "1.5px solid var(--outline-variant)",
+                        background: active ? "var(--primary)" : "var(--surface-container-lowest)",
+                        color: active ? "#fff" : "var(--on-surface)",
+                        fontSize: 12, fontWeight: active ? 600 : 500,
+                        cursor: "pointer", transition: "all 0.2s",
+                        boxShadow: active ? "0 2px 8px rgba(0,0,0,0.1)" : "none",
                       }}
                     >
                       {a.label}
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -365,27 +397,53 @@ export default function ThemeEditor({ onClose, editingTheme }: Props) {
             <EffectsPanel effectsState={effectsState} onChange={setEffectsState} />
           )}
 
+          {/* ═══ Assets Tab ═══ */}
+          {tab === "assets" && (
+            <AssetPanel effectsState={effectsState} onChange={setEffectsState} />
+          )}
+
           {/* ═══ JSON Tab ═══ */}
           {tab === "json" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div style={{ fontSize: 12, color: "var(--on-surface-variant)" }}>
+              <div style={{
+                fontSize: 12, color: "var(--on-surface-variant)",
+                padding: "10px 14px", borderRadius: 10,
+                background: "var(--surface-container-low)",
+                display: "flex", alignItems: "center", gap: 8,
+              }}>
+                <span style={{ fontSize: 16 }}>💡</span>
                 JSON을 직접 편집한 후 "적용" 버튼을 클릭하세요. GUI 에디터와 동기화됩니다.
               </div>
-              <textarea
-                value={jsonText}
-                onChange={(e) => setJsonText(e.target.value)}
-                spellCheck={false}
-                style={{
-                  width: "100%", minHeight: 360, padding: 14, border: "1px solid var(--outline-variant)",
-                  borderRadius: 10, fontSize: 13, fontFamily: "'Fira Code', Consolas, monospace",
-                  lineHeight: 1.6, resize: "vertical", boxSizing: "border-box",
-                  background: "var(--surface-container)", color: "var(--on-surface)",
-                  tabSize: 2,
-                }}
-              />
+              <div style={{
+                border: "1.5px solid var(--outline-variant)", borderRadius: 12, overflow: "hidden",
+              }}>
+                <div style={{
+                  padding: "6px 14px", fontSize: 11, fontWeight: 600,
+                  background: "var(--surface-container-high)", color: "var(--on-surface-variant)",
+                  fontFamily: "monospace", display: "flex", alignItems: "center", gap: 6,
+                }}>
+                  <span style={{ fontSize: 12 }}>{ }</span> theme.json
+                </div>
+                <textarea
+                  value={jsonText}
+                  onChange={(e) => setJsonText(e.target.value)}
+                  spellCheck={false}
+                  style={{
+                    width: "100%", minHeight: 340, padding: 14, border: "none",
+                    fontSize: 13, fontFamily: "'Fira Code', Consolas, monospace",
+                    lineHeight: 1.6, resize: "vertical", boxSizing: "border-box",
+                    background: "var(--surface-container)", color: "var(--on-surface)",
+                    tabSize: 2, outline: "none",
+                  }}
+                />
+              </div>
               {jsonError && (
-                <div style={{ fontSize: 12, color: "var(--error)", padding: "6px 10px", background: "var(--error-light)", borderRadius: 6 }}>
-                  {jsonError}
+                <div style={{
+                  fontSize: 12, color: "var(--error)", padding: "8px 12px",
+                  background: "var(--error-light)", borderRadius: 8,
+                  display: "flex", alignItems: "center", gap: 6,
+                }}>
+                  <span>⚠️</span> {jsonError}
                 </div>
               )}
               <button onClick={handleJsonApply} style={{ ...btnPrimary, alignSelf: "flex-start" }}>
@@ -397,21 +455,30 @@ export default function ThemeEditor({ onClose, editingTheme }: Props) {
           {/* ═══ CSS Tab ═══ */}
           {tab === "css" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div style={{ fontSize: 12, color: "var(--on-surface-variant)", lineHeight: 1.5 }}>
-                CSS를 직접 작성하여 앱 스타일을 오버라이드합니다.
-                <code style={{ background: "var(--surface-container)", padding: "1px 5px", borderRadius: 4, fontSize: 11 }}>
-                  var(--primary)
-                </code> 등 CSS 변수를 사용하면 GUI 설정과 연동됩니다.
+              <div style={{
+                fontSize: 12, color: "var(--on-surface-variant)", lineHeight: 1.5,
+                padding: "10px 14px", borderRadius: 10,
+                background: "var(--surface-container-low)",
+                display: "flex", alignItems: "center", gap: 8,
+              }}>
+                <span style={{ fontSize: 16, flexShrink: 0 }}>💡</span>
+                <span>
+                  CSS를 직접 작성하여 앱 스타일을 오버라이드합니다.{" "}
+                  <code style={{ background: "var(--surface-container)", padding: "1px 5px", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>
+                    var(--primary)
+                  </code>{" "}
+                  등 CSS 변수를 사용하면 GUI 설정과 연동됩니다.
+                </span>
               </div>
               <div style={{
-                border: "1px solid var(--outline-variant)", borderRadius: 10, overflow: "hidden",
+                border: "1.5px solid var(--outline-variant)", borderRadius: 12, overflow: "hidden",
               }}>
                 <div style={{
-                  padding: "8px 14px", fontSize: 11, fontWeight: 600,
+                  padding: "6px 14px", fontSize: 11, fontWeight: 600,
                   background: "var(--surface-container-high)", color: "var(--on-surface-variant)",
-                  fontFamily: "monospace",
+                  fontFamily: "monospace", display: "flex", alignItems: "center", gap: 6,
                 }}>
-                  custom.css
+                  <span style={{ fontSize: 12 }}>&lt;/&gt;</span> custom.css
                 </div>
                 <textarea
                   value={customCSS}
@@ -442,10 +509,10 @@ export default function ThemeEditor({ onClose, editingTheme }: Props) {
               <div style={{
                 padding: "8px 12px", borderRadius: 8,
                 background: "var(--surface-container-low)", fontSize: 11, color: "var(--on-surface-variant)",
-                lineHeight: 1.5,
+                lineHeight: 1.5, display: "flex", alignItems: "center", gap: 8,
               }}>
-                <strong>보안:</strong> @import, expression(), javascript: 등 위험 구문은 자동 제거됩니다.
-                CSS는 스타일링만 가능하므로 보안 위험이 거의 없습니다.
+                <span style={{ fontSize: 13, flexShrink: 0 }}>🔒</span>
+                <span><strong>보안:</strong> @import, expression(), javascript: 등 위험 구문은 자동 제거됩니다.</span>
               </div>
             </div>
           )}
@@ -457,6 +524,22 @@ export default function ThemeEditor({ onClose, editingTheme }: Props) {
 
 /* ── Inline button styles ── */
 
+const btnHeaderGhost: React.CSSProperties = {
+  padding: "6px 14px", border: "1px solid rgba(255,255,255,0.3)",
+  borderRadius: 8, background: "rgba(255,255,255,0.1)", color: "#fff",
+  fontSize: 12, fontWeight: 500, cursor: "pointer",
+  backdropFilter: "blur(4px)", transition: "all 0.15s",
+  position: "relative", zIndex: 1,
+};
+
+const btnHeaderSave: React.CSSProperties = {
+  padding: "7px 20px", border: "none", borderRadius: 8,
+  background: "rgba(255,255,255,0.95)", color: "var(--primary)",
+  fontSize: 13, fontWeight: 700, cursor: "pointer",
+  boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+  transition: "all 0.15s", position: "relative", zIndex: 1,
+};
+
 const btnGhost: React.CSSProperties = {
   padding: "6px 14px", border: "1px solid var(--outline-variant)",
   borderRadius: 8, background: "transparent", color: "var(--on-surface)",
@@ -464,12 +547,18 @@ const btnGhost: React.CSSProperties = {
 };
 
 const btnPrimary: React.CSSProperties = {
-  padding: "6px 18px", border: "none", borderRadius: 8,
+  padding: "7px 18px", border: "none", borderRadius: 8,
   background: "var(--primary)", color: "#fff",
   fontSize: 13, fontWeight: 600, cursor: "pointer",
+  boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
 };
 
 /* ── Memoized sub-components to prevent unnecessary re-renders ── */
+
+const GROUP_ICONS: Record<string, string> = {
+  primary: "🔵", accent: "🟣", surface: "◻️", text: "Aa",
+  status: "🚦", shape: "◆", border: "▣", font: "🔤",
+};
 
 const VariableGroupPanel = memo(function VariableGroupPanel({
   group, isOpen, variables, onToggle, onChange,
@@ -480,32 +569,55 @@ const VariableGroupPanel = memo(function VariableGroupPanel({
   onToggle: (id: string) => void;
   onChange: (key: string, value: string) => void;
 }) {
+  // Build mini color preview from color variables
+  const colorVars = group.variables.filter((v) => v.type === "color").slice(0, 5);
   return (
     <div style={{
-      border: "1px solid var(--outline-variant)", borderRadius: 10, overflow: "hidden",
+      border: "1px solid var(--outline-variant)", borderRadius: 12, overflow: "hidden",
+      transition: "box-shadow 0.2s",
+      boxShadow: isOpen ? "0 2px 12px rgba(0,0,0,0.06)" : "none",
     }}>
       <button
         onClick={() => onToggle(group.id)}
         style={{
-          width: "100%", padding: "10px 14px", border: "none",
+          width: "100%", padding: "11px 14px", border: "none",
           background: isOpen ? "var(--surface-container-low)" : "transparent",
-          cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
+          cursor: "pointer", display: "flex", alignItems: "center", gap: 10,
           fontSize: 13, fontWeight: 600, color: "var(--on-surface)",
           transition: "background 0.15s",
         }}
       >
         <span style={{
-          transform: isOpen ? "rotate(90deg)" : "rotate(0deg)",
-          transition: "transform 0.2s", fontSize: 11,
-        }}>&#9654;</span>
-        {group.label}
-        <span style={{ fontSize: 11, color: "var(--on-surface-variant)", fontWeight: 400 }}>
-          ({group.variables.length})
+          width: 22, height: 22, borderRadius: 6,
+          background: isOpen ? "var(--primary)" : "var(--surface-container)",
+          color: isOpen ? "#fff" : "var(--on-surface-variant)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 11, fontWeight: 700, flexShrink: 0,
+          transition: "all 0.2s",
+        }}>
+          {GROUP_ICONS[group.id] || "●"}
         </span>
+        <span style={{ flex: 1, textAlign: "left" }}>{group.label}</span>
+        {/* Mini color preview strip */}
+        {colorVars.length > 0 && !isOpen && (
+          <span style={{ display: "flex", gap: 2, marginRight: 4 }}>
+            {colorVars.map((v) => (
+              <span key={v.key} style={{
+                width: 14, height: 14, borderRadius: 4,
+                background: variables[v.key] || "#ccc",
+                border: "1px solid var(--outline-variant)",
+              }} />
+            ))}
+          </span>
+        )}
+        <span style={{
+          transform: isOpen ? "rotate(90deg)" : "rotate(0deg)",
+          transition: "transform 0.2s", fontSize: 10, color: "var(--on-surface-variant)",
+        }}>&#9654;</span>
       </button>
 
       {isOpen && (
-        <div style={{ padding: "8px 14px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ padding: "10px 14px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
           {group.variables.map((v) => (
             <VariableInput key={v.key} def={v} value={variables[v.key]} onChange={onChange} />
           ))}
@@ -520,6 +632,15 @@ function parseSliderVal(val: string | undefined): number {
   return parseInt(val) || 0;
 }
 
+const FONT_GROUPS: { label: string; start: number; end: number }[] = [
+  { label: "── 한국어 산세리프 ──", start: 0, end: 20 },
+  { label: "── 한국어 세리프/명조 ──", start: 20, end: 25 },
+  { label: "── 영문 산세리프 ──", start: 25, end: 35 },
+  { label: "── 영문 세리프 ──", start: 35, end: 40 },
+  { label: "── 코딩 / 모노스페이스 ──", start: 40, end: 44 },
+  { label: "── 시스템 ──", start: 44, end: 45 },
+];
+
 const VariableInput = memo(function VariableInput({
   def, value, onChange,
 }: {
@@ -529,28 +650,41 @@ const VariableInput = memo(function VariableInput({
 }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-      <span style={{ fontSize: 12, color: "var(--on-surface-variant)", minWidth: 80 }}>
+      <span style={{ fontSize: 12, color: "var(--on-surface-variant)", minWidth: 80, fontWeight: 500 }}>
         {def.label}
       </span>
 
       {def.type === "color" && (
         <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1 }}>
-          <input
-            type="color"
-            value={toHex(value || "#000000")}
-            onChange={(e) => onChange(def.key, e.target.value)}
-            style={{ width: 32, height: 28, border: "none", cursor: "pointer", borderRadius: 4, padding: 0 }}
-          />
+          <label style={{
+            width: 36, height: 36, borderRadius: 8, cursor: "pointer",
+            background: value || "#000000",
+            border: "2px solid var(--outline-variant)",
+            boxShadow: "0 1px 4px rgba(0,0,0,0.1), inset 0 0 0 1px rgba(255,255,255,0.1)",
+            flexShrink: 0, position: "relative", overflow: "hidden",
+            transition: "box-shadow 0.15s",
+          }}>
+            <input
+              type="color"
+              value={toHex(value || "#000000")}
+              onChange={(e) => onChange(def.key, e.target.value)}
+              style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%", height: "100%" }}
+            />
+          </label>
           <input
             type="text"
             value={value || ""}
             onChange={(e) => onChange(def.key, e.target.value)}
             style={{
-              flex: 1, padding: "4px 8px", border: "1px solid var(--outline-variant)",
-              borderRadius: 6, fontSize: 12, fontFamily: "monospace", boxSizing: "border-box",
+              flex: 1, padding: "6px 10px", border: "1.5px solid var(--outline-variant)",
+              borderRadius: 8, fontSize: 12, fontFamily: "'JetBrains Mono', Consolas, monospace",
+              boxSizing: "border-box",
               background: "var(--surface-container-lowest)", color: "var(--on-surface)",
+              outline: "none", transition: "border-color 0.15s",
             }}
             placeholder={def.key}
+            onFocus={(e) => e.currentTarget.style.borderColor = "var(--primary)"}
+            onBlur={(e) => e.currentTarget.style.borderColor = "var(--outline-variant)"}
           />
         </div>
       )}
@@ -564,9 +698,14 @@ const VariableInput = memo(function VariableInput({
             step={1}
             value={parseSliderVal(value)}
             onChange={(e) => onChange(def.key, `${e.target.value}${def.unit || "px"}`)}
-            style={{ flex: 1 }}
+            style={{ flex: 1, accentColor: "var(--primary)" }}
           />
-          <span style={{ fontSize: 12, fontFamily: "monospace", minWidth: 36, textAlign: "right", color: "var(--on-surface)" }}>
+          <span style={{
+            fontSize: 12, fontFamily: "'JetBrains Mono', Consolas, monospace",
+            minWidth: 40, textAlign: "right", color: "var(--on-surface)",
+            padding: "3px 6px", borderRadius: 6,
+            background: "var(--surface-container)", fontWeight: 500,
+          }}>
             {value || `${def.min ?? 0}${def.unit || "px"}`}
           </span>
         </div>
@@ -575,19 +714,472 @@ const VariableInput = memo(function VariableInput({
       {def.type === "font" && (
         <select
           value={value || ""}
-          onChange={(e) => onChange(def.key, e.target.value)}
-          style={{
-            flex: 1, padding: "4px 8px", border: "1px solid var(--outline-variant)",
-            borderRadius: 6, fontSize: 12, boxSizing: "border-box",
-            background: "var(--surface-container-lowest)", color: "var(--on-surface)",
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v) loadGoogleFont(v);
+            onChange(def.key, v);
           }}
+          style={{
+            flex: 1, padding: "7px 10px", border: "1.5px solid var(--outline-variant)",
+            borderRadius: 8, fontSize: 12, boxSizing: "border-box",
+            background: "var(--surface-container-lowest)", color: "var(--on-surface)",
+            fontFamily: value || "inherit", outline: "none",
+            transition: "border-color 0.15s",
+          }}
+          onFocus={(e) => e.currentTarget.style.borderColor = "var(--primary)"}
+          onBlur={(e) => e.currentTarget.style.borderColor = "var(--outline-variant)"}
         >
           <option value="">기본값</option>
-          {FONT_OPTIONS.map((f) => (
-            <option key={f.value} value={f.value}>{f.label}</option>
+          {FONT_GROUPS.map((g) => (
+            <optgroup key={g.label} label={g.label}>
+              {FONT_OPTIONS.slice(g.start, g.end).map((f) => (
+                <option key={f.value} value={f.value}>{f.label}</option>
+              ))}
+            </optgroup>
           ))}
         </select>
       )}
     </div>
   );
 });
+
+/* ── Asset Panel — dedicated UI for cursor / background / mascot ── */
+
+const ASSET_EFFECTS = ["customCursorImage", "backgroundImage", "mascotSprite"] as const;
+
+const ASSET_SECTIONS: {
+  id: typeof ASSET_EFFECTS[number];
+  icon: string;
+  title: string;
+  desc: string;
+  fields: { key: string; label: string; type: "image" | "number" | "select"; min?: number; max?: number; step?: number; default: string | number; options?: { value: string; label: string }[] }[];
+}[] = [
+  {
+    id: "customCursorImage", icon: "🖱️", title: "커서 이미지",
+    desc: "마우스 커서를 나만의 이미지로 교체합니다 (32x32px PNG 권장)",
+    fields: [
+      { key: "default", label: "기본 커서", type: "image", default: "" },
+      { key: "pointer", label: "포인터 (버튼/링크)", type: "image", default: "" },
+      { key: "text", label: "텍스트 (입력 영역)", type: "image", default: "" },
+    ],
+  },
+  {
+    id: "backgroundImage", icon: "🏞️", title: "배경 미디어",
+    desc: "배경에 이미지/GIF/동영상(mp4, webm)을 오버레이합니다",
+    fields: [
+      { key: "url", label: "이미지/GIF/영상", type: "image", default: "" },
+      { key: "opacity", label: "불투명도", type: "number", min: 0.02, max: 1, step: 0.02, default: 0.15 },
+      { key: "blendMode", label: "블렌드 모드", type: "select", default: "normal", options: [
+        { value: "normal", label: "기본" }, { value: "multiply", label: "곱하기" },
+        { value: "screen", label: "스크린" }, { value: "overlay", label: "오버레이" },
+        { value: "soft-light", label: "소프트 라이트" }, { value: "luminosity", label: "광도" },
+      ]},
+      { key: "size", label: "크기", type: "select", default: "cover", options: [
+        { value: "cover", label: "채우기" }, { value: "contain", label: "맞추기" },
+        { value: "auto", label: "원본" }, { value: "200px", label: "타일 (200px)" }, { value: "400px", label: "타일 (400px)" },
+      ]},
+      { key: "position", label: "위치", type: "select", default: "center", options: [
+        { value: "center", label: "가운데" }, { value: "top", label: "위" },
+        { value: "bottom", label: "아래" }, { value: "left", label: "왼쪽" }, { value: "right", label: "오른쪽" },
+      ]},
+    ],
+  },
+  {
+    id: "mascotSprite", icon: "🐾", title: "마스코트 스프라이트",
+    desc: "30개 행동 함수 + JSON 스크립트로 캐릭터를 제어합니다",
+    fields: [
+      { key: "spriteUrl", label: "스프라이트 시트", type: "image", default: "" },
+      { key: "frameCount", label: "프레임 수", type: "number", min: 1, max: 32, step: 1, default: 4 },
+      { key: "frameWidth", label: "프레임 너비 (px)", type: "number", min: 16, max: 512, step: 8, default: 64 },
+      { key: "frameHeight", label: "프레임 높이 (px)", type: "number", min: 16, max: 512, step: 8, default: 64 },
+      { key: "fps", label: "프레임 속도 (fps)", type: "number", min: 1, max: 30, step: 1, default: 8 },
+      { key: "scale", label: "크기 배율", type: "number", min: 0.5, max: 4, step: 0.25, default: 1 },
+      { key: "layout", label: "시트 배치", type: "select", default: "horizontal", options: [
+        { value: "horizontal", label: "가로 (1행)" },
+        { value: "vertical", label: "세로 (1열)" },
+        { value: "grid", label: "격자 (N×M)" },
+      ]},
+      { key: "cols", label: "격자 열 수", type: "number", min: 1, max: 32, step: 1, default: 4 },
+      { key: "posX", label: "오른쪽 여백 (px)", type: "number", min: 0, max: 500, step: 10, default: 20 },
+      { key: "posY", label: "아래쪽 여백 (px)", type: "number", min: 0, max: 500, step: 10, default: 20 },
+    ],
+  },
+];
+
+const DEFAULT_SCRIPT_EXAMPLE = `{
+  "sprites": {
+    "idle": { "url": "", "frameCount": 4, "frameWidth": 64, "frameHeight": 64, "fps": 6 },
+    "walk": { "url": "", "frameCount": 6, "frameWidth": 64, "frameHeight": 64, "fps": 10, "layout": "vertical" },
+    "happy": { "url": "", "frameCount": 12, "frameWidth": 64, "frameHeight": 64, "fps": 8, "layout": "grid", "cols": 4 }
+  },
+  "onStart": [
+    { "action": "spawn", "params": { "name": "idle" } },
+    { "action": "say", "params": { "text": "안녕! 👋", "duration": 2000 } },
+    { "action": "bounce", "params": { "height": 15, "count": 2 } }
+  ],
+  "loop": [
+    { "action": "playSprite", "params": { "name": "idle" } },
+    { "action": "idle", "params": { "duration": 8000 } },
+    { "action": "playSprite", "params": { "name": "walk" } },
+    { "action": "wander", "params": { "steps": 2 } }
+  ],
+  "reactions": {
+    "onClick": [
+      { "action": "playSprite", "params": { "name": "happy" } },
+      { "action": "bounce", "params": { "height": 20, "count": 2 } },
+      { "action": "emote", "params": { "emoji": "😊" } }
+    ],
+    "onCorrect": [
+      { "action": "playSprite", "params": { "name": "happy" } },
+      { "action": "jump", "params": { "height": 40 } },
+      { "action": "dance", "params": { "duration": 1500 } }
+    ],
+    "onWrong": [
+      { "action": "shake" },
+      { "action": "emote", "params": { "emoji": "😢" } }
+    ]
+  }
+}`;
+
+const MASCOT_ACTIONS_HELP = [
+  ["이동", "moveTo, walkTo, patrol, wander, follow, orbit"],
+  ["애니메이션", "bounce, jump, spin, shake, wave, dance, nod, float, surprise"],
+  ["표시", "flip, setScale, setOpacity, hide, show"],
+  ["소통", "say, emote"],
+  ["제어", "sleep, idle, wait, stop"],
+  ["스프라이트", "addSprite, playSprite, setSpriteSheet, spawn, kill"],
+];
+
+function AssetPanel({ effectsState, onChange }: { effectsState: EffectsState; onChange: (s: EffectsState) => void }) {
+  const [scriptText, setScriptText] = useState(
+    () => String(effectsState.mascotSprite?.params?.script || "")
+  );
+  const [scriptError, setScriptError] = useState<string | null>(null);
+  const [scriptApplied, setScriptApplied] = useState(false);
+
+  // Debounce effect application to prevent rapid mascot restarts during slider drags
+  const applyTimerRef = useRef(0);
+  const pendingStateRef = useRef<EffectsState | null>(null);
+
+  const flushApply = useCallback(() => {
+    if (pendingStateRef.current) {
+      effectManager.applyState(pendingStateRef.current);
+      pendingStateRef.current = null;
+    }
+  }, []);
+
+  const debouncedOnChange = useCallback((next: EffectsState) => {
+    onChange(next); // React state updates immediately (for UI)
+    pendingStateRef.current = next;
+    clearTimeout(applyTimerRef.current);
+    applyTimerRef.current = window.setTimeout(flushApply, 300);
+  }, [onChange, flushApply]);
+
+  // Immediate apply (bypasses debounce — for toggle/script apply)
+  const immediateOnChange = useCallback((next: EffectsState) => {
+    clearTimeout(applyTimerRef.current);
+    pendingStateRef.current = null;
+    onChange(next);
+    effectManager.applyState(next);
+  }, [onChange]);
+
+  // Cleanup timer on unmount
+  useEffect(() => () => clearTimeout(applyTimerRef.current), []);
+
+  const toggle = (id: string, enabled: boolean) => {
+    const current = effectsState[id] || { enabled: false, params: {} };
+    const section = ASSET_SECTIONS.find((s) => s.id === id)!;
+    const defaults: Record<string, string | number> = {};
+    for (const f of section.fields) defaults[f.key] = f.default;
+    immediateOnChange({ ...effectsState, [id]: { ...current, params: current.params && Object.keys(current.params).length ? current.params : defaults, enabled } });
+  };
+
+  const updateParam = (id: string, key: string, value: string | number) => {
+    const section = ASSET_SECTIONS.find((s) => s.id === id)!;
+    const defaults: Record<string, string | number> = {};
+    for (const f of section.fields) defaults[f.key] = f.default;
+    const current = effectsState[id] || { enabled: true, params: defaults };
+    debouncedOnChange({ ...effectsState, [id]: { ...current, enabled: true, params: { ...defaults, ...current.params, [key]: value } } });
+  };
+
+  const applyScript = () => {
+    const trimmed = scriptText.trim();
+    if (!trimmed) {
+      const section = ASSET_SECTIONS.find((s) => s.id === "mascotSprite")!;
+      const defaults: Record<string, string | number> = {};
+      for (const f of section.fields) defaults[f.key] = f.default;
+      const current = effectsState.mascotSprite || { enabled: true, params: defaults };
+      immediateOnChange({ ...effectsState, mascotSprite: { ...current, enabled: true, params: { ...defaults, ...current.params, script: "" } } });
+      setScriptError(null);
+      setScriptApplied(true);
+      setTimeout(() => setScriptApplied(false), 1500);
+      return;
+    }
+    try {
+      JSON.parse(trimmed);
+      const section = ASSET_SECTIONS.find((s) => s.id === "mascotSprite")!;
+      const defaults: Record<string, string | number> = {};
+      for (const f of section.fields) defaults[f.key] = f.default;
+      const current = effectsState.mascotSprite || { enabled: true, params: defaults };
+      immediateOnChange({ ...effectsState, mascotSprite: { ...current, enabled: true, params: { ...defaults, ...current.params, script: trimmed } } });
+      setScriptError(null);
+      setScriptApplied(true);
+      setTimeout(() => setScriptApplied(false), 1500);
+    } catch {
+      setScriptError("JSON 형식이 올바르지 않습니다.");
+    }
+  };
+
+  const loadDefaultScript = () => {
+    setScriptText(DEFAULT_SCRIPT_EXAMPLE);
+    setScriptError(null);
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ fontSize: 12, color: "var(--on-surface-variant)", lineHeight: 1.5 }}>
+        커서, 배경 미디어(이미지/GIF/동영상), 마스코트 캐릭터를 설정합니다.
+      </div>
+
+      {ASSET_SECTIONS.map((section) => {
+        const config = effectsState[section.id];
+        const enabled = config?.enabled || false;
+        const params = config?.params || {};
+
+        return (
+          <div key={section.id} style={{
+            border: "1px solid var(--outline-variant)", borderRadius: 12, overflow: "hidden",
+          }}>
+            <div style={{
+              padding: "12px 16px", display: "flex", alignItems: "center", gap: 10,
+              background: enabled ? "var(--surface-container-low)" : "transparent",
+            }}>
+              <span style={{ fontSize: 20 }}>{section.icon}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--on-surface)" }}>{section.title}</div>
+                <div style={{ fontSize: 11, color: "var(--on-surface-variant)", marginTop: 1 }}>{section.desc}</div>
+              </div>
+              <button
+                onClick={() => toggle(section.id, !enabled)}
+                style={{
+                  width: 44, height: 24, borderRadius: 12, border: "none",
+                  background: enabled ? "var(--primary)" : "var(--outline-variant)",
+                  cursor: "pointer", position: "relative", flexShrink: 0, transition: "background 0.2s",
+                }}
+              >
+                <span style={{
+                  position: "absolute", top: 3, left: enabled ? 22 : 3,
+                  width: 18, height: 18, borderRadius: "50%", background: "#fff",
+                  transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                }} />
+              </button>
+            </div>
+
+            {enabled && (
+              <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+                {section.fields.map((field) => {
+                  // Hide "cols" field unless layout is "grid"
+                  if (field.key === "cols" && String(params["layout"] || "horizontal") !== "grid") return null;
+                  return (
+                  <div key={field.key}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "var(--on-surface-variant)", marginBottom: 4 }}>
+                      {field.label}
+                    </div>
+                    {field.type === "image" && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <input
+                            type="text" value={String(params[field.key] || "")}
+                            onChange={(e) => updateParam(section.id, field.key, e.target.value)}
+                            placeholder="이미지 URL 입력"
+                            style={{
+                              flex: 1, padding: "6px 10px", border: "1px solid var(--outline-variant)",
+                              borderRadius: 8, fontSize: 12, fontFamily: "monospace",
+                              background: "var(--surface-container-lowest)", color: "var(--on-surface)", minWidth: 0,
+                            }}
+                          />
+                          <label style={{
+                            padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+                            border: "1px solid var(--outline-variant)", background: "var(--surface-container-low)",
+                            color: "var(--primary)", cursor: "pointer", whiteSpace: "nowrap",
+                          }}>
+                            파일
+                            <input type="file" accept="image/*,video/mp4,video/webm" style={{ display: "none" }}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                const reader = new FileReader();
+                                reader.onload = () => updateParam(section.id, field.key, reader.result as string);
+                                reader.readAsDataURL(file);
+                                e.target.value = "";
+                              }}
+                            />
+                          </label>
+                          {params[field.key] && (
+                            <button onClick={() => updateParam(section.id, field.key, "")} title="제거"
+                              style={{
+                                width: 28, height: 28, borderRadius: 6, border: "1px solid var(--outline-variant)",
+                                background: "transparent", color: "var(--error)", cursor: "pointer",
+                                fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center",
+                              }}>&times;</button>
+                          )}
+                        </div>
+                        {params[field.key] && (
+                          <img src={String(params[field.key])} alt=""
+                            style={{
+                              maxWidth: 160, maxHeight: 64, objectFit: "contain", borderRadius: 6,
+                              border: "1px solid var(--outline-variant)",
+                              background: "repeating-conic-gradient(var(--outline-variant) 0% 25%, transparent 0% 50%) 50% / 12px 12px",
+                            }}
+                          />
+                        )}
+                      </div>
+                    )}
+                    {field.type === "number" && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <input type="range" min={field.min ?? 0} max={field.max ?? 100} step={field.step ?? 1}
+                          value={Number(params[field.key] ?? field.default)}
+                          onChange={(e) => updateParam(section.id, field.key, parseFloat(e.target.value))}
+                          style={{ flex: 1, accentColor: "var(--primary)" }}
+                        />
+                        <span style={{ fontSize: 12, fontFamily: "monospace", minWidth: 40, textAlign: "right", color: "var(--on-surface)" }}>
+                          {params[field.key] ?? field.default}
+                        </span>
+                      </div>
+                    )}
+                    {field.type === "select" && (
+                      <select value={String(params[field.key] || field.default)}
+                        onChange={(e) => updateParam(section.id, field.key, e.target.value)}
+                        style={{
+                          width: "100%", padding: "6px 10px", border: "1px solid var(--outline-variant)",
+                          borderRadius: 8, fontSize: 12, background: "var(--surface-container-lowest)",
+                          color: "var(--on-surface)",
+                        }}
+                      >
+                        {field.options?.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {/* ═══ Mascot Behavior Script Editor ═══ */}
+      {effectsState.mascotSprite?.enabled && (
+        <div style={{
+          border: "1px solid var(--outline-variant)", borderRadius: 12, overflow: "hidden",
+        }}>
+          <div style={{
+            padding: "12px 16px", background: "var(--surface-container-low)",
+            display: "flex", alignItems: "center", gap: 8,
+          }}>
+            <span style={{ fontSize: 18 }}>📜</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--on-surface)" }}>행동 스크립트</div>
+              <div style={{ fontSize: 11, color: "var(--on-surface-variant)", marginTop: 1 }}>
+                JSON으로 마스코트 행동을 프로그래밍합니다 (30개 함수)
+              </div>
+            </div>
+          </div>
+
+          <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
+            {/* Action reference */}
+            <div style={{
+              padding: "8px 10px", borderRadius: 8,
+              background: "var(--surface-container)", fontSize: 11,
+              color: "var(--on-surface-variant)", lineHeight: 1.6,
+            }}>
+              {MASCOT_ACTIONS_HELP.map(([cat, actions]) => (
+                <div key={cat}>
+                  <strong>{cat}:</strong> <code style={{
+                    fontSize: 10, background: "var(--surface-container-high)",
+                    padding: "1px 4px", borderRadius: 3,
+                  }}>{actions}</code>
+                </div>
+              ))}
+            </div>
+
+            {/* Script textarea */}
+            <textarea
+              value={scriptText}
+              onChange={(e) => { setScriptText(e.target.value); setScriptError(null); }}
+              spellCheck={false}
+              placeholder={DEFAULT_SCRIPT_EXAMPLE}
+              style={{
+                width: "100%", minHeight: 200, padding: 10,
+                border: "1px solid var(--outline-variant)", borderRadius: 8,
+                fontSize: 11, fontFamily: "'Fira Code', Consolas, monospace",
+                lineHeight: 1.5, resize: "vertical", boxSizing: "border-box",
+                background: "var(--surface-container)", color: "var(--on-surface)",
+                tabSize: 2,
+              }}
+            />
+
+            {scriptError && (
+              <div style={{
+                fontSize: 11, color: "var(--error)", padding: "4px 8px",
+                background: "var(--error-light, #fef2f2)", borderRadius: 6,
+              }}>
+                {scriptError}
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <button type="button" onClick={applyScript} style={{
+                padding: "7px 18px", border: "none", borderRadius: 8,
+                background: scriptApplied ? "var(--success, #22c55e)" : "var(--primary)", color: "#fff",
+                fontSize: 12, fontWeight: 700, cursor: "pointer",
+                boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+                transition: "background 0.2s, transform 0.1s",
+                position: "relative", zIndex: 1,
+              }}>
+                {scriptApplied ? "적용 완료!" : "적용"}
+              </button>
+              <button type="button" onClick={loadDefaultScript} style={{
+                padding: "6px 14px", border: "1px solid var(--outline-variant)", borderRadius: 8,
+                background: "transparent", color: "var(--on-surface)",
+                fontSize: 12, fontWeight: 500, cursor: "pointer",
+              }}>
+                기본 예시 불러오기
+              </button>
+              {scriptText.trim() && (
+                <button type="button" onClick={() => { setScriptText(""); updateParam("mascotSprite", "script", ""); setScriptError(null); }} style={{
+                  padding: "6px 14px", border: "1px solid var(--outline-variant)", borderRadius: 8,
+                  background: "transparent", color: "var(--error)",
+                  fontSize: 12, fontWeight: 500, cursor: "pointer",
+                }}>
+                  초기화
+                </button>
+              )}
+            </div>
+
+            <div style={{
+              padding: "6px 10px", borderRadius: 6, fontSize: 10,
+              background: "var(--surface-container-low)", color: "var(--on-surface-variant)",
+              lineHeight: 1.5,
+            }}>
+              스크립트가 비어있으면 기본 행동이 적용됩니다.
+              콘솔에서 <code style={{ fontSize: 10 }}>__pikabuddyMascot</code>으로 직접 제어할 수도 있습니다.
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{
+        padding: "10px 14px", borderRadius: 8, marginTop: 4,
+        background: "var(--surface-container-low)", fontSize: 11,
+        color: "var(--on-surface-variant)", lineHeight: 1.6,
+      }}>
+        <strong>스프라이트 시트:</strong> 가로로 프레임을 나열한 한 장의 이미지 (예: 4프레임 64x64 = 256x64px)<br/>
+        <strong>배경 미디어:</strong> GIF/mp4/webm도 지원 (동영상은 자동 반복 재생)<br/>
+        <strong>커서:</strong> 32x32px 투명 배경 PNG 권장 &middot; <strong>큰 파일:</strong> 외부 URL 사용 권장
+      </div>
+    </div>
+  );
+}

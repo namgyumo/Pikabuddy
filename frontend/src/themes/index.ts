@@ -206,15 +206,76 @@ export const VARIABLE_GROUPS: VariableGroup[] = [
 ];
 
 export const FONT_OPTIONS = [
+  // ── 한국어 산세리프 ──
   { value: "'Pretendard Variable', Pretendard, sans-serif", label: "Pretendard (기본)" },
   { value: "'Noto Sans KR', sans-serif", label: "Noto Sans KR" },
   { value: "'IBM Plex Sans KR', sans-serif", label: "IBM Plex Sans KR" },
-  { value: "system-ui, sans-serif", label: "시스템 기본" },
-  { value: "'Fira Code', monospace", label: "Fira Code" },
-  { value: "'Nanum Gothic', sans-serif", label: "나눔 고딕" },
-  { value: "'Nanum Myeongjo', serif", label: "나눔 명조" },
+  { value: "'Nanum Gothic', sans-serif", label: "나눔고딕" },
+  { value: "'Gothic A1', sans-serif", label: "Gothic A1" },
+  { value: "'Gowun Dodum', sans-serif", label: "고운돋움" },
+  { value: "'Spoqa Han Sans Neo', sans-serif", label: "스포카 한 산스" },
+  { value: "'Do Hyeon', sans-serif", label: "도현" },
+  { value: "'Jua', sans-serif", label: "주아" },
+  { value: "'Sunflower', sans-serif", label: "해바라기" },
+  { value: "'Black Han Sans', sans-serif", label: "블랙 한 산스" },
+  { value: "'Gamja Flower', cursive", label: "감자꽃" },
+  { value: "'Cute Font', cursive", label: "큐트폰트" },
+  { value: "'Poor Story', cursive", label: "푸어스토리" },
+  { value: "'Stylish', sans-serif", label: "스타일리시" },
+  { value: "'Dongle', sans-serif", label: "동글" },
+  { value: "'Gaegu', cursive", label: "개구" },
+  { value: "'Single Day', cursive", label: "싱글데이" },
+  { value: "'Hi Melody', cursive", label: "하이멜로디" },
+  { value: "'Yeon Sung', cursive", label: "연성" },
+  // ── 한국어 세리프/명조 ──
+  { value: "'Nanum Myeongjo', serif", label: "나눔명조" },
+  { value: "'Noto Serif KR', serif", label: "Noto Serif KR" },
+  { value: "'Gowun Batang', serif", label: "고운바탕" },
+  { value: "'Song Myung', serif", label: "송명" },
+  { value: "'Hahmlet', serif", label: "함렛" },
+  // ── 영문 산세리프 ──
+  { value: "'Inter', sans-serif", label: "Inter" },
+  { value: "'Poppins', sans-serif", label: "Poppins" },
+  { value: "'Raleway', sans-serif", label: "Raleway" },
+  { value: "'Montserrat', sans-serif", label: "Montserrat" },
+  { value: "'Outfit', sans-serif", label: "Outfit" },
+  { value: "'Space Grotesk', sans-serif", label: "Space Grotesk" },
+  { value: "'DM Sans', sans-serif", label: "DM Sans" },
+  { value: "'Nunito', sans-serif", label: "Nunito" },
+  { value: "'Quicksand', sans-serif", label: "Quicksand" },
+  { value: "'Comfortaa', cursive", label: "Comfortaa" },
+  // ── 영문 세리프 ──
+  { value: "'Playfair Display', serif", label: "Playfair Display" },
+  { value: "'Merriweather', serif", label: "Merriweather" },
+  { value: "'Lora', serif", label: "Lora" },
+  { value: "'Libre Baskerville', serif", label: "Libre Baskerville" },
   { value: "Georgia, serif", label: "Georgia" },
+  // ── 코딩/모노스페이스 ──
+  { value: "'Fira Code', monospace", label: "Fira Code" },
+  { value: "'JetBrains Mono', monospace", label: "JetBrains Mono" },
+  { value: "'Source Code Pro', monospace", label: "Source Code Pro" },
+  { value: "'D2Coding', monospace", label: "D2Coding" },
+  // ── 시스템 ──
+  { value: "system-ui, sans-serif", label: "시스템 기본" },
 ];
+
+/** Dynamically load a Google Font by name (idempotent) */
+const _loadedFonts = new Set<string>();
+export function loadGoogleFont(fontFamily: string) {
+  // Extract font name from CSS value like "'Poppins', sans-serif"
+  const match = fontFamily.match(/^'([^']+)'/);
+  const name = match ? match[1] : fontFamily.split(",")[0].trim().replace(/'/g, "");
+  if (!name || _loadedFonts.has(name)) return;
+  // Skip system/local fonts
+  const skipList = ["system-ui", "Georgia", "Pretendard", "Pretendard Variable"];
+  if (skipList.includes(name)) return;
+  _loadedFonts.add(name);
+  const encoded = name.replace(/ /g, "+");
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = `https://fonts.googleapis.com/css2?family=${encoded}:wght@300;400;500;600;700&display=swap`;
+  document.head.appendChild(link);
+}
 
 export const ANIMATION_PRESETS = [
   { id: "none", label: "없음" },

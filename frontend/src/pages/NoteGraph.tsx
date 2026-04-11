@@ -3,9 +3,84 @@ import { useParams, useNavigate } from "react-router-dom";
 import ForceGraph2DImport from "react-force-graph-2d";
 import { forceCollide, forceX, forceY, forceManyBody } from "d3-force";
 import api from "../lib/api";
+import { renderMarkdown } from "../lib/markdown";
 import type { Course, GraphData } from "../types";
 
 const ForceGraph2D = (ForceGraph2DImport as any).default || ForceGraph2DImport;
+
+/* ── Theme-aware graph color palette ── */
+function parseColorLuminance(color: string): number {
+  // Parse hex or rgb/rgba to get relative luminance (0=black, 1=white)
+  let r = 0, g = 0, b = 0;
+  if (color.startsWith("#")) {
+    const hex = color.length === 4
+      ? "#" + color[1]+color[1]+color[2]+color[2]+color[3]+color[3]
+      : color;
+    r = parseInt(hex.slice(1, 3), 16) / 255;
+    g = parseInt(hex.slice(3, 5), 16) / 255;
+    b = parseInt(hex.slice(5, 7), 16) / 255;
+  } else {
+    const m = color.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+    if (m) { r = +m[1]/255; g = +m[2]/255; b = +m[3]/255; }
+  }
+  return 0.299 * r + 0.587 * g + 0.114 * b;
+}
+
+function getGraphColors() {
+  const cs = getComputedStyle(document.documentElement);
+  const surface = cs.getPropertyValue("--surface").trim() || "#f5f6fa";
+  const onSurface = cs.getPropertyValue("--on-surface").trim() || "#1a1c23";
+  const onSurfaceVar = cs.getPropertyValue("--on-surface-variant").trim() || "#44474f";
+  const primary = cs.getPropertyValue("--primary").trim() || "#004AC6";
+  const outlineVar = cs.getPropertyValue("--outline-variant").trim() || "rgba(68,71,79,0.15)";
+  const surfaceLow = cs.getPropertyValue("--surface-container-low").trim() || surface;
+  const surfaceHigh = cs.getPropertyValue("--surface-container-high").trim() || surface;
+
+  const isDark = parseColorLuminance(surface) < 0.4;
+
+  // Edge colors — higher opacity on light backgrounds
+  const parentCore = isDark ? "rgba(34,211,238,0.5)" : "rgba(6,150,170,0.65)";
+  const parentGlow = isDark ? "rgba(34,211,238,0.12)" : "rgba(6,150,170,0.15)";
+  const linkCore = isDark ? "rgba(251,191,36,0.4)" : "rgba(180,120,0,0.55)";
+  const linkGlow = isDark ? "rgba(251,191,36,0.08)" : "rgba(180,120,0,0.12)";
+  const simR = isDark ? 192 : 140;
+  const simG = isDark ? 38 : 20;
+  const simB = isDark ? 211 : 180;
+  const simCoreBase = isDark ? 0.25 : 0.35;
+  const simCoreDelta = isDark ? 0.35 : 0.35;
+  const simGlow1Base = isDark ? 0.04 : 0.06;
+  const simGlow1Delta = isDark ? 0.08 : 0.1;
+  const simGlow2Base = isDark ? 0.1 : 0.14;
+  const simGlow2Delta = isDark ? 0.12 : 0.14;
+  const simGlow3Base = isDark ? 0.15 : 0.2;
+  const simGlow3Delta = isDark ? 0.1 : 0.12;
+
+  // Node colors
+  const nodeStroke = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.12)";
+  const nodeStrokeRoot = isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.2)";
+  const nodeHighlight = isDark ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.35)";
+  const rootRingAlpha = isDark ? "40" : "30";
+
+  // Label colors
+  const labelBg = isDark ? "rgba(15,23,42,0.75)" : "rgba(255,255,255,0.88)";
+  const labelBgRoot = isDark ? "rgba(15,23,42,0.9)" : "rgba(255,255,255,0.94)";
+  const labelBgHover = isDark ? "rgba(30,41,59,0.95)" : "rgba(255,255,255,0.97)";
+  const labelText = isDark ? "rgba(203,213,225,0.8)" : onSurfaceVar;
+  const labelTextRoot = isDark ? "#e2e8f0" : onSurface;
+  const labelTextHover = isDark ? "#f8fafc" : onSurface;
+  const labelBorderAlpha = "60";
+
+  return {
+    isDark, surface, onSurface, onSurfaceVar, primary, outlineVar, surfaceLow, surfaceHigh,
+    parentCore, parentGlow, linkCore, linkGlow,
+    simR, simG, simB, simCoreBase, simCoreDelta,
+    simGlow1Base, simGlow1Delta, simGlow2Base, simGlow2Delta, simGlow3Base, simGlow3Delta,
+    nodeStroke, nodeStrokeRoot, nodeHighlight, rootRingAlpha,
+    labelBg, labelBgRoot, labelBgHover, labelText, labelTextRoot, labelTextHover, labelBorderAlpha,
+  };
+}
+
+type GraphColorPalette = ReturnType<typeof getGraphColors>;
 
 /* ── Error boundary ── */
 class GraphErrorBoundary extends Component<
@@ -36,6 +111,7 @@ interface GNode {
   tags: string[];
   categories: string[];
   parentId: string | null;
+  hasChildren: boolean;
   size: number;
   createdAt: string;
   updatedAt: string;
@@ -78,6 +154,18 @@ export default function NoteGraph() {
   const [error, setError] = useState<string | null>(null);
   const [hovered, setHovered] = useState<GNode | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+  // Theme-aware graph colors — re-read on CSS variable changes
+  const [gColors, setGColors] = useState<GraphColorPalette>(getGraphColors);
+  const gColorsRef = useRef(gColors);
+  gColorsRef.current = gColors;
+  useEffect(() => {
+    const refresh = () => { const c = getGraphColors(); setGColors(c); gColorsRef.current = c; };
+    // Observe style attribute changes on <html> (theme switches)
+    const mo = new MutationObserver(refresh);
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ["style", "data-theme"] });
+    return () => mo.disconnect();
+  }, []);
   const [dim, setDim] = useState({ w: 0, h: 0 });
   const [ready, setReady] = useState(false);
 
@@ -127,12 +215,19 @@ export default function NoteGraph() {
     if (!courseId) return;
     let on = true;
     (async () => {
-      try { const r = await api.get(`/courses/${courseId}`); if (on) setCourse(r.data); } catch {}
-      // graph endpoint → fallback to notes list
-      try {
-        const r = await api.get(`/courses/${courseId}/notes/graph`);
-        if (on) setGraphData(r.data);
-      } catch {
+      // Fire all requests in parallel
+      const [courseRes, graphRes, pathRes] = await Promise.all([
+        api.get(`/courses/${courseId}`).catch(() => null),
+        api.get(`/courses/${courseId}/notes/graph`).catch(() => null),
+        api.get(`/courses/${courseId}/study-path`).catch(() => null),
+      ]);
+      if (!on) return;
+      if (courseRes) setCourse(courseRes.data);
+      if (pathRes) setStudyPath(pathRes.data);
+      if (graphRes) {
+        setGraphData(graphRes.data);
+      } else {
+        // fallback to notes list
         try {
           const r = await api.get(`/courses/${courseId}/notes`);
           if (on) {
@@ -149,7 +244,6 @@ export default function NoteGraph() {
           }
         } catch { if (on) setError("노트를 불러올 수 없습니다."); }
       }
-      try { const r = await api.get(`/courses/${courseId}/study-path`); if (on) setStudyPath(r.data); } catch {}
       if (on) setLoading(false);
     })();
     return () => { on = false; };
@@ -229,12 +323,13 @@ export default function NoteGraph() {
       if (pid) childCountMap.set(pid, (childCountMap.get(pid) || 0) + 1);
     });
 
-    const sizeByDepth = (id: string) => {
-      const depth = depthMap.get(id) ?? 0;
-      const children = childCountMap.get(id) || 0;
-      const base = depth === 0 ? 18 : depth === 1 ? 12 : 8;
-      const bonus = Math.min(6, children * 1.5);
-      return base + bonus;
+    // Node size by content length (글자수)
+    const contentLengths = allNodes.map((n) => n.content_length || 0);
+    const maxLen = Math.max(...contentLengths, 1);
+    const sizeByContent = (contentLength: number) => {
+      // min 7, max 24 — log scale so small notes aren't invisible
+      const t = Math.log(1 + contentLength) / Math.log(1 + maxLen); // 0..1
+      return 7 + t * 17;
     };
 
     // Tree-based initial positions (BFS layout)
@@ -309,7 +404,8 @@ export default function NoteGraph() {
         id: n.id, title: n.title, score: n.understanding_score,
         tags: n.tags, categories: n.categories || [],
         parentId: pid ?? null,
-        size: sizeByDepth(n.id),
+        hasChildren: (childCountMap.get(n.id) || 0) > 0,
+        size: sizeByContent(n.content_length || 0),
         createdAt: n.created_at, updatedAt: n.updated_at,
         x, y,
       };
@@ -473,9 +569,10 @@ export default function NoteGraph() {
     if (!visibleIdsRef.current.has(node.id)) return; // hidden by filter
     const x = node.x, y = node.y;
     if (x == null || y == null || !isFinite(x) || !isFinite(y)) return;
+    const gc = gColorsRef.current;
 
     const isHov = hovered?.id === node.id;
-    const isRoot = node.parentId === null;
+    const isParent = node.hasChildren;
     const r = isHov ? node.size + 3 : node.size;
     const col = scoreColor(node.score);
 
@@ -483,45 +580,46 @@ export default function NoteGraph() {
     if (isHov) {
       ctx.beginPath();
       ctx.arc(x, y, r + 10, 0, Math.PI * 2);
-      ctx.fillStyle = col + "18";
+      ctx.fillStyle = col + "28";
       ctx.fill();
       ctx.beginPath();
       ctx.arc(x, y, r + 5, 0, Math.PI * 2);
-      ctx.fillStyle = col + "30";
+      ctx.fillStyle = col + "40";
       ctx.fill();
     }
 
-    // Root nodes: double ring for visual hierarchy
-    if (isRoot && !isHov) {
+    // Parent nodes (have children): double ring for hierarchy
+    if (isParent && !isHov) {
       ctx.beginPath();
-      ctx.arc(x, y, r + 3, 0, Math.PI * 2);
-      ctx.strokeStyle = col + "40";
-      ctx.lineWidth = 1.5;
+      ctx.arc(x, y, r + 4, 0, Math.PI * 2);
+      ctx.strokeStyle = col + "50";
+      ctx.lineWidth = 2;
       ctx.stroke();
     }
 
-    // main circle
+    // main circle — score color border is now bold and visible
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fillStyle = col;
     ctx.fill();
-    ctx.strokeStyle = isRoot ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.1)";
-    ctx.lineWidth = isRoot ? 1 : 0.5;
+    // Thick score-colored border for visibility
+    ctx.strokeStyle = col + (gc.isDark ? "90" : "B0");
+    ctx.lineWidth = isParent ? 2.5 : 1.8;
     ctx.stroke();
 
     // inner highlight (gives depth)
     ctx.beginPath();
     ctx.arc(x - r * 0.22, y - r * 0.22, r * 0.3, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255,255,255,0.2)";
+    ctx.fillStyle = gc.nodeHighlight;
     ctx.fill();
 
     // label
     const showLbl = isHov || (showLabels && globalScale > 0.55);
     if (!showLbl) return;
 
-    const fs = Math.min(isRoot ? 12 : 10, Math.max(7, (isRoot ? 11 : 9) / globalScale));
-    ctx.font = `${isHov || isRoot ? "600" : "400"} ${fs}px "Pretendard", -apple-system, system-ui, sans-serif`;
-    const maxChars = isHov ? 24 : isRoot ? 18 : 12;
+    const fs = Math.min(isParent ? 12 : 10, Math.max(7, (isParent ? 11 : 9) / globalScale));
+    ctx.font = `${isHov || isParent ? "600" : "400"} ${fs}px "Pretendard", -apple-system, system-ui, sans-serif`;
+    const maxChars = isHov ? 24 : isParent ? 18 : 12;
     const txt = node.title.length > maxChars ? node.title.slice(0, maxChars) + "…" : node.title;
     const tw = ctx.measureText(txt).width;
 
@@ -548,24 +646,24 @@ export default function NoteGraph() {
     ctx.closePath();
 
     if (isHov) {
-      ctx.fillStyle = "rgba(30,41,59,0.95)";
-      ctx.strokeStyle = col + "60";
+      ctx.fillStyle = gc.labelBgHover;
+      ctx.strokeStyle = col + gc.labelBorderAlpha;
       ctx.lineWidth = 1;
       ctx.fill();
       ctx.stroke();
     } else {
-      ctx.fillStyle = isRoot ? "rgba(15,23,42,0.9)" : "rgba(15,23,42,0.75)";
+      ctx.fillStyle = isParent ? gc.labelBgRoot : gc.labelBg;
       ctx.fill();
     }
 
     // label text
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillStyle = isHov ? "#f8fafc" : isRoot ? "#e2e8f0" : "rgba(203,213,225,0.8)";
+    ctx.fillStyle = isHov ? gc.labelTextHover : isParent ? gc.labelTextRoot : gc.labelText;
     ctx.fillText(txt, lx, ly);
   }, [hovered, showLabels]);
 
-  /* ── link paint (cyber / neon style) ── */
+  /* ── link paint (theme-aware) ── */
   const paintLink = useCallback((link: GLink, ctx: CanvasRenderingContext2D, globalScale: number) => {
     const s = link.source as GNode, t = link.target as GNode;
     if (!isFinite(s.x!) || !isFinite(s.y!) || !isFinite(t.x!) || !isFinite(t.y!)) return;
@@ -580,10 +678,11 @@ export default function NoteGraph() {
     if (link.type === "link" && !vis.link) return;
     if (link.type === "similar" && !vis.similar) return;
 
+    const gc = gColorsRef.current;
     const lw = 1 / globalScale;
 
     if (link.type === "parent") {
-      // Neon cyan curved line
+      // Cyan curved line
       const mx = (s.x! + t.x!) / 2;
       const my = (s.y! + t.y!) / 2;
       const dx = t.x! - s.x!, dy = t.y! - s.y!;
@@ -596,7 +695,7 @@ export default function NoteGraph() {
       ctx.beginPath();
       ctx.moveTo(s.x!, s.y!);
       ctx.quadraticCurveTo(cx, cy, t.x!, t.y!);
-      ctx.strokeStyle = "rgba(34,211,238,0.12)";
+      ctx.strokeStyle = gc.parentGlow;
       ctx.lineWidth = Math.max(lw * 4, 4);
       ctx.setLineDash([]);
       ctx.stroke();
@@ -605,17 +704,17 @@ export default function NoteGraph() {
       ctx.beginPath();
       ctx.moveTo(s.x!, s.y!);
       ctx.quadraticCurveTo(cx, cy, t.x!, t.y!);
-      ctx.strokeStyle = "rgba(34,211,238,0.5)";
+      ctx.strokeStyle = gc.parentCore;
       ctx.lineWidth = Math.max(lw * 1.2, 1);
       ctx.stroke();
 
     } else if (link.type === "link") {
-      // Neon amber dashed
+      // Amber dashed
       // Outer glow
       ctx.beginPath();
       ctx.moveTo(s.x!, s.y!);
       ctx.lineTo(t.x!, t.y!);
-      ctx.strokeStyle = "rgba(251,191,36,0.08)";
+      ctx.strokeStyle = gc.linkGlow;
       ctx.lineWidth = Math.max(lw * 3, 3);
       ctx.setLineDash([]);
       ctx.stroke();
@@ -624,28 +723,27 @@ export default function NoteGraph() {
       ctx.beginPath();
       ctx.moveTo(s.x!, s.y!);
       ctx.lineTo(t.x!, t.y!);
-      ctx.strokeStyle = "rgba(251,191,36,0.4)";
+      ctx.strokeStyle = gc.linkCore;
       ctx.lineWidth = Math.max(lw * 0.8, 0.6);
       ctx.setLineDash([5 / globalScale, 4 / globalScale]);
       ctx.stroke();
       ctx.setLineDash([]);
 
     } else {
-      // Similar (category neon) — weight → thickness, glow intensity
+      // Similar — weight → thickness, glow intensity
       const w = Math.min(link.weight || 2, 8);
       const t_norm = (w - 2) / 6; // 0..1
       const thickness = 0.8 + t_norm * 1.2;
       const isWeak = w <= 2;
 
-      // Neon purple/magenta palette
-      const r = 192, g = 38, b = 211; // vivid magenta-purple
-      const coreOpacity = 0.25 + t_norm * 0.35;
+      const { simR: r, simG: g, simB: b } = gc;
+      const coreOpacity = gc.simCoreBase + t_norm * gc.simCoreDelta;
 
       // Layer 1: wide soft glow (always)
       ctx.beginPath();
       ctx.moveTo(s.x!, s.y!);
       ctx.lineTo(t.x!, t.y!);
-      ctx.strokeStyle = `rgba(${r},${g},${b},${0.04 + t_norm * 0.08})`;
+      ctx.strokeStyle = `rgba(${r},${g},${b},${gc.simGlow1Base + t_norm * gc.simGlow1Delta})`;
       ctx.lineWidth = Math.max((thickness + 6) / globalScale, thickness + 5);
       ctx.setLineDash([]);
       ctx.stroke();
@@ -655,7 +753,7 @@ export default function NoteGraph() {
         ctx.beginPath();
         ctx.moveTo(s.x!, s.y!);
         ctx.lineTo(t.x!, t.y!);
-        ctx.strokeStyle = `rgba(${r},${g},${b},${0.1 + t_norm * 0.12})`;
+        ctx.strokeStyle = `rgba(${r},${g},${b},${gc.simGlow2Base + t_norm * gc.simGlow2Delta})`;
         ctx.lineWidth = Math.max((thickness + 3) / globalScale, thickness + 2.5);
         ctx.setLineDash([]);
         ctx.stroke();
@@ -666,7 +764,10 @@ export default function NoteGraph() {
         ctx.beginPath();
         ctx.moveTo(s.x!, s.y!);
         ctx.lineTo(t.x!, t.y!);
-        ctx.strokeStyle = `rgba(232,121,249,${0.15 + t_norm * 0.1})`;
+        const g3r = gc.isDark ? 232 : 180;
+        const g3g = gc.isDark ? 121 : 50;
+        const g3b = gc.isDark ? 249 : 210;
+        ctx.strokeStyle = `rgba(${g3r},${g3g},${g3b},${gc.simGlow3Base + t_norm * gc.simGlow3Delta})`;
         ctx.lineWidth = Math.max((thickness + 1.5) / globalScale, thickness + 1);
         ctx.setLineDash([]);
         ctx.stroke();
@@ -907,7 +1008,10 @@ export default function NoteGraph() {
 
           {/* Tooltip (HTML, follows mouse) */}
           {hovered && (
-            <div className="graph-tooltip" style={{ left: mousePos.x + 14, top: mousePos.y + 14 }}>
+            <div className="graph-tooltip" style={{
+              left: mousePos.x + 14 + 260 > window.innerWidth ? mousePos.x - 260 - 8 : mousePos.x + 14,
+              top: mousePos.y + 14 + 200 > window.innerHeight ? mousePos.y - 200 - 8 : mousePos.y + 14,
+            }}>
               <div className="graph-tooltip-title">{hovered.title}</div>
               <div className="graph-tooltip-row">
                 <span className="graph-tooltip-dot" style={{ background: scoreColor(hovered.score) }} />
@@ -919,9 +1023,9 @@ export default function NoteGraph() {
                 </div>
               )}
               {hovered.categories.length > 0 && (
-                <div className="graph-tooltip-tags" style={{ borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 4, marginTop: 4 }}>
-                  {hovered.categories.slice(0, 5).map((c) => <span key={c} style={{ color: "rgba(168,85,247,0.9)" }}>{c}</span>)}
-                  {hovered.categories.length > 5 && <span style={{ color: "rgba(148,163,184,0.6)" }}>+{hovered.categories.length - 5}</span>}
+                <div className="graph-tooltip-tags" style={{ borderTop: "1px solid var(--outline-variant, rgba(255,255,255,0.1))", paddingTop: 4, marginTop: 4 }}>
+                  {hovered.categories.slice(0, 5).map((c) => <span key={c} style={{ color: "rgba(140,30,180,0.85)" }}>{c}</span>)}
+                  {hovered.categories.length > 5 && <span style={{ color: "var(--on-surface-variant, rgba(148,163,184,0.6))" }}>+{hovered.categories.length - 5}</span>}
                 </div>
               )}
               <div className="graph-tooltip-date">
@@ -1188,7 +1292,7 @@ export default function NoteGraph() {
                         ))}
                       </div>
                     )}
-                    <div className="report-summary">{report.summary}</div>
+                    <div className="report-summary rendered-markdown" dangerouslySetInnerHTML={{ __html: renderMarkdown(report.summary || "") }} />
                   </div>
                 )}
               </>

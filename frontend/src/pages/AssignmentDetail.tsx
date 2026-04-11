@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import * as Diff from "diff";
 import api from "../lib/api";
 import { renderMarkdown } from "../lib/markdown";
+import { computeNoteDiff, tiptapToLines, type NoteDiffLine } from "../lib/noteDiff";
 import { useAuthStore } from "../store/authStore";
 import AppShell from "../components/common/AppShell";
 import ExamProctorPanel from "../components/ExamProctorPanel";
@@ -173,10 +174,15 @@ export default function AssignmentDetail() {
 
   // Submission detail view
   const [selectedSub, setSelectedSub] = useState<SubmissionWithAnalysis | null>(null);
-  const [viewMode, setViewMode] = useState<"content" | "diff" | "paste">("content");
+  const [viewMode, setViewMode] = useState<"content" | "diff" | "paste" | "snapshot">("content");
 
   // Paste logs
   const [pasteLogs, setPasteLogs] = useState<PasteLog[]>([]);
+
+  // Writing snapshots
+  const [writingSnapshots, setWritingSnapshots] = useState<{ id: string; student_id: string; code_diff: Record<string, unknown> | null; created_at: string }[]>([]);
+  const [selectedSnapshotIdx, setSelectedSnapshotIdx] = useState<number>(-1);
+  const [snapshotDiffLines, setSnapshotDiffLines] = useState<NoteDiffLine[]>([]);
 
   // QA
   const [qaMessage, setQaMessage] = useState("");
@@ -219,6 +225,43 @@ export default function AssignmentDetail() {
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [courseId, assignmentId]);
+
+  // Fetch writing snapshots when switching to snapshot view
+  useEffect(() => {
+    if (viewMode !== "snapshot" || !selectedSub || !courseId || !assignmentId) return;
+    const isWritingSub = (assignment?.type === "writing" || assignment?.type === "both") && selectedSub.content;
+    if (!isWritingSub) return;
+    api.get(`/courses/${courseId}/assignments/${assignmentId}/submissions/${selectedSub.student_id}/snapshots`)
+      .then((res) => {
+        const snaps = res.data || [];
+        setWritingSnapshots(snaps);
+        setSelectedSnapshotIdx(snaps.length > 0 ? snaps.length - 1 : -1);
+      })
+      .catch(() => setWritingSnapshots([]));
+  }, [viewMode, selectedSub?.id, courseId, assignmentId]);
+
+  // Compute diff when snapshot selection changes
+  useEffect(() => {
+    if (selectedSnapshotIdx < 0 || writingSnapshots.length === 0) {
+      setSnapshotDiffLines([]);
+      return;
+    }
+    const snap = writingSnapshots[selectedSnapshotIdx];
+    const prevSnap = selectedSnapshotIdx > 0 ? writingSnapshots[selectedSnapshotIdx - 1] : null;
+
+    // Extract tiptap JSON from code_diff.code (stored as JSON.stringify'd)
+    const parseContent = (s: { code_diff: Record<string, unknown> | null }) => {
+      try {
+        const raw = (s.code_diff as Record<string, string>)?.code;
+        if (!raw) return {};
+        return JSON.parse(raw) as Record<string, unknown>;
+      } catch { return {}; }
+    };
+
+    const newContent = parseContent(snap);
+    const oldContent = prevSnap ? parseContent(prevSnap) : { type: "doc", content: [] };
+    setSnapshotDiffLines(computeNoteDiff(oldContent, newContent));
+  }, [selectedSnapshotIdx, writingSnapshots]);
 
   // ===== Handlers =====
   const handlePolicyUpdate = async () => {
@@ -473,7 +516,7 @@ export default function AssignmentDetail() {
           {/* Header */}
           <div className="detail-panel-header">
             <div className="detail-panel-title-row">
-              <button className="btn btn-ghost" onClick={() => { setSelectedSub(null); setViewMode("content"); }}>&larr;</button>
+              <button className="btn btn-ghost" onClick={() => { setSelectedSub(null); setViewMode("content"); setWritingSnapshots([]); setSelectedSnapshotIdx(-1); }}>&larr;</button>
               <h2>{selectedSub.users?.name || "학생"} - {isWritingSub ? "글쓰기" : `문제 ${problemIdx + 1}`}</h2>
               {analysis && (
                 analysis.final_score != null
@@ -498,6 +541,10 @@ export default function AssignmentDetail() {
               {subPastes.length > 0 && (
                 <button className={`detail-tab ${viewMode === "paste" ? "active" : ""}`}
                   onClick={() => setViewMode("paste")}>복붙 기록 ({subPastes.length})</button>
+              )}
+              {isWritingSub && (
+                <button className={`detail-tab ${viewMode === "snapshot" ? "active" : ""}`}
+                  onClick={() => setViewMode("snapshot")}>스냅샷</button>
               )}
             </div>
           </div>
@@ -549,6 +596,62 @@ export default function AssignmentDetail() {
                       </pre>
                     </div>
                   ))}
+                </div>
+              ) : viewMode === "snapshot" ? (
+                /* Writing snapshot diff view */
+                <div style={{ display: "flex", height: "100%", overflow: "hidden" }}>
+                  {/* Timeline sidebar */}
+                  <div style={{
+                    width: 200, minWidth: 200, borderRight: "1px solid var(--outline-variant)",
+                    overflowY: "auto", background: "var(--surface-container)",
+                  }}>
+                    <div style={{ padding: "12px 14px", fontSize: 13, fontWeight: 600, color: "var(--on-surface-variant)", borderBottom: "1px solid var(--outline-variant)" }}>
+                      스냅샷 ({writingSnapshots.length})
+                    </div>
+                    {writingSnapshots.length === 0 ? (
+                      <div style={{ padding: 16, fontSize: 13, color: "var(--on-surface-variant)" }}>스냅샷 없음</div>
+                    ) : writingSnapshots.map((snap, idx) => (
+                      <div key={snap.id}
+                        onClick={() => setSelectedSnapshotIdx(idx)}
+                        style={{
+                          padding: "10px 14px", cursor: "pointer", fontSize: 12,
+                          background: idx === selectedSnapshotIdx ? "var(--primary-light)" : "transparent",
+                          borderLeft: idx === selectedSnapshotIdx ? "3px solid var(--primary)" : "3px solid transparent",
+                          borderBottom: "1px solid var(--outline-variant)",
+                        }}>
+                        <div style={{ fontWeight: 600, color: idx === selectedSnapshotIdx ? "var(--primary)" : "var(--on-surface)" }}>
+                          #{idx + 1}
+                        </div>
+                        <div style={{ color: "var(--on-surface-variant)", marginTop: 2 }}>
+                          {new Date(snap.created_at).toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                        </div>
+                        {idx === 0 && <span style={{ fontSize: 10, color: "var(--tertiary)" }}>최초</span>}
+                      </div>
+                    ))}
+                  </div>
+                  {/* Diff area */}
+                  <div style={{ flex: 1, overflow: "auto" }}>
+                    {selectedSnapshotIdx < 0 ? (
+                      <div className="empty" style={{ padding: 40 }}>스냅샷을 선택하세요</div>
+                    ) : snapshotDiffLines.length === 0 ? (
+                      <div className="empty" style={{ padding: 40 }}>
+                        {selectedSnapshotIdx === 0 ? "최초 스냅샷 (이전 버전 없음)" : "변경 사항 없음"}
+                      </div>
+                    ) : (
+                      <pre className="detail-code diff-view" style={{ margin: 0 }}>
+                        {snapshotDiffLines.map((line, i) => (
+                          <div key={i} className={`diff-line diff-${line.type}`}>
+                            <span className="diff-num diff-num-old">{line.oldNum}</span>
+                            <span className="diff-num diff-num-new">{line.newNum}</span>
+                            <span className="diff-marker">
+                              {line.type === "add" ? "+" : line.type === "remove" ? "-" : " "}
+                            </span>
+                            <span className="diff-content">{line.text || "\u00A0"}</span>
+                          </div>
+                        ))}
+                      </pre>
+                    )}
+                  </div>
                 </div>
               ) : diffLines ? (
                 /* Diff view */

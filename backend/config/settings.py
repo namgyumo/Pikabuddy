@@ -20,6 +20,12 @@ class Settings(BaseSettings):
     teacherAdminId: str = ""
     teacherAdminPassword: str = ""
 
+    # Test accounts
+    studenttestid: str = ""
+    studenttestpassword: str = ""
+    teachertestid: str = ""
+    teachertestpassword: str = ""
+
     # Cloudflare R2
     R2_ACCOUNT_ID: str = ""
     R2_ACCESS_KEY_ID: str = ""

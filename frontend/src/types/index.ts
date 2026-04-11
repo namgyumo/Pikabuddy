@@ -41,6 +41,7 @@ export interface Assignment {
   grading_note: string | null;
   generation_status?: "generating" | "completed" | "failed";
   has_submitted?: boolean;
+  is_team_assignment?: boolean;
   exam_mode?: boolean;
   exam_config?: {
     screenshot_interval: number;
@@ -89,12 +90,40 @@ export interface Note {
   student_id: string;
   course_id: string;
   parent_id: string | null;
+  team_id: string | null;
   title: string;
   content: Record<string, unknown>;
   gap_analysis: Record<string, unknown> | null;
   understanding_score: number | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface Team {
+  id: string;
+  course_id: string;
+  name: string;
+  created_by: string;
+  created_at: string;
+  members?: TeamMember[];
+}
+
+export interface TeamMember {
+  id: string;
+  student_id: string;
+  name: string;
+  avatar_url: string | null;
+}
+
+export interface NoteSnapshot {
+  id: string;
+  note_id: string;
+  saved_by: string;
+  saved_by_name: string;
+  saved_by_avatar_url: string | null;
+  title: string;
+  content?: Record<string, unknown>;
+  created_at: string;
 }
 
 export interface NoteTag {

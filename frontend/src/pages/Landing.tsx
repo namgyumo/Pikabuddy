@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
+import api from "../lib/api";
 
 export default function Landing() {
   const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
@@ -12,6 +13,13 @@ export default function Landing() {
   const [adminPw, setAdminPw] = useState("");
   const [adminError, setAdminError] = useState("");
   const [adminLoading, setAdminLoading] = useState(false);
+
+  // Test accounts from backend
+  const [testAccounts, setTestAccounts] = useState<{role: string; label: string; username: string; password: string}[]>([]);
+  const [testLoading, setTestLoading] = useState<string | null>(null);
+  useEffect(() => {
+    api.get("/auth/test-accounts").then((r) => setTestAccounts(r.data.accounts || [])).catch(() => {});
+  }, []);
 
   const handleAdminLogin = async () => {
     if (!adminId.trim() || !adminPw.trim()) return;
@@ -27,6 +35,22 @@ export default function Landing() {
       setAdminError("\uC544\uC774\uB514 \uB610\uB294 \uBE44\uBC00\uBC88\uD638\uAC00 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
     } finally {
       setAdminLoading(false);
+    }
+  };
+
+  const handleTestLogin = async (username: string, password: string, role: string) => {
+    setTestLoading(role);
+    setAdminError("");
+    try {
+      await adminLogin(username, password);
+      const user = useAuthStore.getState().user;
+      if (user?.role === "professor") navigate("/professor");
+      else if (user?.role === "student") navigate("/student");
+      else navigate("/select-role");
+    } catch {
+      setAdminError("\uD14C\uC2A4\uD2B8 \uACC4\uC815 \uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
+    } finally {
+      setTestLoading(null);
     }
   };
 
@@ -103,6 +127,36 @@ export default function Landing() {
           </button>
         </div>
 
+        {/* Test account quick login */}
+        {testAccounts.length > 0 && (
+          <div style={{ marginTop: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 12, color: "var(--on-surface-variant)", letterSpacing: 0.5 }}>
+              {"\uD14C\uC2A4\uD2B8 \uACC4\uC815\uC73C\uB85C \uBC14\uB85C \uCCB4\uD5D8"}
+            </span>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
+              {testAccounts.map((acc) => (
+                <button
+                  key={acc.role}
+                  className="btn btn-ghost"
+                  disabled={testLoading !== null}
+                  onClick={() => handleTestLogin(acc.username, acc.password, acc.role)}
+                  style={{
+                    padding: "8px 20px",
+                    borderRadius: "var(--radius-full)",
+                    border: "1px solid var(--outline-variant)",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: acc.role === "professor" ? "var(--primary)" : "var(--tertiary)",
+                  }}
+                >
+                  {testLoading === acc.role ? "\uB85C\uADF8\uC778 \uC911..." : acc.label}
+                </button>
+              ))}
+            </div>
+            {adminError && <p style={{ color: "var(--error)", fontSize: 12, margin: 0 }}>{adminError}</p>}
+          </div>
+        )}
+
         <div className="admin-login-toggle">
           <button
             className="btn btn-ghost"
@@ -149,7 +203,7 @@ export default function Landing() {
             <div className="landing-stat-label">AI {"\uBD84\uC11D"} {"\uAE30\uB2A5"}</div>
           </div>
           <div className="landing-stat">
-            <div className="landing-stat-value">157</div>
+            <div className="landing-stat-value">2300+</div>
             <div className="landing-stat-label">{"\uB178\uD2B8"} {"\uCE74\uD14C\uACE0\uB9AC"}</div>
           </div>
           <div className="landing-stat">
@@ -208,7 +262,7 @@ export default function Landing() {
             <h3>{"\uB178\uD2B8"} & {"\uC9C0\uC2DD"} {"\uC9C0\uB3C4"}</h3>
             <p>
               {"\uB9AC\uCE58"} {"\uD14D\uC2A4\uD2B8"} {"\uC5D0\uB514\uD130\uB85C"} {"\uB178\uD2B8\uB97C"} {"\uC791\uC131\uD558\uACE0"},
-              157{"\uAC1C"} {"\uCE74\uD14C\uACE0\uB9AC"} {"\uAE30\uBC18"} AI {"\uBD84\uC11D\uC73C\uB85C"}
+              2300+{"\uAC1C"} {"\uCE74\uD14C\uACE0\uB9AC"} {"\uAE30\uBC18"} AI {"\uBD84\uC11D\uC73C\uB85C"}
               {"\uC9C0\uC2DD"} {"\uC5F0\uACB0"} {"\uC9C0\uB3C4\uB97C"} {"\uC790\uB3D9"} {"\uC0DD\uC131\uD569\uB2C8\uB2E4"}.
             </p>
             <div className="showcase-tags">

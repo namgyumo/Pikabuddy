@@ -10,6 +10,8 @@ const BlockEditorLazy = lazy(() => import("../components/BlockEditor"));
 import { supabase } from "../lib/supabase";
 import { getAdminToken } from "../store/authStore";
 import { useExamMode } from "../lib/useExamMode";
+import { useTeamVote } from "../lib/useTeamVote";
+import TeamVotePanel from "../components/TeamVotePanel";
 import type { Assignment } from "../types";
 
 
@@ -89,6 +91,11 @@ export default function CodeEditor() {
   const lastInternalCopyRef = useRef("");
   const logPasteRef = useRef<(text: string, pIdx: number) => void>(() => {});
   const navigate = useNavigate();
+
+  const { isTeamAssignment, voteStatus, loading: voteLoading, initiateVote, castVote } = useTeamVote(
+    assignmentId,
+    assignment?.is_team_assignment ?? false,
+  );
 
   // 시험 모드
   const examMode = useExamMode({
@@ -991,6 +998,13 @@ export default function CodeEditor() {
               }}>
                 기한이 마감되었습니다 ({new Date(assignment.due_date).toLocaleDateString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })})
               </div>
+            ) : isTeamAssignment ? (
+              <TeamVotePanel
+                voteStatus={voteStatus}
+                loading={voteLoading}
+                onInitiateVote={() => initiateVote({ code, problem_index: problemIdx })}
+                onCastVote={castVote}
+              />
             ) : (
               <>
                 <button

@@ -6,7 +6,9 @@
  */
 
 import type { ThemeEffect } from "./types";
-import { createEffectCanvas, removeEffectCanvas, createEffectDiv, removeEffectDiv, effectManager } from "./engine";
+import { createEffectCanvas, removeEffectCanvas, createEffectDiv, removeEffectDiv, injectEffectStyle, removeEffectStyle, effectManager } from "./engine";
+import { MascotController, DEFAULT_MASCOT_SCRIPT } from "./mascotController";
+import type { MascotScript, SpriteLayout } from "./mascotController";
 
 /** Ensure hex color is always 7 chars (#RRGGBB) for safe alpha append */
 function toFullHex(c: string): string {
@@ -464,6 +466,262 @@ export const fogMistEffect: ThemeEffect = {
   },
 };
 
+/* ═══ 10. Background Image/GIF/Video — overlay with blend/opacity ═══ */
+
+/** Detect media type from URL or data URI */
+function detectMediaType(url: string): "image" | "gif" | "video" {
+  const lower = url.toLowerCase();
+  if (lower.startsWith("data:video/")) return "video";
+  if (lower.startsWith("data:image/gif")) return "gif";
+  if (/\.(mp4|webm|ogg)(\?|#|$)/i.test(lower)) return "video";
+  if (/\.gif(\?|#|$)/i.test(lower)) return "gif";
+  return "image";
+}
+
+/** Sanitize URL: allow data:image/, data:video/, and https?:// */
+function sanitizeMediaUrl(raw: string): string {
+  if (!raw) return "";
+  if (raw.startsWith("data:image/") || raw.startsWith("data:video/")) return raw;
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return "";
+}
+
+export const backgroundImageEffect: ThemeEffect = {
+  id: "backgroundImage",
+  activate(p) {
+    const url = sanitizeMediaUrl(String(p.url || ""));
+    if (!url) return;
+    const opacity = Number(p.opacity) || 0.15;
+    const blendMode = String(p.blendMode || "normal");
+    const size = String(p.size || "cover");
+    const position = String(p.position || "center");
+    const mediaType = detectMediaType(url);
+
+    if (mediaType === "video") {
+      // Use <video> element for mp4/webm
+      const container = createEffectDiv("backgroundImage", `
+        position:absolute;inset:0;opacity:${opacity};
+        mix-blend-mode:${blendMode};pointer-events:none;overflow:hidden;
+      `);
+      const video = document.createElement("video");
+      video.src = url;
+      video.autoplay = true;
+      video.loop = true;
+      video.muted = true;
+      video.playsInline = true;
+      video.style.cssText = `
+        width:100%;height:100%;
+        object-fit:${size === "contain" ? "contain" : "cover"};
+        object-position:${position};
+        pointer-events:none;
+      `;
+      container.appendChild(video);
+      video.play().catch(() => {}); // ignore autoplay policy errors
+    } else {
+      // Image or GIF — use background-image (GIF animates natively)
+      const repeat = (size === "200px" || size === "400px") ? "repeat" : "no-repeat";
+      createEffectDiv("backgroundImage", `
+        position:absolute;inset:0;
+        background-image:url('${url}');
+        background-size:${size};
+        background-position:${position};
+        background-repeat:${repeat};
+        opacity:${opacity};
+        mix-blend-mode:${blendMode};
+        pointer-events:none;
+      `);
+    }
+  },
+  deactivate() { removeEffectDiv("backgroundImage"); },
+};
+
+/* ═══ 11. Mascot Sprite — MascotController-powered with JSON scripting ═══ */
+export const mascotSpriteEffect: ThemeEffect = {
+  id: "mascotSprite",
+  activate(p) {
+    const raw = String(p.spriteUrl || "");
+    const spriteUrl = raw.startsWith("data:image/") ? raw : /^https?:\/\//i.test(raw) ? raw : "";
+    if (!spriteUrl) return;
+
+    const frameCount = Math.max(1, Number(p.frameCount) || 4);
+    const frameWidth = Math.max(16, Number(p.frameWidth) || 64);
+    const frameHeight = Math.max(16, Number(p.frameHeight) || 64);
+    const fps = Math.max(1, Number(p.fps) || 8);
+    const scale = Math.max(0.25, Number(p.scale) || 1);
+    const posX = Number(p.posX) || 20;
+    const posY = Number(p.posY) || 20;
+    const layout = (String(p.layout || "horizontal")) as SpriteLayout;
+    const cols = Math.max(1, Number(p.cols) || Math.ceil(Math.sqrt(frameCount)));
+
+    const displayW = Math.round(frameWidth * scale);
+    const displayH = Math.round(frameHeight * scale);
+    const duration = Math.round((1000 / fps) * frameCount);
+
+    // Compute sheet dimensions + keyframes based on layout
+    let sheetW: number;
+    let sheetH: number;
+    let keyframesBody: string;
+    let stepsValue: string;
+
+    if (layout === "vertical") {
+      sheetW = displayW;
+      sheetH = frameCount * displayH;
+      keyframesBody = `from { background-position: 0 0; } to { background-position: 0 -${sheetH}px; }`;
+      stepsValue = `steps(${frameCount})`;
+    } else if (layout === "grid") {
+      const rows = Math.ceil(frameCount / cols);
+      sheetW = cols * displayW;
+      sheetH = rows * displayH;
+      const stops: string[] = [];
+      for (let i = 0; i < frameCount; i++) {
+        const c = i % cols;
+        const r = Math.floor(i / cols);
+        const pct = (i / frameCount) * 100;
+        stops.push(`${pct.toFixed(3)}% { background-position: -${c * displayW}px -${r * displayH}px; }`);
+      }
+      const lastC = (frameCount - 1) % cols;
+      const lastR = Math.floor((frameCount - 1) / cols);
+      stops.push(`100% { background-position: -${lastC * displayW}px -${lastR * displayH}px; }`);
+      keyframesBody = stops.join(" ");
+      stepsValue = "steps(1)";
+    } else {
+      sheetW = frameCount * displayW;
+      sheetH = displayH;
+      keyframesBody = `from { background-position: 0 0; } to { background-position: -${sheetW}px 0; }`;
+      stepsValue = `steps(${frameCount})`;
+    }
+
+    // Inject animation CSS
+    injectEffectStyle("mascotSprite", `
+      @keyframes pkb-mascot-walk {
+        ${keyframesBody}
+      }
+      #pikabuddy-mascot {
+        position: fixed;
+        bottom: ${posY}px;
+        right: ${posX}px;
+        width: ${displayW}px;
+        height: ${displayH}px;
+        background-image: url('${spriteUrl}');
+        background-size: ${sheetW}px ${sheetH}px;
+        background-repeat: no-repeat;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+        animation: pkb-mascot-walk ${duration}ms ${stepsValue} infinite;
+        pointer-events: auto;
+        z-index: 9999;
+        cursor: grab;
+        user-select: none;
+        -webkit-user-select: none;
+        transition: filter 0.2s;
+      }
+      #pikabuddy-mascot:hover { filter: brightness(1.15); }
+      #pikabuddy-mascot:active { cursor: grabbing; }
+    `);
+
+    // Create mascot element (appended to body for pointer-events)
+    const el = document.createElement("div");
+    el.id = "pikabuddy-mascot";
+    document.body.appendChild(el);
+
+    // ── Drag logic (works alongside MascotController) ──
+    let dragging = false;
+    let dragMoved = false;
+    let startX = 0, startY = 0;
+    let origRight = posX, origBottom = posY;
+
+    const onPointerDown = (e: PointerEvent) => {
+      dragging = true;
+      dragMoved = false;
+      startX = e.clientX;
+      startY = e.clientY;
+      const rect = el.getBoundingClientRect();
+      origRight = window.innerWidth - rect.right;
+      origBottom = window.innerHeight - rect.bottom;
+      el.setPointerCapture(e.pointerId);
+      e.preventDefault();
+      // Pause controller animations while dragging
+      controller.stop();
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (!dragging) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragMoved = true;
+      el.style.right = `${origRight - dx}px`;
+      el.style.bottom = `${origBottom + dy}px`;
+    };
+
+    const onPointerUp = () => {
+      if (!dragging) return;
+      dragging = false;
+      // Resume the script loop after drag ends
+      controller.resume();
+    };
+
+    el.addEventListener("pointerdown", onPointerDown);
+    el.addEventListener("pointermove", onPointerMove);
+    el.addEventListener("pointerup", onPointerUp);
+
+    // ── MascotController ──
+    const controller = new MascotController(el);
+
+    // Parse user script or use default
+    let script: MascotScript = DEFAULT_MASCOT_SCRIPT;
+    const scriptRaw = String(p.script || "").trim();
+    if (scriptRaw) {
+      try {
+        script = JSON.parse(scriptRaw);
+      } catch (e) {
+        console.warn("[mascotSprite] Invalid script JSON, using default:", e);
+      }
+    }
+
+    // Setup reactions (onClick handled here to distinguish from drag)
+    let cleanupReactions: (() => void) | null = null;
+    if (script.reactions) {
+      // Extract onClick to handle drag/click distinction
+      const { onClick: onClickActions, ...otherReactions } = script.reactions;
+      cleanupReactions = controller.setupReactions(otherReactions);
+
+      if (onClickActions) {
+        const onClickHandler = () => {
+          if (dragMoved) return;
+          controller.runScript(onClickActions);
+        };
+        el.addEventListener("click", onClickHandler);
+        const origCleanup = cleanupReactions;
+        cleanupReactions = () => {
+          origCleanup();
+          el.removeEventListener("click", onClickHandler);
+        };
+      }
+    }
+
+    // Run the script (onStart → loop)
+    controller.runFullScript(script);
+
+    // Expose controller globally for advanced users
+    (window as any).__pikabuddyMascot = controller;
+
+    (this as any)._cleanup = () => {
+      controller.destroy();
+      cleanupReactions?.();
+      el.removeEventListener("pointerdown", onPointerDown);
+      el.removeEventListener("pointermove", onPointerMove);
+      el.removeEventListener("pointerup", onPointerUp);
+      el.remove();
+      delete (window as any).__pikabuddyMascot;
+    };
+  },
+  deactivate() {
+    (this as any)._cleanup?.();
+    (this as any)._cleanup = null;
+    removeEffectStyle("mascotSprite");
+  },
+} as any;
+
 export const backgroundEffects = [
   particlesEffect,
   starfieldEffect,
@@ -474,4 +732,6 @@ export const backgroundEffects = [
   autumnLeavesEffect,
   lightningEffect,
   fogMistEffect,
+  backgroundImageEffect,
+  mascotSpriteEffect,
 ];

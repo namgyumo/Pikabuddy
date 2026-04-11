@@ -1,0 +1,112 @@
+{
+  "name": "Steampunk Workshop",
+  "version": 1,
+  "preview": [
+    "#B87333",
+    "#1A1510",
+    "#DAA520",
+    "#E8D5B5"
+  ],
+  "variables": {
+    "--primary": "#B87333",
+    "--primary-light": "#2D1E12",
+    "--primary-container": "#A0622A",
+    "--primary-hover": "#9A5F28",
+    "--primary-fixed": "#241A0E",
+    "--secondary": "#8B7355",
+    "--secondary-light": "rgba(139,115,85,0.12)",
+    "--tertiary": "#DAA520",
+    "--tertiary-light": "rgba(218,165,32,0.12)",
+    "--tertiary-container": "rgba(218,165,32,0.08)",
+    "--on-tertiary-container": "#DAA520",
+    "--success": "#6B8E23",
+    "--success-light": "rgba(107,142,35,0.12)",
+    "--warning": "#DAA520",
+    "--warning-light": "rgba(218,165,32,0.12)",
+    "--error": "#B22222",
+    "--error-light": "rgba(178,34,34,0.12)",
+    "--surface": "#1A1510",
+    "--surface-container-lowest": "#100D08",
+    "--surface-container-low": "#231D15",
+    "--surface-container": "#2C251B",
+    "--surface-container-high": "#362D22",
+    "--surface-container-highest": "#40362A",
+    "--on-surface": "#E8D5B5",
+    "--on-surface-variant": "#B8A080",
+    "--outline-variant": "rgba(184,160,128,0.12)",
+    "--editor-bg": "#0D0A06",
+    "--shadow-sm": "0 2px 8px rgba(0,0,0,0.3)",
+    "--shadow": "0 4px 16px rgba(0,0,0,0.4)",
+    "--shadow-lg": "0 8px 32px rgba(0,0,0,0.5)",
+    "--shadow-ai": "0 0 20px rgba(218,165,32,0.12)",
+    "--shadow-primary": "0 0 16px rgba(184,115,51,0.18)",
+    "--shadow-float": "0 6px 24px rgba(0,0,0,0.4), 0 0 8px rgba(184,115,51,0.08)",
+    "--radius-sm": "3px",
+    "--radius-md": "5px",
+    "--radius-lg": "8px",
+    "--radius-xl": "12px",
+    "--radius-full": "9999px",
+    "--font-display": "Georgia, serif",
+    "--font-body": "'Noto Sans KR', sans-serif",
+    "--border-card": "2px",
+    "--border-card-color": "rgba(184,115,51,0.25)",
+    "--border-inner": "1px",
+    "--border-inner-color": "rgba(184,115,51,0.12)",
+    "--border-text": "0px",
+    "--border-text-color": "transparent"
+  },
+  "customCSS": "\nh1, h2, .page-title {\n  color: #DAA520 !important;\n  text-shadow: 1px 1px 2px rgba(0,0,0,0.4);\n  letter-spacing: 0.5px;\n  font-style: italic;\n}\nh3 { color: #C6A050; }\n.card, .assignment-card, .note-card {\n  background: linear-gradient(160deg, #2C251B, #231D15) !important;\n  border: 2px solid rgba(184,115,51,0.2) !important;\n  box-shadow: inset 0 0 30px rgba(184,115,51,0.02);\n}\n.card:hover, .assignment-card:hover, .note-card:hover {\n  border-color: rgba(184,115,51,0.4) !important;\n  box-shadow: 0 4px 20px rgba(0,0,0,0.4), 0 0 10px rgba(184,115,51,0.08) !important;\n  transform: translateY(-1px);\n  transition: all 0.3s ease;\n}\n.btn-primary, button[class*=\"primary\"] {\n  background: linear-gradient(180deg, #CD7F32, #B87333, #A0622A) !important;\n  border: 1px solid rgba(218,165,32,0.3) !important;\n  box-shadow: 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(218,165,32,0.2);\n  text-shadow: 0 1px 2px rgba(0,0,0,0.3);\n}\n.sidebar, [class*=\"sidebar\"] {\n  background: linear-gradient(180deg, #100D08, #1A1510) !important;\n  border-right: 2px solid rgba(184,115,51,0.12) !important;\n}\n::selection { background: rgba(184,115,51,0.3); color: #E8D5B5; }\n::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #B87333, #8B6914) !important; border-radius: 3px; }\n::-webkit-scrollbar-track { background: #100D08 !important; }\n",
+  "animation": "particles",
+  "effects": {
+    "particles": {
+      "enabled": true,
+      "params": {
+        "color": "#B87333",
+        "count": 10
+      },
+      "layer": 0
+    },
+    "noiseTexture": {
+      "enabled": true,
+      "params": {
+        "opacity": 0.05
+      },
+      "layer": 0
+    },
+    "geometricPattern": {
+      "enabled": true,
+      "params": {
+        "shape": "hexagon"
+      },
+      "layer": 0
+    },
+    "drawBorder": {
+      "enabled": true,
+      "params": {},
+      "layer": 1
+    },
+    "softShadow": {
+      "enabled": true,
+      "params": {
+        "depth": 4
+      },
+      "layer": 2
+    },
+    "fadeInScroll": {
+      "enabled": true,
+      "params": {},
+      "layer": 2
+    }
+  },
+  "triggers": {
+    "onCorrect": [
+      "correctBounce"
+    ],
+    "onWrong": [
+      "wrongShake"
+    ],
+    "onLevelUp": [
+      "levelUpCelebration"
+    ]
+  }
+}

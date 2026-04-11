@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { ALLOWED_CSS_VARIABLES, sanitizeCSS } from "../themes";
+import { ALLOWED_CSS_VARIABLES, sanitizeCSS, loadGoogleFont } from "../themes";
 import type { CustomTheme } from "../themes";
 import { effectManager } from "../themes/effects";
 
@@ -36,6 +36,10 @@ function applyCustomStyles(variables: Record<string, string>, customCSS?: string
   Object.entries(variables).forEach(([key, value]) => {
     if ((ALLOWED_CSS_VARIABLES as readonly string[]).includes(key)) {
       el.style.setProperty(key, value);
+      // Auto-load Google Fonts when font variables are set
+      if ((key === "--font-display" || key === "--font-body") && value) {
+        loadGoogleFont(value);
+      }
     }
   });
   // Inject custom CSS if present

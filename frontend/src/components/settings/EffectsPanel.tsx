@@ -17,7 +17,7 @@ interface Props {
 
 const CATEGORY_ORDER: EffectCategory[] = [
   "background", "pattern", "element", "text", "interaction",
-  "cursor", "animation", "transition", "visual", "gamification",
+  "cursor", "asset", "animation", "transition", "visual", "gamification",
 ];
 
 export default function EffectsPanel({ effectsState, onChange }: Props) {
@@ -67,10 +67,11 @@ export default function EffectsPanel({ effectsState, onChange }: Props) {
       {/* Performance warning */}
       {countEnabled(effectsState) >= 5 && (
         <div style={{
-          padding: "8px 12px", borderRadius: 8, fontSize: 12,
+          padding: "10px 14px", borderRadius: 10, fontSize: 12,
           background: "var(--warning-light, #fff8eb)", color: "var(--warning, #f59e0b)",
-          marginBottom: 4,
+          marginBottom: 4, display: "flex", alignItems: "center", gap: 8,
         }}>
+          <span style={{ fontSize: 16 }}>⚡</span>
           다수의 이펙트가 활성화되어 있습니다. 성능에 영향을 줄 수 있습니다.
         </div>
       )}
@@ -83,30 +84,47 @@ export default function EffectsPanel({ effectsState, onChange }: Props) {
 
         return (
           <div key={cat} style={{
-            border: "1px solid var(--outline-variant)", borderRadius: 10, overflow: "hidden",
+            border: "1px solid var(--outline-variant)", borderRadius: 12, overflow: "hidden",
+            transition: "box-shadow 0.2s",
+            boxShadow: isOpen ? "0 2px 12px rgba(0,0,0,0.06)" : "none",
           }}>
             {/* Category Header */}
             <button
               onClick={() => toggleCat(cat)}
               style={{
-                width: "100%", padding: "10px 14px", border: "none",
+                width: "100%", padding: "11px 14px", border: "none",
                 background: isOpen ? "var(--surface-container-low)" : "transparent",
-                cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
+                cursor: "pointer", display: "flex", alignItems: "center", gap: 10,
                 fontSize: 13, fontWeight: 600, color: "var(--on-surface)",
+                transition: "background 0.15s",
               }}
             >
               <span style={{
-                transform: isOpen ? "rotate(90deg)" : "rotate(0deg)",
-                transition: "transform 0.2s", fontSize: 11,
-              }}>&#9654;</span>
-              <span>{CATEGORY_ICONS[cat]}</span>
-              <span>{CATEGORY_LABELS[cat]}</span>
+                width: 24, height: 24, borderRadius: 6,
+                background: isOpen ? "var(--primary)" : "var(--surface-container)",
+                color: isOpen ? "#fff" : "var(--on-surface-variant)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 13, flexShrink: 0, transition: "all 0.2s",
+              }}>{CATEGORY_ICONS[cat]}</span>
+              <span style={{ flex: 1, textAlign: "left" }}>{CATEGORY_LABELS[cat]}</span>
+              {activeCount > 0 && (
+                <span style={{
+                  fontSize: 10, fontWeight: 700, padding: "2px 7px",
+                  borderRadius: 10, background: "var(--primary)", color: "#fff",
+                }}>
+                  {activeCount}
+                </span>
+              )}
               <span style={{
                 fontSize: 11, fontWeight: 400,
-                color: activeCount > 0 ? "var(--primary)" : "var(--on-surface-variant)",
+                color: "var(--on-surface-variant)",
               }}>
-                {activeCount > 0 ? `${activeCount}/${defs.length} 활성` : `${defs.length}개`}
+                {defs.length}개
               </span>
+              <span style={{
+                transform: isOpen ? "rotate(90deg)" : "rotate(0deg)",
+                transition: "transform 0.2s", fontSize: 10, color: "var(--on-surface-variant)",
+              }}>&#9654;</span>
             </button>
 
             {/* Effect List */}
@@ -300,6 +318,87 @@ const EffectItem = memo(function EffectItem({
                     width: 50, padding: "2px 6px", border: "1px solid var(--outline-variant)",
                     borderRadius: 4, fontSize: 16, textAlign: "center",
                     background: "var(--surface-container-lowest)",
+                  }}
+                />
+              )}
+
+              {param.type === "image" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <input
+                      type="text"
+                      value={String(params[param.key] || "")}
+                      onChange={(e) => onParamChange(def.id, param.key, e.target.value, def)}
+                      placeholder="이미지 URL 또는 파일 업로드"
+                      style={{
+                        flex: 1, padding: "3px 6px", border: "1px solid var(--outline-variant)",
+                        borderRadius: 4, fontSize: 10, fontFamily: "monospace",
+                        background: "var(--surface-container-lowest)", color: "var(--on-surface)",
+                        minWidth: 0,
+                      }}
+                    />
+                    <label style={{
+                      padding: "3px 8px", borderRadius: 4, fontSize: 10, fontWeight: 500,
+                      border: "1px solid var(--outline-variant)",
+                      background: "var(--surface-container-low)",
+                      color: "var(--primary)", cursor: "pointer", whiteSpace: "nowrap",
+                    }}>
+                      파일
+                      <input
+                        type="file"
+                        accept="image/*,video/mp4,video/webm"
+                        style={{ display: "none" }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            onParamChange(def.id, param.key, reader.result as string, def);
+                          };
+                          reader.readAsDataURL(file);
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                    {params[param.key] && (
+                      <button
+                        onClick={() => onParamChange(def.id, param.key, "", def)}
+                        title="제거"
+                        style={{
+                          width: 22, height: 22, borderRadius: 4, border: "1px solid var(--outline-variant)",
+                          background: "transparent", color: "var(--error)", cursor: "pointer",
+                          fontSize: 14, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center",
+                        }}
+                      >&times;</button>
+                    )}
+                  </div>
+                  {params[param.key] && (
+                    <img
+                      src={String(params[param.key])}
+                      alt=""
+                      style={{
+                        maxWidth: 120, maxHeight: 48, objectFit: "contain", borderRadius: 4,
+                        border: "1px solid var(--outline-variant)",
+                        background: "repeating-conic-gradient(var(--outline-variant) 0% 25%, transparent 0% 50%) 50% / 12px 12px",
+                      }}
+                    />
+                  )}
+                </div>
+              )}
+
+              {param.type === "textarea" && (
+                <textarea
+                  value={String(params[param.key] || param.default)}
+                  onChange={(e) => onParamChange(def.id, param.key, e.target.value, def)}
+                  spellCheck={false}
+                  placeholder="JSON 스크립트 입력..."
+                  style={{
+                    flex: 1, minHeight: 80, padding: "4px 6px",
+                    border: "1px solid var(--outline-variant)", borderRadius: 4,
+                    fontSize: 10, fontFamily: "'Fira Code', Consolas, monospace",
+                    lineHeight: 1.5, resize: "vertical", boxSizing: "border-box",
+                    background: "var(--surface-container-lowest)", color: "var(--on-surface)",
+                    tabSize: 2,
                   }}
                 />
               )}

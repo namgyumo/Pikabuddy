@@ -562,7 +562,7 @@ export default function CourseDetail() {
                           <span className="cal-item-dot" style={{
                             background: a.type === "quiz" ? "var(--warning)" : a.type === "writing" ? "var(--tertiary)" : a.type === "algorithm" ? "var(--success)" : "var(--primary)",
                           }} />
-                          <span className="cal-item-title">{a.title}</span>
+                          <span className="cal-item-title">{a.is_team_assignment ? "👥 " : ""}{a.title}</span>
                           <span className="cal-item-time">
                             {new Date(a.due_date!).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}
                           </span>
@@ -638,8 +638,17 @@ export default function CourseDetail() {
                     }
                   }}
                 >
-                  <h3 style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <h3 style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     {a.title}
+                    {a.is_team_assignment && (
+                      <span className="badge" style={{ background: "rgba(99,46,205,0.1)", color: "var(--tertiary)", fontSize: 11 }}>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: 2, verticalAlign: -1 }}>
+                          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                        조별과제
+                      </span>
+                    )}
                     {a.has_submitted && (
                       <span className="badge" style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)", fontSize: 11 }}>제출 완료</span>
                     )}
@@ -873,6 +882,14 @@ export default function CourseDetail() {
                 <div style={{ fontSize: 32, marginBottom: 8 }}>&#x1F4CA;</div>
                 <h3>대시보드</h3>
                 <p>학생별 학습 현황과 AI 인사이트를 확인하세요.</p>
+              </div>
+              <div
+                className="card course-card"
+                onClick={() => navigate(`/courses/${courseId}/teams`)}
+              >
+                <div style={{ fontSize: 32, marginBottom: 8 }}>&#x1F465;</div>
+                <h3>팀 관리</h3>
+                <p>리포트 등 팀 과제를 위해 팀을 편성하세요.</p>
               </div>
             </div>
           </div>

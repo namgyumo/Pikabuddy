@@ -1,0 +1,127 @@
+{
+  "name": "Retro Arcade",
+  "version": 1,
+  "preview": [
+    "#FF0080",
+    "#0A0A14",
+    "#00FF41",
+    "#FFE81F"
+  ],
+  "variables": {
+    "--primary": "#FF0080",
+    "--primary-light": "rgba(255,0,128,0.12)",
+    "--primary-container": "#CC0066",
+    "--primary-hover": "#E6006E",
+    "--primary-fixed": "#200012",
+    "--secondary": "#00FF41",
+    "--secondary-light": "rgba(0,255,65,0.12)",
+    "--tertiary": "#FFE81F",
+    "--tertiary-light": "rgba(255,232,31,0.12)",
+    "--tertiary-container": "rgba(255,232,31,0.08)",
+    "--on-tertiary-container": "#FFD700",
+    "--success": "#00FF41",
+    "--success-light": "rgba(0,255,65,0.12)",
+    "--warning": "#FFE81F",
+    "--warning-light": "rgba(255,232,31,0.12)",
+    "--error": "#FF1744",
+    "--error-light": "rgba(255,23,68,0.12)",
+    "--surface": "#0A0A14",
+    "--surface-container-lowest": "#050508",
+    "--surface-container-low": "#10101E",
+    "--surface-container": "#161628",
+    "--surface-container-high": "#1E1E32",
+    "--surface-container-highest": "#26263C",
+    "--on-surface": "#E0E0FF",
+    "--on-surface-variant": "#A0A0C0",
+    "--outline-variant": "rgba(160,160,192,0.12)",
+    "--editor-bg": "#050508",
+    "--shadow-sm": "4px 4px 0 rgba(255,0,128,0.15)",
+    "--shadow": "4px 4px 0 rgba(255,0,128,0.12)",
+    "--shadow-lg": "6px 6px 0 rgba(255,0,128,0.1)",
+    "--shadow-ai": "0 0 20px rgba(0,255,65,0.12)",
+    "--shadow-primary": "0 0 16px rgba(255,0,128,0.2)",
+    "--shadow-float": "6px 6px 0 rgba(0,0,0,0.4), 0 0 16px rgba(255,0,128,0.08)",
+    "--radius-sm": "0px",
+    "--radius-md": "0px",
+    "--radius-lg": "0px",
+    "--radius-xl": "0px",
+    "--radius-full": "0px",
+    "--font-display": "'Fira Code', monospace",
+    "--font-body": "'Fira Code', monospace",
+    "--border-card": "3px",
+    "--border-card-color": "rgba(255,0,128,0.3)",
+    "--border-inner": "2px",
+    "--border-inner-color": "rgba(0,255,65,0.1)",
+    "--border-text": "0px",
+    "--border-text-color": "transparent"
+  },
+  "customCSS": "\n* { font-family: 'Fira Code', 'Consolas', monospace !important; }\nh1, h2, .page-title {\n  color: #FFE81F !important;\n  text-shadow: 0 0 8px #FFE81F, 0 0 16px rgba(255,232,31,0.4), 0 0 32px rgba(255,232,31,0.2);\n  text-transform: uppercase;\n  letter-spacing: 3px;\n}\nh3 { color: #00FF41; text-shadow: 0 0 6px rgba(0,255,65,0.4); }\n.card, .assignment-card, .note-card {\n  background: #10101E !important;\n  border: 3px solid rgba(255,0,128,0.25) !important;\n  border-radius: 0 !important;\n  box-shadow: 4px 4px 0 rgba(255,0,128,0.12);\n}\n.card:hover, .assignment-card:hover, .note-card:hover {\n  border-color: #FF0080 !important;\n  box-shadow: 0 0 12px rgba(255,0,128,0.35), 0 0 24px rgba(255,0,128,0.15), 4px 4px 0 rgba(255,0,128,0.2) !important;\n  transition: all 0.15s steps(3);\n}\n.btn-primary, button[class*=\"primary\"] {\n  background: #FF0080 !important;\n  border: 2px solid #FF0080 !important;\n  border-radius: 0 !important;\n  text-transform: uppercase;\n  letter-spacing: 2px;\n  box-shadow: 3px 3px 0 rgba(0,0,0,0.5);\n}\n.btn-primary:hover, button[class*=\"primary\"]:hover {\n  box-shadow: 0 0 14px rgba(255,0,128,0.5), 3px 3px 0 rgba(0,0,0,0.5);\n}\n.btn-primary:active, button[class*=\"primary\"]:active {\n  transform: translate(2px, 2px);\n  box-shadow: 1px 1px 0 rgba(0,0,0,0.5);\n}\n.sidebar, [class*=\"sidebar\"] {\n  background: #050508 !important;\n  border-right: 3px solid rgba(0,255,65,0.12) !important;\n}\n::selection { background: rgba(255,0,128,0.4); color: #FFE81F; }\n::-webkit-scrollbar-thumb { background: #FF0080 !important; border-radius: 0 !important; }\n::-webkit-scrollbar-track { background: #050508 !important; }\n",
+  "animation": "none",
+  "effects": {
+    "starfield": {
+      "enabled": true,
+      "params": {
+        "speed": 0.3,
+        "density": 60
+      },
+      "layer": 0
+    },
+    "dotGrid": {
+      "enabled": true,
+      "params": {
+        "color": "rgba(255,0,128,0.04)",
+        "spacing": 16
+      },
+      "layer": 0
+    },
+    "neonText": {
+      "enabled": true,
+      "params": {
+        "color": "#FF0080"
+      },
+      "layer": 1
+    },
+    "cursorGlow": {
+      "enabled": true,
+      "params": {
+        "color": "#FF0080",
+        "size": 100
+      },
+      "layer": 2
+    },
+    "clickExplosion": {
+      "enabled": true,
+      "params": {
+        "emoji": "👾"
+      },
+      "layer": 3
+    },
+    "vignetteOverlay": {
+      "enabled": true,
+      "params": {
+        "intensity": 0.35
+      },
+      "layer": 3
+    }
+  },
+  "triggers": {
+    "onCorrect": [
+      "confetti",
+      "correctBounce",
+      "xpGain"
+    ],
+    "onWrong": [
+      "wrongShake"
+    ],
+    "onLevelUp": [
+      "levelUpCelebration",
+      "confetti"
+    ],
+    "onCombo": [
+      "comboCounter"
+    ],
+    "onBadge": [
+      "badgeUnlock"
+    ]
+  }
+}

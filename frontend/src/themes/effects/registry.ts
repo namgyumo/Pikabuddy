@@ -1,4 +1,4 @@
-/* ── Effect Registry — All 55 Effect Definitions ── */
+/* ── Effect Registry — All 58 Effect Definitions ── */
 
 import type { EffectDefinition } from "./types";
 
@@ -624,6 +624,92 @@ export const EFFECT_DEFINITIONS: EffectDefinition[] = [
     mode: "event",
     icon: "📊",
     params: [],
+  },
+
+  /* ═══════════ 11. Image/Asset Effects (3) ═══════════ */
+  {
+    id: "customCursorImage",
+    name: "커서 이미지",
+    description: "나만의 커서 이미지 (기본/포인터/텍스트 상태별)",
+    category: "asset",
+    mode: "ambient",
+    icon: "🖱️",
+    params: [
+      { key: "default", label: "기본 커서", type: "image", default: "" },
+      { key: "pointer", label: "포인터 커서", type: "image", default: "" },
+      { key: "text", label: "텍스트 커서", type: "image", default: "" },
+    ],
+  },
+  {
+    id: "backgroundImage",
+    name: "배경 미디어",
+    description: "배경 이미지/GIF/동영상(mp4, webm) 오버레이",
+    category: "asset",
+    mode: "ambient",
+    icon: "🏞️",
+    params: [
+      { key: "url", label: "이미지/GIF/영상", type: "image", default: "" },
+      { key: "opacity", label: "불투명도", type: "number", default: 0.15, min: 0.02, max: 1, step: 0.02 },
+      {
+        key: "blendMode", label: "블렌드", type: "select", default: "normal",
+        options: [
+          { value: "normal", label: "기본" },
+          { value: "multiply", label: "곱하기" },
+          { value: "screen", label: "스크린" },
+          { value: "overlay", label: "오버레이" },
+          { value: "soft-light", label: "소프트 라이트" },
+          { value: "luminosity", label: "광도" },
+        ],
+      },
+      {
+        key: "size", label: "크기", type: "select", default: "cover",
+        options: [
+          { value: "cover", label: "채우기" },
+          { value: "contain", label: "맞추기" },
+          { value: "auto", label: "원본" },
+          { value: "200px", label: "타일 (200px)" },
+          { value: "400px", label: "타일 (400px)" },
+        ],
+      },
+      {
+        key: "position", label: "위치", type: "select", default: "center",
+        options: [
+          { value: "center", label: "가운데" },
+          { value: "top", label: "위" },
+          { value: "bottom", label: "아래" },
+          { value: "left", label: "왼쪽" },
+          { value: "right", label: "오른쪽" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "mascotSprite",
+    name: "마스코트 스프라이트",
+    description: "움직이는 캐릭터 마스코트 — 30개 행동 함수 + JSON 스크립트",
+    category: "asset",
+    mode: "ambient",
+    icon: "🐾",
+    params: [
+      { key: "spriteUrl", label: "스프라이트 시트", type: "image", default: "" },
+      { key: "frameCount", label: "프레임 수", type: "number", default: 4, min: 1, max: 32, step: 1 },
+      { key: "frameWidth", label: "프레임 너비", type: "number", default: 64, min: 16, max: 512, step: 8 },
+      { key: "frameHeight", label: "프레임 높이", type: "number", default: 64, min: 16, max: 512, step: 8 },
+      { key: "fps", label: "프레임 속도", type: "number", default: 8, min: 1, max: 30, step: 1 },
+      { key: "scale", label: "크기 배율", type: "number", default: 1, min: 0.5, max: 4, step: 0.25 },
+      {
+        key: "layout", label: "시트 배치", type: "select", default: "horizontal",
+        options: [
+          { value: "horizontal", label: "가로 (1행)" },
+          { value: "vertical", label: "세로 (1열)" },
+          { value: "grid", label: "격자 (N×M)" },
+        ],
+      },
+      { key: "cols", label: "격자 열 수", type: "number", default: 4, min: 1, max: 32, step: 1 },
+      { key: "posX", label: "X 위치 (px)", type: "number", default: 20, min: 0, max: 500, step: 10 },
+      { key: "posY", label: "Y 위치 (px)", type: "number", default: 20, min: 0, max: 500, step: 10 },
+      { key: "script", label: "행동 스크립트 (JSON)", type: "textarea", default: "" },
+    ],
   },
 ];
 

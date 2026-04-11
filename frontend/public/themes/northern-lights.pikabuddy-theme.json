@@ -1,0 +1,122 @@
+{
+  "name": "Northern Lights",
+  "version": 1,
+  "preview": [
+    "#22D3EE",
+    "#0A0E1A",
+    "#A855F7",
+    "#D1FAE5"
+  ],
+  "variables": {
+    "--primary": "#22D3EE",
+    "--primary-light": "#0C2A35",
+    "--primary-container": "#0891B2",
+    "--primary-hover": "#06B6D4",
+    "--primary-fixed": "#082830",
+    "--secondary": "#A855F7",
+    "--secondary-light": "rgba(168,85,247,0.12)",
+    "--tertiary": "#34D399",
+    "--tertiary-light": "rgba(52,211,153,0.12)",
+    "--tertiary-container": "rgba(52,211,153,0.08)",
+    "--on-tertiary-container": "#6EE7B7",
+    "--success": "#4ADE80",
+    "--success-light": "rgba(74,222,128,0.12)",
+    "--warning": "#FBBF24",
+    "--warning-light": "rgba(251,191,36,0.12)",
+    "--error": "#FB7185",
+    "--error-light": "rgba(251,113,133,0.12)",
+    "--surface": "#0A0E1A",
+    "--surface-container-lowest": "#060812",
+    "--surface-container-low": "#0F1325",
+    "--surface-container": "#151A30",
+    "--surface-container-high": "#1C213B",
+    "--surface-container-highest": "#232946",
+    "--on-surface": "#D1FAE5",
+    "--on-surface-variant": "#88CCDD",
+    "--outline-variant": "rgba(136,204,221,0.12)",
+    "--editor-bg": "#06080F",
+    "--shadow-sm": "0 0 8px rgba(34,211,238,0.06)",
+    "--shadow": "0 0 16px rgba(34,211,238,0.08)",
+    "--shadow-lg": "0 0 32px rgba(34,211,238,0.1)",
+    "--shadow-ai": "0 0 24px rgba(168,85,247,0.1)",
+    "--shadow-primary": "0 0 20px rgba(34,211,238,0.12)",
+    "--shadow-float": "0 0 30px rgba(34,211,238,0.06), 0 0 8px rgba(168,85,247,0.04)",
+    "--radius-sm": "8px",
+    "--radius-md": "12px",
+    "--radius-lg": "18px",
+    "--radius-xl": "24px",
+    "--radius-full": "9999px",
+    "--font-display": "'IBM Plex Sans KR', sans-serif",
+    "--font-body": "'Pretendard Variable', Pretendard, sans-serif",
+    "--border-card": "1px",
+    "--border-card-color": "rgba(34,211,238,0.1)",
+    "--border-inner": "0px",
+    "--border-inner-color": "transparent",
+    "--border-text": "0px",
+    "--border-text-color": "transparent"
+  },
+  "customCSS": "\nh1, h2, .page-title {\n  background: linear-gradient(90deg, #22D3EE, #A855F7, #34D399);\n  -webkit-background-clip: text;\n  -webkit-text-fill-color: transparent;\n  background-clip: text;\n}\nh3 { color: #67E8F9; }\n.card, .assignment-card, .note-card {\n  border: 1px solid rgba(34,211,238,0.08) !important;\n  box-shadow: inset 0 0 30px rgba(34,211,238,0.02);\n}\n.card:hover, .assignment-card:hover, .note-card:hover {\n  border-color: rgba(34,211,238,0.2) !important;\n  box-shadow: 0 0 16px rgba(34,211,238,0.1), 0 0 32px rgba(168,85,247,0.05), inset 0 0 30px rgba(34,211,238,0.02) !important;\n  transform: translateY(-2px);\n  transition: all 0.4s ease;\n}\n.btn-primary, button[class*=\"primary\"] {\n  background: linear-gradient(135deg, #0891B2, #22D3EE) !important;\n  box-shadow: 0 0 12px rgba(34,211,238,0.2);\n}\n.btn-primary:hover, button[class*=\"primary\"]:hover {\n  box-shadow: 0 0 20px rgba(34,211,238,0.35), 0 0 40px rgba(168,85,247,0.08);\n}\n.sidebar, [class*=\"sidebar\"] {\n  background: #060812 !important;\n  border-right: 1px solid rgba(34,211,238,0.04) !important;\n}\n::selection { background: rgba(34,211,238,0.25); color: #D1FAE5; }\n::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #22D3EE, #A855F7) !important; border-radius: 8px; }\n::-webkit-scrollbar-track { background: #060812 !important; }\n",
+  "animation": "snow",
+  "effects": {
+    "aurora": {
+      "enabled": true,
+      "params": {
+        "color1": "#22D3EE",
+        "color2": "#A855F7",
+        "color3": "#34D399"
+      },
+      "layer": 0
+    },
+    "starfield": {
+      "enabled": true,
+      "params": {
+        "speed": 0.3,
+        "density": 60
+      },
+      "layer": 0
+    },
+    "noiseTexture": {
+      "enabled": true,
+      "params": {
+        "opacity": 0.02
+      },
+      "layer": 0
+    },
+    "glow": {
+      "enabled": true,
+      "params": {
+        "color": "#22D3EE",
+        "intensity": 0.2
+      },
+      "layer": 1
+    },
+    "fadeInScroll": {
+      "enabled": true,
+      "params": {},
+      "layer": 2
+    },
+    "cursorGlow": {
+      "enabled": true,
+      "params": {
+        "color": "#A855F7",
+        "size": 160
+      },
+      "layer": 3
+    }
+  },
+  "triggers": {
+    "onCorrect": [
+      "confetti",
+      "correctBounce"
+    ],
+    "onWrong": [
+      "wrongShake"
+    ],
+    "onLevelUp": [
+      "levelUpCelebration"
+    ],
+    "onBadge": [
+      "badgeUnlock"
+    ]
+  }
+}

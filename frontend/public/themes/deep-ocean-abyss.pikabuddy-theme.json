@@ -1,0 +1,120 @@
+{
+  "name": "Deep Ocean Abyss",
+  "version": 1,
+  "preview": [
+    "#06D6A0",
+    "#040E1A",
+    "#0EA5E9",
+    "#B0E0E6"
+  ],
+  "variables": {
+    "--primary": "#06D6A0",
+    "--primary-light": "#0A2E28",
+    "--primary-container": "#059669",
+    "--primary-hover": "#047857",
+    "--primary-fixed": "#082820",
+    "--secondary": "#0EA5E9",
+    "--secondary-light": "rgba(14,165,233,0.12)",
+    "--tertiary": "#8B5CF6",
+    "--tertiary-light": "rgba(139,92,246,0.12)",
+    "--tertiary-container": "rgba(139,92,246,0.08)",
+    "--on-tertiary-container": "#A78BFA",
+    "--success": "#4ADE80",
+    "--success-light": "rgba(74,222,128,0.12)",
+    "--warning": "#FBBF24",
+    "--warning-light": "rgba(251,191,36,0.12)",
+    "--error": "#FB7185",
+    "--error-light": "rgba(251,113,133,0.12)",
+    "--surface": "#040E1A",
+    "--surface-container-lowest": "#020810",
+    "--surface-container-low": "#071523",
+    "--surface-container": "#0B1C2E",
+    "--surface-container-high": "#10243A",
+    "--surface-container-highest": "#152C46",
+    "--on-surface": "#B0E0E6",
+    "--on-surface-variant": "#6BAFBF",
+    "--outline-variant": "rgba(107,175,191,0.12)",
+    "--editor-bg": "#020610",
+    "--shadow-sm": "0 0 8px rgba(6,214,160,0.08)",
+    "--shadow": "0 0 16px rgba(6,214,160,0.1)",
+    "--shadow-lg": "0 0 32px rgba(6,214,160,0.12)",
+    "--shadow-ai": "0 0 24px rgba(14,165,233,0.12)",
+    "--shadow-primary": "0 0 20px rgba(6,214,160,0.18)",
+    "--shadow-float": "0 0 40px rgba(6,214,160,0.08), 0 0 8px rgba(14,165,233,0.05)",
+    "--radius-sm": "8px",
+    "--radius-md": "12px",
+    "--radius-lg": "18px",
+    "--radius-xl": "24px",
+    "--radius-full": "9999px",
+    "--font-display": "'Pretendard Variable', Pretendard, sans-serif",
+    "--font-body": "'Pretendard Variable', Pretendard, sans-serif",
+    "--border-card": "1px",
+    "--border-card-color": "rgba(6,214,160,0.15)",
+    "--border-inner": "1px",
+    "--border-inner-color": "rgba(6,214,160,0.08)",
+    "--border-text": "0px",
+    "--border-text-color": "transparent"
+  },
+  "customCSS": "\nh1, h2, .page-title {\n  background: linear-gradient(90deg, #06D6A0, #0EA5E9, #8B5CF6);\n  -webkit-background-clip: text;\n  -webkit-text-fill-color: transparent;\n  background-clip: text;\n}\nh3 { color: #6EE7B7; }\n.card, .assignment-card, .note-card {\n  border: 1px solid rgba(6,214,160,0.12) !important;\n  box-shadow: inset 0 0 40px rgba(6,214,160,0.02), inset 0 -20px 40px rgba(14,165,233,0.02);\n}\n.card:hover, .assignment-card:hover, .note-card:hover {\n  border-color: rgba(6,214,160,0.3) !important;\n  box-shadow: 0 0 20px rgba(6,214,160,0.12), 0 0 40px rgba(14,165,233,0.06), inset 0 0 40px rgba(6,214,160,0.03) !important;\n  transform: translateY(-2px);\n  transition: all 0.4s ease;\n}\n.btn-primary, button[class*=\"primary\"] {\n  background: linear-gradient(135deg, #059669, #0EA5E9) !important;\n  box-shadow: 0 0 12px rgba(6,214,160,0.25);\n}\n.btn-primary:hover, button[class*=\"primary\"]:hover {\n  box-shadow: 0 0 20px rgba(6,214,160,0.4), 0 0 40px rgba(14,165,233,0.15);\n}\n.sidebar, [class*=\"sidebar\"] {\n  background: #020810 !important;\n  border-right: 1px solid rgba(6,214,160,0.06) !important;\n}\n::selection { background: rgba(6,214,160,0.25); color: #B0E0E6; }\n::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #06D6A0, #0EA5E9) !important; border-radius: 8px; }\n::-webkit-scrollbar-track { background: #020810 !important; }\n",
+  "animation": "particles",
+  "effects": {
+    "bubbles": {
+      "enabled": true,
+      "params": {
+        "color": "#06D6A0",
+        "count": 18
+      },
+      "layer": 0
+    },
+    "fogMist": {
+      "enabled": true,
+      "params": {
+        "density": 0.3
+      },
+      "layer": 0
+    },
+    "glow": {
+      "enabled": true,
+      "params": {
+        "color": "#06D6A0",
+        "intensity": 0.25
+      },
+      "layer": 1
+    },
+    "wavyText": {
+      "enabled": true,
+      "params": {},
+      "layer": 1
+    },
+    "softShadow": {
+      "enabled": true,
+      "params": {
+        "depth": 3
+      },
+      "layer": 2
+    },
+    "cursorGlow": {
+      "enabled": true,
+      "params": {
+        "color": "#06D6A0",
+        "size": 180
+      },
+      "layer": 3
+    }
+  },
+  "triggers": {
+    "onCorrect": [
+      "confetti",
+      "correctBounce"
+    ],
+    "onWrong": [
+      "wrongShake"
+    ],
+    "onLevelUp": [
+      "levelUpCelebration"
+    ],
+    "onCombo": [
+      "comboCounter"
+    ]
+  }
+}

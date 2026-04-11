@@ -7,7 +7,8 @@ interface CourseState {
   currentCourse: Course | null;
   assignments: Assignment[];
   loading: boolean;
-  fetchCourses: () => Promise<void>;
+  lastFetchedAt: number;
+  fetchCourses: (force?: boolean) => Promise<void>;
   fetchCourse: (id: string) => Promise<void>;
   createCourse: (data: {
     title: string;
@@ -28,17 +29,28 @@ interface CourseState {
   ) => Promise<Assignment>;
 }
 
-export const useCourseStore = create<CourseState>((set) => ({
+const CACHE_TTL = 30_000; // 30 seconds
+
+export const useCourseStore = create<CourseState>((set, get) => ({
   courses: [],
   currentCourse: null,
   assignments: [],
   loading: false,
+  lastFetchedAt: 0,
 
-  fetchCourses: async () => {
+  fetchCourses: async (force = false) => {
+    const state = get();
+    // Skip if recently fetched and not forced
+    if (!force && state.courses.length > 0 && Date.now() - state.lastFetchedAt < CACHE_TTL) {
+      return;
+    }
+    // Skip if already loading
+    if (state.loading) return;
+
     set({ loading: true });
     try {
       const { data } = await api.get("/courses");
-      set({ courses: data, loading: false });
+      set({ courses: data, loading: false, lastFetchedAt: Date.now() });
     } catch {
       set({ loading: false });
     }
@@ -47,9 +59,11 @@ export const useCourseStore = create<CourseState>((set) => ({
   fetchCourse: async (id) => {
     set({ loading: true });
     try {
-      const { data: course } = await api.get(`/courses/${id}`);
-      const { data: assignments } = await api.get(`/courses/${id}/assignments`).catch(() => ({ data: [] }));
-      set({ currentCourse: course, assignments, loading: false });
+      const [courseRes, assignRes] = await Promise.all([
+        api.get(`/courses/${id}`),
+        api.get(`/courses/${id}/assignments`).catch(() => ({ data: [] })),
+      ]);
+      set({ currentCourse: courseRes.data, assignments: assignRes.data, loading: false });
     } catch {
       set({ loading: false });
     }
@@ -57,12 +71,14 @@ export const useCourseStore = create<CourseState>((set) => ({
 
   createCourse: async (courseData) => {
     const { data } = await api.post("/courses", courseData);
-    set((state) => ({ courses: [...state.courses, data] }));
+    set((state) => ({ courses: [...state.courses, data], lastFetchedAt: Date.now() }));
     return data;
   },
 
   joinCourse: async (_courseId, inviteCode) => {
     await api.post(`/courses/join`, { invite_code: inviteCode });
+    // Invalidate cache so next fetchCourses re-fetches
+    set({ lastFetchedAt: 0 });
   },
 
   createAssignment: async (courseId, assignmentData) => {

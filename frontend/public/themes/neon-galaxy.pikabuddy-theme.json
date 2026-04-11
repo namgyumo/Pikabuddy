@@ -1,6 +1,12 @@
 {
   "name": "Neon Galaxy",
   "version": 1,
+  "preview": [
+    "#A855F7",
+    "#0B0E1A",
+    "#00E5FF",
+    "#E0E0FF"
+  ],
   "variables": {
     "--primary": "#A855F7",
     "--primary-light": "#2D1B69",
@@ -10,31 +16,31 @@
     "--secondary": "#6366F1",
     "--secondary-light": "#1E1B4B",
     "--tertiary": "#00E5FF",
-    "--tertiary-light": "#0C2D33",
-    "--tertiary-container": "rgba(0, 229, 255, 0.08)",
+    "--tertiary-light": "rgba(0,229,255,0.12)",
+    "--tertiary-container": "rgba(0,229,255,0.08)",
     "--on-tertiary-container": "#00BCD4",
     "--success": "#4ADE80",
-    "--success-light": "#0A2618",
+    "--success-light": "rgba(74,222,128,0.12)",
     "--warning": "#FBBF24",
-    "--warning-light": "#2A1F0A",
+    "--warning-light": "rgba(251,191,36,0.12)",
     "--error": "#F87171",
-    "--error-light": "#2D0F0F",
+    "--error-light": "rgba(248,113,113,0.12)",
     "--surface": "#0B0E1A",
     "--surface-container-lowest": "#060812",
     "--surface-container-low": "#0F1225",
     "--surface-container": "#151830",
     "--surface-container-high": "#1C1F3B",
-    "--surface-container-highest": "#0B0E1A",
+    "--surface-container-highest": "#222546",
     "--on-surface": "#E0E0FF",
     "--on-surface-variant": "#9B9ECF",
-    "--outline-variant": "rgba(155, 158, 207, 0.15)",
+    "--outline-variant": "rgba(155,158,207,0.15)",
     "--editor-bg": "#06080F",
-    "--shadow-sm": "0 2px 8px rgba(168, 85, 247, 0.15)",
-    "--shadow": "0 4px 20px rgba(168, 85, 247, 0.2)",
-    "--shadow-lg": "0 8px 40px rgba(168, 85, 247, 0.25)",
-    "--shadow-ai": "0 4px 24px rgba(0, 229, 255, 0.2)",
-    "--shadow-primary": "0 4px 20px rgba(168, 85, 247, 0.3)",
-    "--shadow-float": "0 8px 40px rgba(168, 85, 247, 0.15), 0 2px 8px rgba(0, 229, 255, 0.1)",
+    "--shadow-sm": "0 0 8px rgba(168,85,247,0.12)",
+    "--shadow": "0 0 16px rgba(168,85,247,0.15)",
+    "--shadow-lg": "0 0 32px rgba(168,85,247,0.18)",
+    "--shadow-ai": "0 0 24px rgba(0,229,255,0.15)",
+    "--shadow-primary": "0 0 20px rgba(168,85,247,0.25)",
+    "--shadow-float": "0 0 40px rgba(168,85,247,0.12), 0 0 8px rgba(0,229,255,0.08)",
     "--radius-sm": "6px",
     "--radius-md": "10px",
     "--radius-lg": "14px",
@@ -43,25 +49,77 @@
     "--font-display": "'Fira Code', monospace",
     "--font-body": "'Pretendard Variable', Pretendard, sans-serif",
     "--border-card": "1px",
-    "--border-card-color": "rgba(168, 85, 247, 0.25)",
+    "--border-card-color": "rgba(168,85,247,0.25)",
     "--border-inner": "1px",
-    "--border-inner-color": "rgba(99, 102, 241, 0.15)",
+    "--border-inner-color": "rgba(99,102,241,0.12)",
     "--border-text": "0px",
     "--border-text-color": "transparent"
   },
-  "customCSS": ".card, .assignment-card, .note-card { background: linear-gradient(135deg, rgba(168,85,247,0.05), rgba(0,229,255,0.03)) !important; backdrop-filter: blur(8px); } .card:hover, .assignment-card:hover, .note-card:hover { box-shadow: 0 0 20px rgba(168,85,247,0.3), 0 0 40px rgba(0,229,255,0.1) !important; } h1, h2, h3, .page-title { text-shadow: 0 0 20px rgba(168,85,247,0.4); } .btn-primary, button[class*='primary'] { box-shadow: 0 0 15px rgba(168,85,247,0.4), inset 0 1px 0 rgba(255,255,255,0.1); } ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #A855F7, #6366F1) !important; }",
+  "customCSS": "\nh1, h2, .page-title {\n  background: linear-gradient(90deg, #A855F7, #00E5FF, #6366F1);\n  -webkit-background-clip: text;\n  -webkit-text-fill-color: transparent;\n  background-clip: text;\n  letter-spacing: 1px;\n}\nh3 { color: #C4B5FD; }\n.card, .assignment-card, .note-card {\n  border: 1px solid rgba(168,85,247,0.2) !important;\n  box-shadow: inset 0 0 30px rgba(168,85,247,0.03);\n}\n.card:hover, .assignment-card:hover, .note-card:hover {\n  border-color: rgba(0,229,255,0.4) !important;\n  box-shadow: 0 0 25px rgba(168,85,247,0.2), 0 0 50px rgba(0,229,255,0.08), inset 0 0 30px rgba(168,85,247,0.04) !important;\n}\n.btn-primary, button[class*=\"primary\"] {\n  box-shadow: 0 0 14px rgba(168,85,247,0.35), inset 0 1px 0 rgba(255,255,255,0.1);\n}\n.btn-primary:hover, button[class*=\"primary\"]:hover {\n  box-shadow: 0 0 22px rgba(168,85,247,0.5), 0 0 40px rgba(0,229,255,0.15);\n}\n.sidebar, [class*=\"sidebar\"] {\n  background: #060812 !important;\n  border-right: 1px solid rgba(168,85,247,0.1) !important;\n}\n::selection { background: rgba(168,85,247,0.3); color: #E0E0FF; }\n::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #A855F7, #00E5FF) !important; border-radius: 6px; }\n::-webkit-scrollbar-track { background: #060812 !important; }\n",
   "animation": "gradient",
   "effects": {
-    "starfield": { "enabled": true, "params": { "speed": 0.75, "density": 120 }, "layer": 0 },
-    "aurora": { "enabled": true, "params": { "color1": "#A855F7", "color2": "#6366F1", "color3": "#00E5FF" }, "layer": 1 },
-    "neonText": { "enabled": true, "params": { "color": "#A855F7" }, "layer": 3 },
-    "glow": { "enabled": true, "params": { "color": "#A855F7", "intensity": 0.6 }, "layer": 2 },
-    "gradientBorder": { "enabled": true, "params": { "color1": "#A855F7", "color2": "#00E5FF" }, "layer": 2 }
+    "starfield": {
+      "enabled": true,
+      "params": {
+        "speed": 0.5,
+        "density": 100
+      },
+      "layer": 0
+    },
+    "aurora": {
+      "enabled": true,
+      "params": {
+        "color1": "#A855F7",
+        "color2": "#6366F1",
+        "color3": "#00E5FF"
+      },
+      "layer": 0
+    },
+    "neonText": {
+      "enabled": true,
+      "params": {
+        "color": "#A855F7"
+      },
+      "layer": 1
+    },
+    "glow": {
+      "enabled": true,
+      "params": {
+        "color": "#A855F7",
+        "intensity": 0.3
+      },
+      "layer": 2
+    },
+    "cursorGlow": {
+      "enabled": true,
+      "params": {
+        "color": "#A855F7",
+        "size": 150
+      },
+      "layer": 3
+    },
+    "clickExplosion": {
+      "enabled": true,
+      "params": {
+        "emoji": "✨"
+      },
+      "layer": 3
+    }
   },
   "triggers": {
-    "onCorrect": ["confetti", "correctBounce"],
-    "onWrong": ["wrongShake"],
-    "onLevelUp": ["levelUpCelebration", "confetti"],
-    "onBadge": ["badgeUnlock"]
+    "onCorrect": [
+      "confetti",
+      "correctBounce"
+    ],
+    "onWrong": [
+      "wrongShake"
+    ],
+    "onLevelUp": [
+      "levelUpCelebration",
+      "confetti"
+    ],
+    "onBadge": [
+      "badgeUnlock"
+    ]
   }
 }

@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import api from "../lib/api";
 import AppShell from "../components/common/AppShell";
-import type { Note, Course } from "../types";
+import type { Note, Course, Team } from "../types";
+import { useAuthStore } from "../store/authStore";
 
 export default function NotesList() {
   const { courseId } = useParams<{ courseId: string }>();
@@ -17,6 +18,9 @@ export default function NotesList() {
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [searchQuery, setSearchQuery] = useState("");
   const [commentSummary, setCommentSummary] = useState<Record<string, { total: number; unresolved: number }>>({});
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [showTeamSelect, setShowTeamSelect] = useState(false);
+  const { user } = useAuthStore();
 
   useEffect(() => {
     if (!courseId) return;
@@ -24,10 +28,12 @@ export default function NotesList() {
       api.get(`/courses/${courseId}/notes`),
       api.get(`/courses/${courseId}`),
       api.get(`/courses/${courseId}/notes/comment-summary`).catch(() => ({ data: {} })),
-    ]).then(([notesRes, courseRes, commentRes]) => {
+      api.get(`/courses/${courseId}/teams`).catch(() => ({ data: [] })),
+    ]).then(([notesRes, courseRes, commentRes, teamsRes]) => {
       setNotes(notesRes.data);
       setCourse(courseRes.data);
       setCommentSummary(commentRes.data || {});
+      setTeams(teamsRes.data || []);
       setLoading(false);
     });
   }, [courseId]);
@@ -36,6 +42,22 @@ export default function NotesList() {
   const handleCreateNote = () => {
     navigate(`/courses/${courseId}/notes/new${matSuffix}`);
   };
+
+  const handleCreateTeamNote = async (teamId: string) => {
+    if (!courseId) return;
+    try {
+      const { data } = await api.post(`/courses/${courseId}/notes`, {
+        title: "새 팀 노트",
+        content: { type: "doc", content: [{ type: "paragraph" }] },
+        team_id: teamId,
+      });
+      setShowTeamSelect(false);
+      navigate(`/courses/${courseId}/notes/${data.id}${matSuffix}`);
+    } catch { /* */ }
+  };
+
+  // 팀 이름 맵
+  const teamNameMap = new Map(teams.map((t) => [t.id, t.name]));
 
   const handleDelete = (id: string, title: string, childCount: number) => {
     setDeleteTarget({ id, title, childCount });
@@ -128,6 +150,11 @@ export default function NotesList() {
               </svg>
               노트 지도
             </button>
+            {teams.length > 0 && (
+              <button className="btn btn-secondary" onClick={() => setShowTeamSelect(true)}>
+                + 팀 노트
+              </button>
+            )}
             <button className="btn btn-primary" onClick={handleCreateNote}>
               + 새 노트 작성
             </button>
@@ -178,6 +205,15 @@ export default function NotesList() {
                         })}
                       </p>
                       <div className="course-meta">
+                        {note.team_id && teamNameMap.has(note.team_id) && (
+                          <span className="badge" style={{ background: "var(--tertiary-container)", color: "var(--on-tertiary-container)" }}>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: 2, verticalAlign: -1 }}>
+                              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                            </svg>
+                            {teamNameMap.get(note.team_id)}
+                          </span>
+                        )}
                         {note.understanding_score != null && (
                           <span className="badge badge-policy">
                             이해도 {note.understanding_score}%
@@ -279,6 +315,34 @@ export default function NotesList() {
             <div className="confirm-actions">
               <button className="btn btn-secondary" onClick={() => setDeleteTarget(null)}>취소</button>
               <button className="btn btn-danger" onClick={confirmDelete}>삭제</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 팀 노트 생성 — 팀 선택 모달 */}
+      {showTeamSelect && (
+        <div className="confirm-overlay" onClick={() => setShowTeamSelect(false)}>
+          <div className="confirm-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400 }}>
+            <h3 className="confirm-title">팀 노트 생성</h3>
+            <p className="confirm-desc">공유 노트를 생성할 팀을 선택하세요.</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, margin: "12px 0" }}>
+              {teams.map((t) => (
+                <button
+                  key={t.id}
+                  className="btn btn-secondary"
+                  style={{ justifyContent: "flex-start", textAlign: "left", padding: "8px 12px" }}
+                  onClick={() => handleCreateTeamNote(t.id)}
+                >
+                  <span style={{ fontWeight: 600 }}>{t.name}</span>
+                  <span style={{ fontSize: 12, color: "var(--on-surface-variant)", marginLeft: 8 }}>
+                    {(t.members || []).map((m) => m.name).join(", ")}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <div className="confirm-actions">
+              <button className="btn btn-secondary" onClick={() => setShowTeamSelect(false)}>취소</button>
             </div>
           </div>
         </div>

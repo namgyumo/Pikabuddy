@@ -92,19 +92,24 @@ export default function StudentHome() {
   const tutorialCompleted = useTutorialStore((s) => s.isCompleted);
 
   useEffect(() => {
+    // Fire all independent requests in parallel
     fetchCourses();
-    // 캘린더 데이터 로드
-    api.get("/calendar").then(({ data }) => {
+    Promise.all([
+      api.get("/calendar").catch(() => ({ data: { assignments: [], events: [] } })),
+      api.get("/todos").catch(() => ({ data: [] })),
+    ]).then(([calRes, todosRes]) => {
+      // Calendar
+      const calData = calRes.data;
       const items: CalendarItem[] = [
-        ...(data.assignments || []).map((a: CalendarItem) => ({ ...a, kind: "assignment" as const })),
-        ...(data.events || []).map((e: CalendarItem) => ({ ...e, kind: "event" as const })),
+        ...(calData.assignments || []).map((a: CalendarItem) => ({ ...a, kind: "assignment" as const })),
+        ...(calData.events || []).map((e: CalendarItem) => ({ ...e, kind: "event" as const })),
       ];
       setCalItems(items);
 
       // 과제 마감 1일 전 알림
       const now = new Date();
       const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-      for (const a of data.assignments || []) {
+      for (const a of calData.assignments || []) {
         if (a.due_date) {
           const due = new Date(a.due_date);
           if (due > now && due <= tomorrow) {
@@ -117,9 +122,10 @@ export default function StudentHome() {
           }
         }
       }
-    }).catch(() => {});
-    // 할 일 로드
-    api.get("/todos").then(({ data }) => setTodos(data)).catch(() => {});
+
+      // Todos
+      setTodos(todosRes.data);
+    });
   }, [fetchCourses]);
 
   useEffect(() => {

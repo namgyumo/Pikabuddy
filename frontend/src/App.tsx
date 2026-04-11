@@ -29,6 +29,9 @@ const QuizEditor = lazy(() => import("./pages/QuizEditor"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Messenger = lazy(() => import("./pages/Messenger"));
 const StudentNotes = lazy(() => import("./pages/StudentNotes"));
+const TeamManager = lazy(() => import("./pages/TeamManager"));
+const AllNotes = lazy(() => import("./pages/AllNotes"));
+const AllNotesGraph = lazy(() => import("./pages/AllNotesGraph"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 function PageLoader() {
@@ -170,6 +173,22 @@ export default function App() {
               }
             />
             <Route
+              path="/all-notes"
+              element={
+                <ProtectedRoute>
+                  <AllNotes />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/all-notes/graph"
+              element={
+                <ProtectedRoute>
+                  <AllNotesGraph />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/courses/:courseId/notes"
               element={
                 <ProtectedRoute>
@@ -214,6 +233,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <Messenger />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/courses/:courseId/teams"
+              element={
+                <ProtectedRoute role="professor">
+                  <TeamManager />
                 </ProtectedRoute>
               }
             />

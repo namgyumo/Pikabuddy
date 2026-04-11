@@ -1,0 +1,121 @@
+{
+  "name": "Cosmic Voyage",
+  "version": 1,
+  "preview": [
+    "#00D4FF",
+    "#08080F",
+    "#FF6B35",
+    "#E0F0FF"
+  ],
+  "variables": {
+    "--primary": "#00D4FF",
+    "--primary-light": "#0A2535",
+    "--primary-container": "#00A8CC",
+    "--primary-hover": "#0090B0",
+    "--primary-fixed": "#081C28",
+    "--secondary": "#FF6B35",
+    "--secondary-light": "rgba(255,107,53,0.12)",
+    "--tertiary": "#A855F7",
+    "--tertiary-light": "rgba(168,85,247,0.12)",
+    "--tertiary-container": "rgba(168,85,247,0.08)",
+    "--on-tertiary-container": "#C084FC",
+    "--success": "#4ADE80",
+    "--success-light": "rgba(74,222,128,0.12)",
+    "--warning": "#FBBF24",
+    "--warning-light": "rgba(251,191,36,0.12)",
+    "--error": "#FF6B6B",
+    "--error-light": "rgba(255,107,107,0.12)",
+    "--surface": "#08080F",
+    "--surface-container-lowest": "#040408",
+    "--surface-container-low": "#0E0E18",
+    "--surface-container": "#141422",
+    "--surface-container-high": "#1A1A2C",
+    "--surface-container-highest": "#222236",
+    "--on-surface": "#E0F0FF",
+    "--on-surface-variant": "#8AB4CC",
+    "--outline-variant": "rgba(138,180,204,0.12)",
+    "--editor-bg": "#040406",
+    "--shadow-sm": "0 0 8px rgba(0,212,255,0.08)",
+    "--shadow": "0 0 16px rgba(0,212,255,0.1)",
+    "--shadow-lg": "0 0 32px rgba(0,212,255,0.12)",
+    "--shadow-ai": "0 0 24px rgba(168,85,247,0.1)",
+    "--shadow-primary": "0 0 20px rgba(0,212,255,0.18)",
+    "--shadow-float": "0 0 30px rgba(0,212,255,0.08), 0 0 8px rgba(255,107,53,0.05)",
+    "--radius-sm": "4px",
+    "--radius-md": "8px",
+    "--radius-lg": "12px",
+    "--radius-xl": "16px",
+    "--radius-full": "9999px",
+    "--font-display": "'Fira Code', monospace",
+    "--font-body": "'Pretendard Variable', Pretendard, sans-serif",
+    "--border-card": "1px",
+    "--border-card-color": "rgba(0,212,255,0.15)",
+    "--border-inner": "1px",
+    "--border-inner-color": "rgba(0,212,255,0.06)",
+    "--border-text": "0px",
+    "--border-text-color": "transparent"
+  },
+  "customCSS": "\nh1, h2, .page-title {\n  background: linear-gradient(90deg, #00D4FF, #FF6B35);\n  -webkit-background-clip: text;\n  -webkit-text-fill-color: transparent;\n  background-clip: text;\n  text-transform: uppercase;\n  letter-spacing: 2px;\n}\nh1::before, .page-title::before {\n  content: '◆ ';\n  -webkit-text-fill-color: rgba(0,212,255,0.4);\n  font-size: 0.6em;\n}\nh3 { color: #67E8F9; text-transform: uppercase; letter-spacing: 1px; }\n.card, .assignment-card, .note-card {\n  border: 1px solid rgba(0,212,255,0.12) !important;\n  border-top: 2px solid rgba(0,212,255,0.2) !important;\n  box-shadow: inset 0 0 30px rgba(0,212,255,0.02);\n}\n.card:hover, .assignment-card:hover, .note-card:hover {\n  border-color: rgba(0,212,255,0.3) !important;\n  box-shadow: 0 0 15px rgba(0,212,255,0.12), 0 8px 24px rgba(0,0,0,0.3) !important;\n  transform: translateY(-2px);\n  transition: all 0.3s ease;\n}\n.btn-primary, button[class*=\"primary\"] {\n  background: linear-gradient(135deg, #00A8CC, #00D4FF) !important;\n  box-shadow: 0 0 12px rgba(0,212,255,0.25);\n  text-transform: uppercase;\n  letter-spacing: 1px;\n}\n.btn-primary:hover, button[class*=\"primary\"]:hover {\n  box-shadow: 0 0 20px rgba(0,212,255,0.4), 0 0 40px rgba(255,107,53,0.08);\n}\n.sidebar, [class*=\"sidebar\"] {\n  background: #040408 !important;\n  border-right: 1px solid rgba(0,212,255,0.05) !important;\n}\n::selection { background: rgba(0,212,255,0.25); color: #E0F0FF; }\n::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #00A8CC, #FF6B35) !important; border-radius: 4px; }\n::-webkit-scrollbar-track { background: #040408 !important; }\n",
+  "animation": "particles",
+  "effects": {
+    "starfield": {
+      "enabled": true,
+      "params": {
+        "speed": 0.8,
+        "density": 80
+      },
+      "layer": 0
+    },
+    "dotGrid": {
+      "enabled": true,
+      "params": {
+        "color": "rgba(0,212,255,0.03)",
+        "spacing": 24
+      },
+      "layer": 0
+    },
+    "typewriterTitle": {
+      "enabled": true,
+      "params": {},
+      "layer": 1
+    },
+    "gradientBorder": {
+      "enabled": true,
+      "params": {
+        "color1": "#00D4FF",
+        "color2": "#FF6B35"
+      },
+      "layer": 2
+    },
+    "cursorGlow": {
+      "enabled": true,
+      "params": {
+        "color": "#00D4FF",
+        "size": 120
+      },
+      "layer": 3
+    },
+    "clickExplosion": {
+      "enabled": true,
+      "params": {
+        "emoji": "🚀"
+      },
+      "layer": 3
+    }
+  },
+  "triggers": {
+    "onCorrect": [
+      "confetti",
+      "correctBounce"
+    ],
+    "onWrong": [
+      "wrongShake"
+    ],
+    "onLevelUp": [
+      "levelUpCelebration"
+    ],
+    "onCombo": [
+      "comboCounter"
+    ]
+  }
+}

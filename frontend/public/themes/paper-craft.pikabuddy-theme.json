@@ -1,0 +1,105 @@
+{
+  "name": "Paper Craft",
+  "version": 1,
+  "preview": [
+    "#E74C3C",
+    "#FFF9F0",
+    "#3498DB",
+    "#2C3E50"
+  ],
+  "variables": {
+    "--primary": "#E74C3C",
+    "--primary-light": "rgba(231,76,60,0.1)",
+    "--primary-container": "#C0392B",
+    "--primary-hover": "#CB4335",
+    "--primary-fixed": "#F9E0DE",
+    "--secondary": "#3498DB",
+    "--secondary-light": "rgba(52,152,219,0.1)",
+    "--tertiary": "#27AE60",
+    "--tertiary-light": "rgba(39,174,96,0.1)",
+    "--tertiary-container": "rgba(39,174,96,0.08)",
+    "--on-tertiary-container": "#1E8449",
+    "--success": "#27AE60",
+    "--success-light": "rgba(39,174,96,0.1)",
+    "--warning": "#F39C12",
+    "--warning-light": "rgba(243,156,18,0.1)",
+    "--error": "#E74C3C",
+    "--error-light": "rgba(231,76,60,0.1)",
+    "--surface": "#FFF9F0",
+    "--surface-container-lowest": "#FFFFFF",
+    "--surface-container-low": "#FFF5E6",
+    "--surface-container": "#FFF0D6",
+    "--surface-container-high": "#FFEBC6",
+    "--surface-container-highest": "#FFFFFF",
+    "--on-surface": "#2C3E50",
+    "--on-surface-variant": "#566573",
+    "--outline-variant": "rgba(86,101,115,0.12)",
+    "--editor-bg": "#1A2332",
+    "--shadow-sm": "2px 2px 0 rgba(0,0,0,0.06)",
+    "--shadow": "3px 3px 0 rgba(0,0,0,0.08)",
+    "--shadow-lg": "4px 4px 0 rgba(0,0,0,0.1)",
+    "--shadow-ai": "0 3px 12px rgba(52,152,219,0.08)",
+    "--shadow-primary": "0 3px 10px rgba(231,76,60,0.1)",
+    "--shadow-float": "3px 3px 0 rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04)",
+    "--radius-sm": "4px",
+    "--radius-md": "6px",
+    "--radius-lg": "8px",
+    "--radius-xl": "12px",
+    "--radius-full": "9999px",
+    "--font-display": "'Nanum Myeongjo', serif",
+    "--font-body": "'Noto Sans KR', sans-serif",
+    "--border-card": "1px",
+    "--border-card-color": "rgba(44,62,80,0.1)",
+    "--border-inner": "1px",
+    "--border-inner-color": "rgba(44,62,80,0.06)",
+    "--border-text": "0px",
+    "--border-text-color": "transparent"
+  },
+  "customCSS": "\nh1, h2, .page-title {\n  color: #2C3E50 !important;\n  border-bottom: 2px solid rgba(231,76,60,0.2);\n  padding-bottom: 6px;\n  letter-spacing: 0.5px;\n}\nh3 { color: #E74C3C; }\n.card, .assignment-card, .note-card {\n  background: linear-gradient(135deg, #FFFFFF, #FFF9F0) !important;\n  border: 1px solid rgba(44,62,80,0.08) !important;\n  box-shadow: 2px 2px 0 rgba(0,0,0,0.04);\n  position: relative;\n}\n.card::before, .assignment-card::before, .note-card::before {\n  content: '';\n  position: absolute;\n  top: 0;\n  right: 0;\n  width: 20px;\n  height: 20px;\n  background: linear-gradient(225deg, #FFF0D6 50%, rgba(44,62,80,0.05) 50%);\n  pointer-events: none;\n}\n.card:hover, .assignment-card:hover, .note-card:hover {\n  box-shadow: 4px 4px 0 rgba(0,0,0,0.06), 0 0 0 1px rgba(231,76,60,0.1) !important;\n  transform: translateY(-1px) rotate(-0.3deg);\n  transition: all 0.3s ease;\n}\n.btn-primary, button[class*=\"primary\"] {\n  background: #E74C3C !important;\n  box-shadow: 2px 2px 0 rgba(0,0,0,0.08);\n}\n.btn-primary:hover, button[class*=\"primary\"]:hover {\n  transform: translateY(-1px);\n  box-shadow: 3px 3px 0 rgba(0,0,0,0.1);\n}\n.sidebar, [class*=\"sidebar\"] {\n  background: linear-gradient(180deg, #FFF5E6, #FFF0D6) !important;\n  border-right: 1px solid rgba(44,62,80,0.06) !important;\n}\n::selection { background: rgba(52,152,219,0.2); color: #2C3E50; }\n::-webkit-scrollbar-thumb { background: #E74C3C !important; border-radius: 4px; }\n::-webkit-scrollbar-track { background: #FFF9F0 !important; }\n",
+  "animation": "none",
+  "effects": {
+    "noiseTexture": {
+      "enabled": true,
+      "params": {
+        "opacity": 0.02
+      },
+      "layer": 0
+    },
+    "fadeInScroll": {
+      "enabled": true,
+      "params": {},
+      "layer": 1
+    },
+    "drawBorder": {
+      "enabled": true,
+      "params": {},
+      "layer": 1
+    },
+    "softShadow": {
+      "enabled": true,
+      "params": {
+        "depth": 2
+      },
+      "layer": 2
+    },
+    "rippleClick": {
+      "enabled": true,
+      "params": {
+        "color": "#E74C3C"
+      },
+      "layer": 3
+    }
+  },
+  "triggers": {
+    "onCorrect": [
+      "confetti",
+      "correctBounce"
+    ],
+    "onWrong": [
+      "wrongShake"
+    ],
+    "onLevelUp": [
+      "levelUpCelebration"
+    ]
+  }
+}

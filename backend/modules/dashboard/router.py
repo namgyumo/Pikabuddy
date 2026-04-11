@@ -3,7 +3,7 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from fastapi import APIRouter, Depends
 from common.supabase_client import get_supabase
-from common.gemini_client import get_gemini_model
+from common.gemini_client import get_gemini_model, MODEL_LIGHT
 from middleware.auth import require_professor_or_personal
 
 _executor = ThreadPoolExecutor(max_workers=8)
@@ -196,22 +196,23 @@ async def get_insights(course_id: str, user: dict = Depends(require_professor_or
         .execute()
     )
 
-    prompt = f"""당신은 교육 데이터 분석가입니다.
-다음 클래스 데이터를 분석하여 교수에게 실행 가능한 인사이트를 제공하세요.
+    prompt = f"""You are an educational data analyst.
+Analyze the following class data and provide actionable insights for the professor.
 
-강의: {course.data.get('title', '')}
-강의 목표: {json.dumps(course.data.get('objectives', []), ensure_ascii=False)}
-제출 수: {len(submissions.data)}건
-평균 점수: {round(_safe_avg_score(submissions.data))}점
-노트 평균 이해도: {round(sum(n.get('understanding_score', 0) for n in notes.data if n.get('understanding_score')) / max(len(notes.data), 1))}점
+Course: {course.data.get('title', '')}
+Objectives: {json.dumps(course.data.get('objectives', []), ensure_ascii=False)}
+Submissions: {len(submissions.data)}
+Average score: {round(_safe_avg_score(submissions.data))}
+Average note understanding: {round(sum(n.get('understanding_score', 0) for n in notes.data if n.get('understanding_score')) / max(len(notes.data), 1))}
 
-각 항목은 Markdown 형식으로 작성하세요. **굵은 글씨**, 리스트(-), 핵심 수치 강조 등을 활용하세요.
+Write each item in Markdown format. Use **bold**, lists (-), and highlight key numbers.
+IMPORTANT: Write the entire output in Korean.
 
-JSON 형식:
-{{"insights": ["마크다운 인사이트1", "마크다운 인사이트2"], "common_struggles": ["마크다운 공통 어려움1"], "recommendations": ["마크다운 추천1", "마크다운 추천2"]}}
+JSON format:
+{{"insights": ["markdown insight1", "markdown insight2"], "common_struggles": ["markdown struggle1"], "recommendations": ["markdown rec1", "markdown rec2"]}}
 """
     loop = asyncio.get_running_loop()
-    response = await loop.run_in_executor(None, lambda: get_gemini_model().generate_content(prompt))
+    response = await loop.run_in_executor(None, lambda: get_gemini_model(MODEL_LIGHT).generate_content(prompt))
     text = response.text.strip()
     if text.startswith("```"):
         text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()

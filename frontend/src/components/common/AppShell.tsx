@@ -116,6 +116,15 @@ export default function AppShell({ children, courseTitle }: Props) {
                   {totalUnreadMessages > 0 && <span className="sidebar-badge">{totalUnreadMessages}</span>}
                 </Link>
               )}
+              {!courseId && (
+                <Link
+                  to="/all-notes"
+                  className={`sidebar-link ${location.pathname === "/all-notes" ? "active" : ""}`}
+                >
+                  <span className="sidebar-link-icon">&#x1F4DD;</span>
+                  Notes
+                </Link>
+              )}
               {courseId && (
                 <>
                   <Link
@@ -198,6 +207,15 @@ export default function AppShell({ children, courseTitle }: Props) {
                   <span className="sidebar-link-icon">&#x1F4AC;</span>
                   Messenger
                   {totalUnreadMessages > 0 && <span className="sidebar-badge">{totalUnreadMessages}</span>}
+                </Link>
+              )}
+              {!courseId && (
+                <Link
+                  to="/all-notes"
+                  className={`sidebar-link ${location.pathname === "/all-notes" ? "active" : ""}`}
+                >
+                  <span className="sidebar-link-icon">&#x1F4DD;</span>
+                  Notes
                 </Link>
               )}
               {courseId && (

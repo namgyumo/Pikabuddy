@@ -575,6 +575,29 @@ export const trailEmojiEffect: ThemeEffect = {
   },
 } as any;
 
+/* ═══ 19. Custom Cursor Image ═══ */
+export const customCursorImageEffect: ThemeEffect = {
+  id: "customCursorImage",
+  activate(p) {
+    const sanitize = (url: string) => {
+      if (!url) return "";
+      if (url.startsWith("data:image/")) return url;
+      if (/^https?:\/\//i.test(url)) return url;
+      return "";
+    };
+    const def = sanitize(String(p.default || ""));
+    const ptr = sanitize(String(p.pointer || ""));
+    const txt = sanitize(String(p.text || ""));
+
+    let css = "";
+    if (def) css += `html, body, * { cursor: url('${def}') 0 0, auto !important; }\n`;
+    if (ptr) css += `a, button, [role="button"], label, select, summary, [class*="btn"], .theme-card { cursor: url('${ptr}') 6 0, pointer !important; }\n`;
+    if (txt) css += `input, textarea, [contenteditable="true"] { cursor: url('${txt}') 4 8, text !important; }\n`;
+    if (css) injectEffectStyle("customCursorImage", css);
+  },
+  deactivate() { removeEffectStyle("customCursorImage"); },
+};
+
 export const uiEffects = [
   glowEffect, glassMorphismEffect, gradientBorderEffect,
   cardTiltEffect, softShadowEffect, drawBorderEffect,
@@ -583,4 +606,5 @@ export const uiEffects = [
   rippleClickEffect, magneticButtonEffect,
   mouseTrailEffect, cursorGlowEffect, customCursorEffect,
   clickExplosionEffect, trailEmojiEffect,
+  customCursorImageEffect,
 ];

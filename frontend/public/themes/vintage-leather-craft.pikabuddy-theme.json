@@ -1,0 +1,105 @@
+{
+  "name": "Vintage Leather Craft",
+  "version": 1,
+  "preview": [
+    "#A0522D",
+    "#F5EDE4",
+    "#B8432F",
+    "#3B2F24"
+  ],
+  "variables": {
+    "--primary": "#A0522D",
+    "--primary-light": "rgba(160,82,45,0.12)",
+    "--primary-container": "rgba(160,82,45,0.10)",
+    "--primary-hover": "#8B4726",
+    "--primary-fixed": "#A0522D",
+    "--secondary": "#907860",
+    "--secondary-light": "rgba(144,120,96,0.12)",
+    "--tertiary": "#B8432F",
+    "--tertiary-light": "rgba(184,67,47,0.10)",
+    "--tertiary-container": "rgba(184,67,47,0.06)",
+    "--on-tertiary-container": "#B8432F",
+    "--success": "#5A8C3C",
+    "--success-light": "rgba(90,140,60,0.12)",
+    "--warning": "#C08B30",
+    "--warning-light": "rgba(192,139,48,0.12)",
+    "--error": "#B8432F",
+    "--error-light": "rgba(184,67,47,0.10)",
+    "--surface": "#F5EDE4",
+    "--surface-container-lowest": "#FFFBF7",
+    "--surface-container-low": "#F0E6DA",
+    "--surface-container": "#E8DDD0",
+    "--surface-container-high": "#DFD2C3",
+    "--surface-container-highest": "#FFFFFF",
+    "--on-surface": "#3B2F24",
+    "--on-surface-variant": "#6B5D50",
+    "--outline-variant": "rgba(160,82,45,0.12)",
+    "--editor-bg": "#FBF6F0",
+    "--shadow-sm": "0 2px 6px rgba(59,47,36,0.08)",
+    "--shadow": "0 4px 14px rgba(59,47,36,0.1)",
+    "--shadow-lg": "0 8px 28px rgba(59,47,36,0.12)",
+    "--shadow-ai": "0 4px 18px rgba(160,82,45,0.1)",
+    "--shadow-primary": "0 4px 14px rgba(160,82,45,0.12)",
+    "--shadow-float": "0 6px 20px rgba(59,47,36,0.1), 0 2px 6px rgba(59,47,36,0.06)",
+    "--radius-sm": "4px",
+    "--radius-md": "6px",
+    "--radius-lg": "10px",
+    "--radius-xl": "12px",
+    "--radius-full": "9999px",
+    "--font-display": "Georgia, serif",
+    "--font-body": "'Nanum Myeongjo', serif",
+    "--border-card": "2px",
+    "--border-card-color": "rgba(160,82,45,0.3)",
+    "--border-inner": "1px",
+    "--border-inner-color": "rgba(160,82,45,0.12)",
+    "--border-text": "0px",
+    "--border-text-color": "transparent"
+  },
+  "customCSS": "\n.card, .assignment-card, .note-card {\n  border: 2px dashed rgba(160,82,45,0.3) !important;\n  background: linear-gradient(135deg, rgba(245,237,228,0.8), rgba(232,221,208,0.6)) !important;\n  position: relative;\n}\n.card::before, .assignment-card::before, .note-card::before {\n  content: '';\n  position: absolute;\n  inset: 4px;\n  border: 1px dashed rgba(160,82,45,0.18);\n  border-radius: inherit;\n  pointer-events: none;\n}\n.card:hover, .assignment-card:hover, .note-card:hover {\n  border-color: rgba(160,82,45,0.5) !important;\n  box-shadow: 0 4px 20px rgba(160,82,45,0.1) !important;\n}\nh1, h2, .page-title {\n  color: #6B3A1F !important;\n  font-style: italic;\n  letter-spacing: 0.5px;\n  border-bottom: 2px dashed rgba(160,82,45,0.2);\n  padding-bottom: 8px;\n}\nh3 { color: #A0522D; }\n.btn-primary, button[class*=\"primary\"] {\n  border: 2px dashed rgba(255,255,255,0.35) !important;\n  background: linear-gradient(135deg, #A0522D, #C07040) !important;\n  color: #FFF8F0 !important;\n}\n.sidebar, [class*=\"sidebar\"] {\n  background: rgba(232,221,208,0.5) !important;\n  border-right: 2px dashed rgba(160,82,45,0.15) !important;\n}\n::selection { background: rgba(160,82,45,0.2); color: #3B2F24; }\n::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #C07040, #A0522D) !important; border-radius: 4px; }\n::-webkit-scrollbar-track { background: #F0E6DA !important; }\n",
+  "animation": "particles",
+  "effects": {
+    "particles": {
+      "enabled": true,
+      "params": {
+        "color": "#C09870",
+        "count": 12
+      },
+      "layer": 0
+    },
+    "noiseTexture": {
+      "enabled": true,
+      "params": {
+        "opacity": 0.04
+      },
+      "layer": 0
+    },
+    "fadeInScroll": {
+      "enabled": true,
+      "params": {},
+      "layer": 1
+    },
+    "drawBorder": {
+      "enabled": true,
+      "params": {},
+      "layer": 1
+    },
+    "softShadow": {
+      "enabled": true,
+      "params": {
+        "depth": 2
+      },
+      "layer": 2
+    }
+  },
+  "triggers": {
+    "onCorrect": [
+      "correctBounce"
+    ],
+    "onWrong": [
+      "wrongShake"
+    ],
+    "onLevelUp": [
+      "levelUpCelebration"
+    ]
+  }
+}

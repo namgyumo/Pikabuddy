@@ -7,6 +7,7 @@ export type EffectCategory =
   | "text"
   | "interaction"
   | "cursor"
+  | "asset"
   | "animation"
   | "transition"
   | "visual"
@@ -15,7 +16,7 @@ export type EffectCategory =
 export interface EffectParam {
   key: string;
   label: string;
-  type: "color" | "number" | "select" | "emoji";
+  type: "color" | "number" | "select" | "emoji" | "image" | "textarea";
   default: string | number;
   min?: number;
   max?: number;
@@ -60,6 +61,7 @@ export const CATEGORY_LABELS: Record<EffectCategory, string> = {
   text: "텍스트 효과",
   interaction: "인터랙션",
   cursor: "커서 효과",
+  asset: "이미지/에셋",
   animation: "애니메이션",
   transition: "페이지/전환",
   visual: "색상/시각",
@@ -73,6 +75,7 @@ export const CATEGORY_ICONS: Record<EffectCategory, string> = {
   text: "🔤",
   interaction: "👆",
   cursor: "🖱️",
+  asset: "🖼️",
   animation: "🎬",
   transition: "🔄",
   visual: "🎨",

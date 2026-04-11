@@ -19,6 +19,9 @@ from modules.messenger.router import router as messenger_router
 from modules.comments.router import router as comments_router
 from modules.notifications.router import router as notifications_router
 from modules.events.router import router as events_router
+from modules.teams.router import router as teams_router
+from modules.voting.router import router as voting_router
+from modules.seed.router import router as seed_router
 
 settings = get_settings()
 
@@ -53,6 +56,9 @@ app.include_router(messenger_router, prefix="/api")
 app.include_router(comments_router, prefix="/api")
 app.include_router(notifications_router, prefix="/api")
 app.include_router(events_router, prefix="/api")
+app.include_router(teams_router, prefix="/api")
+app.include_router(voting_router, prefix="/api")
+app.include_router(seed_router, prefix="/api")
 
 
 @app.get("/")
@@ -62,3 +68,18 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "service": "ai-edu-platform"}
+
+
+# ── Token usage stats (dev/admin) ──
+from common.gemini_client import get_token_stats, reset_token_stats
+
+@app.get("/api/token-stats")
+async def token_stats():
+    """AI 토큰 사용량 통계 조회"""
+    return get_token_stats()
+
+@app.post("/api/token-stats/reset")
+async def token_stats_reset():
+    """AI 토큰 사용량 통계 초기화"""
+    reset_token_stats()
+    return {"message": "Token stats reset"}
