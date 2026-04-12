@@ -80,12 +80,11 @@ async def list_courses(user: dict = Depends(get_current_user)):
         # 개인 모드: 개인 코스만
         return [c for c in all_courses.values() if c.get("is_personal")]
     elif role == "professor":
-        # 교수 모드: 소유 강의 (개인 코스 포함)
-        return [c for c in all_courses.values() if c.get("_relation") == "owner"]
+        # 교수 모드: 소유 강의 + 수강 등록 강의 (개인 코스 제외)
+        return [c for c in all_courses.values() if not c.get("is_personal")]
     else:
-        # 학생 모드: 수강 등록 강의 + 개인 코스 제외
-        return [c for c in all_courses.values()
-                if not c.get("is_personal") and (c.get("_relation") == "enrolled" or c["id"] in custom_banners)]
+        # 학생 모드: 모든 관련 강의 (개인 코스 제외)
+        return [c for c in all_courses.values() if not c.get("is_personal")]
 
 
 @router.get("/by-invite/{invite_code}")
@@ -176,44 +175,24 @@ async def get_course(course_id: str, user: dict = Depends(get_current_user)):
     """강의 상세 조회"""
     supabase = get_supabase()
 
-    # 역할별 접근 권한 검증
+    # 접근 권한 검증: 소유 OR 수강 등록이면 허용 (역할 무관)
     is_admin = user.get("email", "").endswith("@pikabuddy.admin")
+    enrollment = None
     if not is_admin:
-        role = user.get("role")
-        if role == "personal":
-            course_check = (
-                supabase.table("courses")
-                .select("id")
-                .eq("id", course_id)
-                .eq("professor_id", user["id"])
-                .eq("is_personal", True)
-                .execute()
-            )
-            if not course_check.data:
-                raise HTTPException(status_code=403, detail="접근 권한이 없습니다.")
-        elif role == "professor":
-            # 교수는 본인 소유 강의만 접근 가능
-            course_check = (
-                supabase.table("courses")
-                .select("id")
-                .eq("id", course_id)
-                .eq("professor_id", user["id"])
-                .execute()
-            )
-            if not course_check.data:
-                raise HTTPException(status_code=403, detail="본인 소유의 강의가 아닙니다.")
-        elif role == "student":
+        uid = user["id"]
+        # 소유자인지 확인
+        owned = supabase.table("courses").select("id").eq("id", course_id).eq("professor_id", uid).execute()
+        if not owned.data:
+            # 수강 등록 확인
             enrollment = (
                 supabase.table("enrollments")
                 .select("id, custom_banner_url")
-                .eq("student_id", user["id"])
+                .eq("student_id", uid)
                 .eq("course_id", course_id)
                 .execute()
             )
             if not enrollment.data:
-                raise HTTPException(status_code=403, detail="수강하지 않은 강의입니다.")
-        else:
-            raise HTTPException(status_code=403, detail="접근 권한이 없습니다.")
+                raise HTTPException(status_code=403, detail="접근 권한이 없습니다.")
 
     result = (
         supabase.table("courses")
@@ -223,8 +202,8 @@ async def get_course(course_id: str, user: dict = Depends(get_current_user)):
         .execute()
     )
     data = result.data
-    # 학생이면 커스텀 배너 포함
-    if not is_admin and user.get("role") == "student" and enrollment.data:
+    # 수강 등록된 경우 커스텀 배너 포함
+    if enrollment and enrollment.data:
         data["custom_banner_url"] = enrollment.data[0].get("custom_banner_url")
     return data
 
