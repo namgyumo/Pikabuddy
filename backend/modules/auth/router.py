@@ -230,15 +230,9 @@ async def switch_role(body: SwitchRoleRequest, user: dict = Depends(get_current_
     supabase = get_supabase()
     current_role = user.get("role")
 
-    # ── 역할 전환 시 이전 역할 데이터 정리 (계정은 유지, 강의 관계만 분리) ──
-    if body.role == "professor" and current_role == "student":
-        # 학생 → 교수: 수강 등록 전부 삭제 (교수 모드에서는 새로운 강의를 만들어야 함)
-        supabase.table("enrollments").delete().eq("student_id", user["id"]).execute()
-
-    elif body.role == "student" and current_role == "professor":
-        # 교수 → 학생: 소유 강의는 유지하되, 교수 모드에서만 보이므로 학생 모드에선 자연히 안 보임
-        # (교수 강의 목록은 professor_id 기반, 학생 강의 목록은 enrollment 기반)
-        pass
+    # ── 역할 전환 시 기존 데이터 보존 ──
+    # 수강 등록, 노트, 강의 등 모든 데이터를 유지
+    # 역할에 따라 UI에서 보이는 뷰만 달라짐
 
     supabase.table("users").update({"role": body.role}).eq("id", user["id"]).execute()
 
