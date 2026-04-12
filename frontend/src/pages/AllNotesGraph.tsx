@@ -185,6 +185,7 @@ export default function AllNotesGraph() {
   const fittedRef = useRef(false);
   const prevNodesRef = useRef<GNode[]>([]);
   const connectedNodeIds = useRef(new Set<string>());
+  const structuralPairs = useRef(new Set<string>());
 
   // Edge visibility ref
   const edgeVisRef = useRef({ parent: true, link: true, similar: true });
@@ -358,13 +359,18 @@ export default function AllNotesGraph() {
       .filter((e) => ids.has(e.source) && ids.has(e.target))
       .map((e): GLink => ({ source: e.source, target: e.target, type: e.type, weight: e.weight }));
     const connected = new Set<string>();
+    const structural = new Set<string>();
     links.forEach((l) => {
+      const sId = typeof l.source === "string" ? l.source : l.source.id;
+      const tId = typeof l.target === "string" ? l.target : l.target.id;
       if (l.type === "parent" || l.type === "link") {
-        connected.add(typeof l.source === "string" ? l.source : l.source.id);
-        connected.add(typeof l.target === "string" ? l.target : l.target.id);
+        connected.add(sId);
+        connected.add(tId);
+        structural.add([sId, tId].sort().join("|"));
       }
     });
     connectedNodeIds.current = connected;
+    structuralPairs.current = structural;
 
     return { nodes, links };
   }, [mergedGraph, courseColorMap, courseNameMap]);
@@ -609,6 +615,12 @@ export default function AllNotesGraph() {
     if (link.type === "parent" && !vis.parent) return;
     if (link.type === "link" && !vis.link) return;
     if (link.type === "similar" && !vis.similar) return;
+
+    // 유사도 간선인데, 같은 쌍에 parent/link가 활성화되어 있으면 숨김
+    if (link.type === "similar") {
+      const pairKey = [s.id, t.id].sort().join("|");
+      if (structuralPairs.current.has(pairKey) && (vis.parent || vis.link)) return;
+    }
 
     const gc = gColorsRef.current;
     const lw = 1 / globalScale;

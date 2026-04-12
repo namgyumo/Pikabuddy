@@ -342,8 +342,10 @@ async def get_graph_data(course_id: str, user: dict = Depends(get_current_user))
         else:
             embeddings.append([])
             content_text = _tiptap_to_markdown(n.get("content") or {})
+            cats = cat_map.get(n["id"], [])
+            cat_str = ", ".join(cats[:5]) if cats else ""
             uncached_indices.append(idx)
-            uncached_texts.append(f"{n['title']}. {content_text[:500]}")
+            uncached_texts.append(f"[{cat_str}] {n['title']}. {content_text[:500]}")
 
     # 2) 캐시 없는 노트만 API 호출 (이벤트 루프 블로킹 방지)
     if uncached_texts:
@@ -377,20 +379,21 @@ async def get_graph_data(course_id: str, user: dict = Depends(get_current_user))
             if pair in existing_edges:
                 continue
 
-            # 카테고리 겹침 비율 계산
+            # 카테고리 겹침 계산
             cats_i = set(cat_map.get(notes[i]["id"], []))
             cats_j = set(cat_map.get(notes[j]["id"], []))
             shared_cats = cats_i & cats_j
             total_cats = cats_i | cats_j
             cat_overlap = len(shared_cats) / len(total_cats) if total_cats else 0
 
-            # 완전 무관: 카테고리 겹침 0% + 임베딩도 높지 않으면 → 연결 안함
-            if cat_overlap == 0 and sim < 0.82:
+            # 최소 1개 이상의 카테고리가 겹쳐야 연결 (완전 무관 차단)
+            # 단, 임베딩 유사도가 매우 높으면(0.90+) 카테고리 무관해도 연결
+            if len(shared_cats) == 0 and sim < 0.90:
                 continue
 
-            # 복합 가중치: 임베딩 유사도(60%) + 카테고리 겹침(40%)
-            sim_norm = (sim - 0.65) / 0.35  # 0.65~1.0 → 0~1
-            combined = sim_norm * 0.6 + cat_overlap * 0.4
+            # 가중치: 카테고리 겹침 비율(50%) + 임베딩 유사도(50%)
+            sim_norm = (sim - 0.65) / 0.35  # 0~1
+            combined = sim_norm * 0.5 + cat_overlap * 0.5
             weight = max(1, min(10, round(combined * 10)))
 
             existing_edges.add(pair)
@@ -549,8 +552,10 @@ async def get_unified_graph(user: dict = Depends(get_current_user)):
         else:
             embeddings.append([])
             content_text = _tiptap_to_markdown(n.get("content") or {})
+            cats = cat_map.get(n["id"], [])
+            cat_str = ", ".join(cats[:5]) if cats else ""
             uncached_indices.append(idx)
-            uncached_texts.append(f"{n['title']}. {content_text[:500]}")
+            uncached_texts.append(f"[{cat_str}] {n['title']}. {content_text[:500]}")
 
     if uncached_texts:
         try:
@@ -586,12 +591,11 @@ async def get_unified_graph(user: dict = Depends(get_current_user)):
             total_cats = cats_i | cats_j
             cat_overlap = len(shared_cats) / len(total_cats) if total_cats else 0
 
-            # 완전 무관: 카테고리 겹침 0% + 임베딩도 높지 않으면 → 연결 안함
-            if cat_overlap == 0 and sim < 0.82:
+            if len(shared_cats) == 0 and sim < 0.90:
                 continue
 
             sim_norm = (sim - 0.65) / 0.35
-            combined = sim_norm * 0.6 + cat_overlap * 0.4
+            combined = sim_norm * 0.5 + cat_overlap * 0.5
             weight = max(1, min(10, round(combined * 10)))
 
             existing_edges.add(pair)

@@ -194,6 +194,8 @@ export default function NoteGraph() {
 
   // Set of node IDs that have structural edge (parent/link)
   const connectedNodeIds = useRef(new Set<string>());
+  // Set of "id1|id2" pairs that have parent/link edges (to suppress duplicate similar edges)
+  const structuralPairs = useRef(new Set<string>());
 
   // Refs so force functions always read latest slider values without re-registration
   const nodeSpacingRef = useRef(nodeSpacing);
@@ -419,13 +421,18 @@ export default function NoteGraph() {
           .filter((e) => ids.has(e.source) && ids.has(e.target))
           .map((e): GLink => ({ source: e.source, target: e.target, type: e.type, weight: e.weight }));
         const connected = new Set<string>();
+        const structural = new Set<string>();
         links.forEach((l) => {
+          const sId = typeof l.source === "string" ? l.source : l.source.id;
+          const tId = typeof l.target === "string" ? l.target : l.target.id;
           if (l.type === "parent" || l.type === "link") {
-            connected.add(typeof l.source === "string" ? l.source : l.source.id);
-            connected.add(typeof l.target === "string" ? l.target : l.target.id);
+            connected.add(sId);
+            connected.add(tId);
+            structural.add([sId, tId].sort().join("|"));
           }
         });
         connectedNodeIds.current = connected;
+        structuralPairs.current = structural;
         return links;
       })(),
     };
@@ -698,6 +705,12 @@ export default function NoteGraph() {
     if (link.type === "parent" && !vis.parent) return;
     if (link.type === "link" && !vis.link) return;
     if (link.type === "similar" && !vis.similar) return;
+
+    // 유사도 간선인데, 같은 쌍에 parent/link가 활성화되어 있으면 숨김
+    if (link.type === "similar") {
+      const pairKey = [s.id, t.id].sort().join("|");
+      if (structuralPairs.current.has(pairKey) && (vis.parent || vis.link)) return;
+    }
 
     const gc = gColorsRef.current;
     const lw = 1 / globalScale;
