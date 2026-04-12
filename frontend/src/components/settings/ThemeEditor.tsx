@@ -635,10 +635,14 @@ function parseSliderVal(val: string | undefined): number {
 const FONT_GROUPS: { label: string; start: number; end: number }[] = [
   { label: "── 한국어 산세리프 ──", start: 0, end: 20 },
   { label: "── 한국어 세리프/명조 ──", start: 20, end: 25 },
-  { label: "── 영문 산세리프 ──", start: 25, end: 35 },
-  { label: "── 영문 세리프 ──", start: 35, end: 40 },
-  { label: "── 코딩 / 모노스페이스 ──", start: 40, end: 44 },
-  { label: "── 시스템 ──", start: 44, end: 45 },
+  { label: "── 한국어 손글씨/장식 ──", start: 25, end: 35 },
+  { label: "── 영문 산세리프 ──", start: 35, end: 49 },
+  { label: "── 영문 세리프 ──", start: 49, end: 56 },
+  { label: "── 영문 디스플레이/장식 ──", start: 56, end: 70 },
+  { label: "── 영문 손글씨 ──", start: 70, end: 81 },
+  { label: "── 픽셀 / 레트로 ──", start: 81, end: 87 },
+  { label: "── 코딩 / 모노스페이스 ──", start: 87, end: 91 },
+  { label: "── 시스템 ──", start: 91, end: 92 },
 ];
 
 const VariableInput = memo(function VariableInput({
@@ -712,32 +716,45 @@ const VariableInput = memo(function VariableInput({
       )}
 
       {def.type === "font" && (
-        <select
-          value={value || ""}
-          onChange={(e) => {
-            const v = e.target.value;
-            if (v) loadGoogleFont(v);
-            onChange(def.key, v);
-          }}
-          style={{
-            flex: 1, padding: "7px 10px", border: "1.5px solid var(--outline-variant)",
-            borderRadius: 8, fontSize: 12, boxSizing: "border-box",
-            background: "var(--surface-container-lowest)", color: "var(--on-surface)",
-            fontFamily: value || "inherit", outline: "none",
-            transition: "border-color 0.15s",
-          }}
-          onFocus={(e) => e.currentTarget.style.borderColor = "var(--primary)"}
-          onBlur={(e) => e.currentTarget.style.borderColor = "var(--outline-variant)"}
-        >
-          <option value="">기본값</option>
-          {FONT_GROUPS.map((g) => (
-            <optgroup key={g.label} label={g.label}>
-              {FONT_OPTIONS.slice(g.start, g.end).map((f) => (
-                <option key={f.value} value={f.value}>{f.label}</option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+          <select
+            value={value || ""}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v) loadGoogleFont(v);
+              onChange(def.key, v);
+            }}
+            style={{
+              width: "100%", padding: "7px 10px", border: "1.5px solid var(--outline-variant)",
+              borderRadius: 8, fontSize: 12, boxSizing: "border-box",
+              background: "var(--surface-container-lowest)", color: "var(--on-surface)",
+              fontFamily: value || "inherit", outline: "none",
+              transition: "border-color 0.15s",
+            }}
+            onFocus={(e) => e.currentTarget.style.borderColor = "var(--primary)"}
+            onBlur={(e) => e.currentTarget.style.borderColor = "var(--outline-variant)"}
+          >
+            <option value="">기본값</option>
+            {FONT_GROUPS.map((g) => (
+              <optgroup key={g.label} label={g.label}>
+                {FONT_OPTIONS.slice(g.start, g.end).map((f) => (
+                  <option key={f.value} value={f.value}>{f.label}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+          {value && (
+            <div style={{
+              fontFamily: value, fontSize: def.key === "--font-display" ? 18 : 14,
+              fontWeight: def.key === "--font-display" ? 700 : 400,
+              padding: "6px 10px", borderRadius: 6,
+              background: "var(--surface-container-low)", color: "var(--on-surface)",
+              lineHeight: 1.4,
+            }}>
+              {def.key === "--font-display" ? "제목 미리보기 Aa 가나다" : "본문 텍스트 미리보기입니다. Preview text 123"}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

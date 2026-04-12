@@ -199,14 +199,14 @@ export const VARIABLE_GROUPS: VariableGroup[] = [
     id: "font",
     label: "글꼴",
     variables: [
-      { key: "--font-display", label: "제목", type: "font" },
-      { key: "--font-body", label: "본문", type: "font" },
+      { key: "--font-display", label: "제목 (사이드바·제목·버튼)", type: "font" },
+      { key: "--font-body", label: "본문 (텍스트·설명·입력)", type: "font" },
     ],
   },
 ];
 
 export const FONT_OPTIONS = [
-  // ── 한국어 산세리프 ──
+  // ── 한국어 산세리프 ──  (0–19)
   { value: "'Pretendard Variable', Pretendard, sans-serif", label: "Pretendard (기본)" },
   { value: "'Noto Sans KR', sans-serif", label: "Noto Sans KR" },
   { value: "'IBM Plex Sans KR', sans-serif", label: "IBM Plex Sans KR" },
@@ -227,13 +227,24 @@ export const FONT_OPTIONS = [
   { value: "'Single Day', cursive", label: "싱글데이" },
   { value: "'Hi Melody', cursive", label: "하이멜로디" },
   { value: "'Yeon Sung', cursive", label: "연성" },
-  // ── 한국어 세리프/명조 ──
+  // ── 한국어 세리프/명조 ──  (20–24)
   { value: "'Nanum Myeongjo', serif", label: "나눔명조" },
   { value: "'Noto Serif KR', serif", label: "Noto Serif KR" },
   { value: "'Gowun Batang', serif", label: "고운바탕" },
   { value: "'Song Myung', serif", label: "송명" },
   { value: "'Hahmlet', serif", label: "함렛" },
-  // ── 영문 산세리프 ──
+  // ── 한국어 손글씨/장식 ──  (25–34)
+  { value: "'Nanum Pen Script', cursive", label: "나눔펜스크립트" },
+  { value: "'East Sea Dokdo', cursive", label: "동해독도" },
+  { value: "'Dokdo', cursive", label: "독도" },
+  { value: "'Orbit', sans-serif", label: "오비트" },
+  { value: "'Bagel Fat One', cursive", label: "베이글 팻 원" },
+  { value: "'Black And White Picture', sans-serif", label: "흑백사진" },
+  { value: "'Gugi', sans-serif", label: "구기" },
+  { value: "'Kirang Haerang', cursive", label: "기랑해랑" },
+  { value: "'Nanum Brush Script', cursive", label: "나눔붓글씨" },
+  { value: "'Grandiflora One', serif", label: "그란디플로라" },
+  // ── 영문 산세리프 ──  (35–48)
   { value: "'Inter', sans-serif", label: "Inter" },
   { value: "'Poppins', sans-serif", label: "Poppins" },
   { value: "'Raleway', sans-serif", label: "Raleway" },
@@ -244,18 +255,58 @@ export const FONT_OPTIONS = [
   { value: "'Nunito', sans-serif", label: "Nunito" },
   { value: "'Quicksand', sans-serif", label: "Quicksand" },
   { value: "'Comfortaa', cursive", label: "Comfortaa" },
-  // ── 영문 세리프 ──
+  { value: "'Manrope', sans-serif", label: "Manrope" },
+  { value: "'Plus Jakarta Sans', sans-serif", label: "Plus Jakarta Sans" },
+  { value: "'Figtree', sans-serif", label: "Figtree" },
+  { value: "'Lexend', sans-serif", label: "Lexend" },
+  // ── 영문 세리프 ──  (49–55)
   { value: "'Playfair Display', serif", label: "Playfair Display" },
   { value: "'Merriweather', serif", label: "Merriweather" },
   { value: "'Lora', serif", label: "Lora" },
   { value: "'Libre Baskerville', serif", label: "Libre Baskerville" },
   { value: "Georgia, serif", label: "Georgia" },
-  // ── 코딩/모노스페이스 ──
+  { value: "'Cormorant Garamond', serif", label: "Cormorant Garamond" },
+  { value: "'Crimson Pro', serif", label: "Crimson Pro" },
+  // ── 영문 디스플레이/장식 ──  (56–69)
+  { value: "'Abril Fatface', serif", label: "Abril Fatface" },
+  { value: "'Lobster', cursive", label: "Lobster" },
+  { value: "'Pacifico', cursive", label: "Pacifico" },
+  { value: "'Righteous', sans-serif", label: "Righteous" },
+  { value: "'Bebas Neue', sans-serif", label: "Bebas Neue" },
+  { value: "'Oswald', sans-serif", label: "Oswald" },
+  { value: "'Titan One', cursive", label: "Titan One" },
+  { value: "'Bangers', cursive", label: "Bangers" },
+  { value: "'Bungee', sans-serif", label: "Bungee" },
+  { value: "'Permanent Marker', cursive", label: "Permanent Marker" },
+  { value: "'Fredoka', sans-serif", label: "Fredoka" },
+  { value: "'Lilita One', sans-serif", label: "Lilita One" },
+  { value: "'Rubik Vinyl', sans-serif", label: "Rubik Vinyl" },
+  { value: "'Bungee Shade', sans-serif", label: "Bungee Shade" },
+  // ── 영문 손글씨 ──  (70–80)
+  { value: "'Caveat', cursive", label: "Caveat" },
+  { value: "'Dancing Script', cursive", label: "Dancing Script" },
+  { value: "'Sacramento', cursive", label: "Sacramento" },
+  { value: "'Great Vibes', cursive", label: "Great Vibes" },
+  { value: "'Satisfy', cursive", label: "Satisfy" },
+  { value: "'Architects Daughter', cursive", label: "Architects Daughter" },
+  { value: "'Patrick Hand', cursive", label: "Patrick Hand" },
+  { value: "'Indie Flower', cursive", label: "Indie Flower" },
+  { value: "'Shadows Into Light', cursive", label: "Shadows Into Light" },
+  { value: "'Gloria Hallelujah', cursive", label: "Gloria Hallelujah" },
+  { value: "'Amatic SC', cursive", label: "Amatic SC" },
+  // ── 픽셀/레트로 ──  (81–86)
+  { value: "'Press Start 2P', monospace", label: "Press Start 2P" },
+  { value: "'VT323', monospace", label: "VT323" },
+  { value: "'Silkscreen', monospace", label: "Silkscreen" },
+  { value: "'Special Elite', cursive", label: "Special Elite" },
+  { value: "'Rock Salt', cursive", label: "Rock Salt" },
+  { value: "'Courier Prime', monospace", label: "Courier Prime" },
+  // ── 코딩/모노스페이스 ──  (87–90)
   { value: "'Fira Code', monospace", label: "Fira Code" },
   { value: "'JetBrains Mono', monospace", label: "JetBrains Mono" },
   { value: "'Source Code Pro', monospace", label: "Source Code Pro" },
   { value: "'D2Coding', monospace", label: "D2Coding" },
-  // ── 시스템 ──
+  // ── 시스템 ──  (91)
   { value: "system-ui, sans-serif", label: "시스템 기본" },
 ];
 
