@@ -371,34 +371,47 @@ async def get_graph_data(course_id: str, user: dict = Depends(get_current_user))
         except Exception:
             pass
 
-    # 3) 유사도 계산 — 높은 threshold + 노드당 최대 3개 연결로 제한
+    # 3) 유사도 계산 — 임베딩 + 카테고리 겹침으로 복합 가중치 산출
     has_embeddings = any(e for e in embeddings)
     if has_embeddings:
-        # 모든 쌍의 유사도를 수집 후, 높은 것만 선별
-        all_sims = pairwise_similarities(embeddings, threshold=0.85)
-        # 각 노드당 최대 3개의 유사 간선만 허용 (가장 유사한 것만)
-        all_sims.sort(key=lambda x: x[2], reverse=True)
-        sim_count: dict[int, int] = {}
-        max_per_node = 3
+        # 낮은 threshold로 후보 수집 후 카테고리 보정
+        all_sims = pairwise_similarities(embeddings, threshold=0.72)
         for i, j, sim in all_sims:
             pair = tuple(sorted([notes[i]["id"], notes[j]["id"]]))
             if pair in existing_edges:
                 continue
-            if sim_count.get(i, 0) >= max_per_node or sim_count.get(j, 0) >= max_per_node:
+
+            # 카테고리 겹침 비율 계산
+            cats_i = set(cat_map.get(notes[i]["id"], []))
+            cats_j = set(cat_map.get(notes[j]["id"], []))
+            shared_cats = cats_i & cats_j
+            total_cats = cats_i | cats_j
+            cat_overlap = len(shared_cats) / len(total_cats) if total_cats else 0
+
+            # 완전 무관한 노트 필터링: 카테고리 겹침 0이고 유사도도 낮으면 연결 안함
+            if cat_overlap == 0 and sim < 0.88:
                 continue
+            # 카테고리 겹침 약간이라도 있으면 유사도 0.78 이상만
+            if cat_overlap > 0 and cat_overlap < 0.3 and sim < 0.78:
+                continue
+
+            # 복합 가중치: 임베딩 유사도(60%) + 카테고리 겹침(40%)
+            # sim: 0.72~1.0 → 정규화 0~1
+            sim_norm = (sim - 0.72) / 0.28
+            # cat_overlap: 0~1
+            combined = sim_norm * 0.6 + cat_overlap * 0.4
+            # 1~10 스케일
+            weight = max(1, min(10, round(combined * 10)))
+
             existing_edges.add(pair)
-            sim_count[i] = sim_count.get(i, 0) + 1
-            sim_count[j] = sim_count.get(j, 0) + 1
-            # 가중치를 1~10 스케일로 변환 (0.85→1, 1.0→10)
-            scaled_weight = max(1, round((sim - 0.85) / 0.15 * 9 + 1))
             edges.append({
                 "source": notes[i]["id"],
                 "target": notes[j]["id"],
                 "type": "similar",
-                "weight": scaled_weight,
+                "weight": weight,
             })
     else:
-        # 임베딩 실패 시 카테고리 기반 폴백 — 4개 이상 공유 카테고리
+        # 임베딩 실패 시 카테고리 기반 폴백
         for i in range(len(notes)):
             cats_i = set(cat_map.get(notes[i]["id"], []))
             if not cats_i:
@@ -408,15 +421,18 @@ async def get_graph_data(course_id: str, user: dict = Depends(get_current_user))
                 if not cats_j:
                     continue
                 shared = cats_i & cats_j
-                if len(shared) >= 4:
+                total = cats_i | cats_j
+                overlap = len(shared) / len(total) if total else 0
+                if overlap >= 0.3:
                     pair = tuple(sorted([notes[i]["id"], notes[j]["id"]]))
                     if pair not in existing_edges:
                         existing_edges.add(pair)
+                        weight = max(1, min(10, round(overlap * 10)))
                         edges.append({
                             "source": notes[i]["id"],
                             "target": notes[j]["id"],
                             "type": "similar",
-                            "weight": min(len(shared), 10),
+                            "weight": weight,
                         })
 
     return {"nodes": nodes, "edges": edges}
@@ -569,25 +585,32 @@ async def get_unified_graph(user: dict = Depends(get_current_user)):
 
     has_embeddings = any(e for e in embeddings)
     if has_embeddings:
-        all_sims = pairwise_similarities(embeddings, threshold=0.85)
-        all_sims.sort(key=lambda x: x[2], reverse=True)
-        sim_count: dict[int, int] = {}
-        max_per_node = 3
+        all_sims = pairwise_similarities(embeddings, threshold=0.72)
         for i, j, sim in all_sims:
             pair = tuple(sorted([all_notes[i]["id"], all_notes[j]["id"]]))
             if pair in existing_edges:
                 continue
-            if sim_count.get(i, 0) >= max_per_node or sim_count.get(j, 0) >= max_per_node:
+            cats_i = set(cat_map.get(all_notes[i]["id"], []))
+            cats_j = set(cat_map.get(all_notes[j]["id"], []))
+            shared_cats = cats_i & cats_j
+            total_cats = cats_i | cats_j
+            cat_overlap = len(shared_cats) / len(total_cats) if total_cats else 0
+
+            if cat_overlap == 0 and sim < 0.88:
                 continue
+            if cat_overlap > 0 and cat_overlap < 0.3 and sim < 0.78:
+                continue
+
+            sim_norm = (sim - 0.72) / 0.28
+            combined = sim_norm * 0.6 + cat_overlap * 0.4
+            weight = max(1, min(10, round(combined * 10)))
+
             existing_edges.add(pair)
-            sim_count[i] = sim_count.get(i, 0) + 1
-            sim_count[j] = sim_count.get(j, 0) + 1
-            scaled_weight = max(1, round((sim - 0.85) / 0.15 * 9 + 1))
             edges.append({
                 "source": all_notes[i]["id"],
                 "target": all_notes[j]["id"],
                 "type": "similar",
-                "weight": scaled_weight,
+                "weight": weight,
             })
     else:
         for i in range(len(all_notes)):
@@ -599,15 +622,18 @@ async def get_unified_graph(user: dict = Depends(get_current_user)):
                 if not cats_j:
                     continue
                 shared = cats_i & cats_j
-                if len(shared) >= 4:
+                total = cats_i | cats_j
+                overlap = len(shared) / len(total) if total else 0
+                if overlap >= 0.3:
                     pair = tuple(sorted([all_notes[i]["id"], all_notes[j]["id"]]))
                     if pair not in existing_edges:
                         existing_edges.add(pair)
+                        weight = max(1, min(10, round(overlap * 10)))
                         edges.append({
                             "source": all_notes[i]["id"],
                             "target": all_notes[j]["id"],
                             "type": "similar",
-                            "weight": min(len(shared), 10),
+                            "weight": weight,
                         })
 
     return {"nodes": nodes, "edges": edges}
