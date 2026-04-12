@@ -373,7 +373,7 @@ async def get_graph_data(course_id: str, user: dict = Depends(get_current_user))
     # 3) 유사도 계산 — 임베딩 + 카테고리 겹침으로 복합 가중치 산출
     has_embeddings = any(e for e in embeddings)
     if has_embeddings:
-        all_sims = pairwise_similarities(embeddings, threshold=0.72)
+        all_sims = pairwise_similarities(embeddings, threshold=0.65)
         for i, j, sim in all_sims:
             pair = tuple(sorted([notes[i]["id"], notes[j]["id"]]))
             if pair in existing_edges:
@@ -386,23 +386,14 @@ async def get_graph_data(course_id: str, user: dict = Depends(get_current_user))
             total_cats = cats_i | cats_j
             cat_overlap = len(shared_cats) / len(total_cats) if total_cats else 0
 
-            # 최소 1개 이상의 카테고리가 겹쳐야 연결 (완전 무관 차단)
-            # 단, 임베딩 유사도가 매우 높으면(0.88+) 카테고리 무관해도 연결
-            if len(shared_cats) == 0 and sim < 0.88:
-                continue
-
-            # 카테고리가 1개만 겹치면 임베딩 유사도가 높아야 함 (0.78+)
-            if len(shared_cats) == 1 and sim < 0.78:
+            # 카테고리가 아예 안 겹치면 임베딩이 매우 높아야 연결 (0.85+)
+            if len(shared_cats) == 0 and sim < 0.85:
                 continue
 
             # 가중치: 임베딩 유사도(70%) + 카테고리 겹침(30%)
-            sim_norm = (sim - 0.72) / 0.28  # 0~1 범위로 정규화
+            sim_norm = (sim - 0.65) / 0.35  # 0~1 범위로 정규화
             combined = sim_norm * 0.7 + cat_overlap * 0.3
             weight = max(1, min(10, round(combined * 10)))
-
-            # 최소 가중치 2 미만이면 연결하지 않음 (너무 약한 연결 방지)
-            if weight < 2:
-                continue
 
             existing_edges.add(pair)
             edges.append({
@@ -424,11 +415,11 @@ async def get_graph_data(course_id: str, user: dict = Depends(get_current_user))
                 shared = cats_i & cats_j
                 total = cats_i | cats_j
                 overlap = len(shared) / len(total) if total else 0
-                if overlap >= 0.3 and len(shared) >= 2:
+                if overlap >= 0.2 and len(shared) >= 1:
                     pair = tuple(sorted([notes[i]["id"], notes[j]["id"]]))
                     if pair not in existing_edges:
                         existing_edges.add(pair)
-                        weight = max(2, min(10, round(overlap * 10)))
+                        weight = max(1, min(10, round(overlap * 10)))
                         edges.append({
                             "source": notes[i]["id"],
                             "target": notes[j]["id"],
@@ -588,7 +579,7 @@ async def get_unified_graph(user: dict = Depends(get_current_user)):
 
     has_embeddings = any(e for e in embeddings)
     if has_embeddings:
-        all_sims = pairwise_similarities(embeddings, threshold=0.72)
+        all_sims = pairwise_similarities(embeddings, threshold=0.65)
         for i, j, sim in all_sims:
             pair = tuple(sorted([all_notes[i]["id"], all_notes[j]["id"]]))
             if pair in existing_edges:
@@ -599,18 +590,12 @@ async def get_unified_graph(user: dict = Depends(get_current_user)):
             total_cats = cats_i | cats_j
             cat_overlap = len(shared_cats) / len(total_cats) if total_cats else 0
 
-            if len(shared_cats) == 0 and sim < 0.88:
+            if len(shared_cats) == 0 and sim < 0.85:
                 continue
 
-            if len(shared_cats) == 1 and sim < 0.78:
-                continue
-
-            sim_norm = (sim - 0.72) / 0.28
+            sim_norm = (sim - 0.65) / 0.35
             combined = sim_norm * 0.7 + cat_overlap * 0.3
             weight = max(1, min(10, round(combined * 10)))
-
-            if weight < 2:
-                continue
 
             existing_edges.add(pair)
             edges.append({
