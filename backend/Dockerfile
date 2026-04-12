@@ -6,6 +6,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
+    libstdc++-12-dev \
     default-jdk \
     nodejs \
     npm \
@@ -19,6 +20,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libedit2 \
     libxml2 \
     libz3-dev \
+    pkg-config \
+    libfreetype6-dev \
+    libpng-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Rust 설치 (rustup → minimal)

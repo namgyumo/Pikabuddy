@@ -275,7 +275,7 @@ def _run_c_judge(code: str, stdin_data: str, timeout: float, cpp: bool = False) 
     exe = os.path.join(tmpdir, "main.exe")
     try:
         with open(src, "w", encoding="utf-8") as f: f.write(code)
-        compile_res = _run_with_timeout([compiler, src, "-o", exe, "-lm"], "", 10)
+        compile_res = _run_with_timeout([compiler, src, "-o", exe, "-lm", "-lpthread", "-O2"], "", 10)
         if not compile_res["success"]:
             return {"success": False, "output": "", "error": "컴파일 에러:\n" + compile_res["error"], "timeout": False}
         return _run_with_timeout([exe], stdin_data, timeout)
@@ -404,7 +404,7 @@ def _run_c(code: str, stdin_data: str, cpp: bool = False) -> dict:
             f.write(code)
 
         # Compile
-        compile_result = _execute([compiler, src, "-o", exe, "-lm"])
+        compile_result = _execute([compiler, src, "-o", exe, "-lm", "-lpthread", "-O2"])
         if not compile_result["success"]:
             compile_result["error"] = "컴파일 에러:\n" + compile_result["error"]
             return compile_result
