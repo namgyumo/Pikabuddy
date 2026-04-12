@@ -75,15 +75,10 @@ async def list_courses(user: dict = Depends(get_current_user)):
         if cid in all_courses and banner:
             all_courses[cid]["custom_banner_url"] = banner
 
-    # 3) 역할 기반 필터링
+    # 3) 역할 기반 필터링 — 개인 모드만 개인 코스, 나머지는 전부 표시
     if role == "personal":
-        # 개인 모드: 개인 코스만
         return [c for c in all_courses.values() if c.get("is_personal")]
-    elif role == "professor":
-        # 교수 모드: 소유 강의 + 수강 등록 강의 (개인 코스 제외)
-        return [c for c in all_courses.values() if not c.get("is_personal")]
     else:
-        # 학생 모드: 모든 관련 강의 (개인 코스 제외)
         return [c for c in all_courses.values() if not c.get("is_personal")]
 
 

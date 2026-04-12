@@ -72,7 +72,7 @@ async def get_notifications(user: dict = Depends(get_current_user)):
             deadlines = sb.table("assignments").select(
                 "id, title, course_id, due_date, courses(title)"
             ).in_("course_id", enrolled_course_ids) \
-             .neq("due_date", None) \
+             .not_.is_("due_date", "null") \
              .gt("due_date", now.isoformat()) \
              .lt("due_date", deadline_cutoff) \
              .eq("status", "published") \
@@ -99,7 +99,7 @@ async def get_notifications(user: dict = Depends(get_current_user)):
             deadlines = sb.table("assignments").select(
                 "id, title, course_id, due_date"
             ).in_("course_id", p_cids) \
-             .neq("due_date", None) \
+             .not_.is_("due_date", "null") \
              .gt("due_date", now.isoformat()) \
              .lt("due_date", deadline_cutoff) \
              .order("due_date") \
