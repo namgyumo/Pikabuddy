@@ -29,36 +29,32 @@ def _get_course(course_id: str):
 
 
 def _validate_messenger_access(user: dict, course: dict, partner_id: str):
-    """메신저 접근 권한을 검증한다. 교수↔수강생 관계만 허용."""
+    """메신저 접근 권한을 검증한다. 교수/개인↔수강생 관계 허용."""
     sb = get_supabase()
     course_id = course["id"]
-
-    if course.get("is_personal"):
-        raise HTTPException(status_code=403, detail="개인 모드에서는 메신저를 사용할 수 없습니다.")
-
     is_admin = user.get("email", "").endswith("@pikabuddy.admin")
 
-    if user["role"] == "professor":
-        # 교수: 자기 코스인지 + 상대가 수강생인지
+    if user["role"] in ("professor", "personal"):
+        # 코스 소유자: 자기 코스인지 + 상대가 수강생인지
         if course["professor_id"] != user["id"] and not is_admin:
             raise HTTPException(status_code=403, detail="본인 코스가 아닙니다.")
         enrolled = sb.table("enrollments").select("id").eq("course_id", course_id).eq("student_id", partner_id).execute()
         if not enrolled.data:
-            raise HTTPException(status_code=403, detail="해당 학생은 이 코스에 등록되어 있지 않습니다.")
+            raise HTTPException(status_code=403, detail="해당 사용자는 이 코스에 등록되어 있지 않습니다.")
 
     elif user["role"] == "student":
-        # 학생: 수강 중인 코스인지 + 상대가 교수 또는 같은 코스 수강생인지
+        # 학생: 수강 중인 코스인지 + 상대가 코스 소유자 또는 같은 코스 수강생인지
         enrolled = sb.table("enrollments").select("id").eq("course_id", course_id).eq("student_id", user["id"]).execute()
         if not enrolled.data:
             raise HTTPException(status_code=403, detail="수강 중인 코스가 아닙니다.")
         if course["professor_id"] != partner_id:
-            # 상대가 교수가 아니면 같은 코스 수강생인지 확인
+            # 상대가 소유자가 아니면 같은 코스 수강생인지 확인
             partner_enrolled = sb.table("enrollments").select("id").eq("course_id", course_id).eq("student_id", partner_id).execute()
             if not partner_enrolled.data:
-                raise HTTPException(status_code=403, detail="같은 강의 수강생 또는 교수에게만 메시지를 보낼 수 있습니다.")
+                raise HTTPException(status_code=403, detail="같은 강의 수강생 또는 소유자에게만 메시지를 보낼 수 있습니다.")
 
     else:
-        raise HTTPException(status_code=403, detail="메신저는 교수/학생만 사용할 수 있습니다.")
+        raise HTTPException(status_code=403, detail="메신저 접근 권한이 없습니다.")
 
 
 # ── Endpoints ──
@@ -120,14 +116,11 @@ async def list_conversations(course_id: str, user: dict = Depends(get_current_us
     sb = get_supabase()
     course = _get_course(course_id)
 
-    if course.get("is_personal"):
-        return []
-
     user_id = user["id"]
     role = user.get("role")
 
     # 대화 상대 결정
-    if role == "professor":
+    if role in ("professor", "personal"):
         is_admin = user.get("email", "").endswith("@pikabuddy.admin")
         if course["professor_id"] != user_id and not is_admin:
             raise HTTPException(status_code=403, detail="본인 코스가 아닙니다.")
@@ -143,7 +136,7 @@ async def list_conversations(course_id: str, user: dict = Depends(get_current_us
         if not enrolled.data:
             logger.warning(f"[Messenger] Student {user_id} not enrolled in course {course_id}")
             return []
-        # 교수 + 같은 코스 수강생 전부 대화 상대
+        # 코스 소유자 + 같은 코스 수강생 전부 대화 상대
         partner_ids = []
         prof_id = course.get("professor_id")
         if prof_id:

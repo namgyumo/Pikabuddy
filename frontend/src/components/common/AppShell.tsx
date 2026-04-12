@@ -49,7 +49,14 @@ export default function AppShell({ children, courseTitle }: Props) {
   useRealtimeNotifications(user?.id);
 
   const homeLink = isProfessor ? "/professor" : isPersonal ? "/personal" : "/student";
-  const isActive = (path: string) => location.pathname.includes(path);
+  const isActive = (path: string) => {
+    const p = location.pathname;
+    // "courses"는 모든 /courses/* URL에 매치되므로, 정확한 서브 경로만 체크
+    if (path === "courses") {
+      return p.includes("/courses/") && !p.includes("/dashboard") && !p.includes("/assignments") && !p.includes("/student-notes") && !p.includes("/messenger") && !p.includes("/notes") && !p.includes("/graph");
+    }
+    return p.includes(path);
+  };
 
   // Extract courseId from URL for contextual navigation
   const courseIdMatch = location.pathname.match(/\/courses\/([^/]+)/);
@@ -138,7 +145,7 @@ export default function AppShell({ children, courseTitle }: Props) {
                   </Link>
                   <Link
                     to={`/courses/${courseId}`}
-                    className={`sidebar-link ${!isActive("dashboard") && !isActive("assignments") && !isActive("student-notes") && !isActive("messenger") && isActive("courses") ? "active" : ""}`}
+                    className={`sidebar-link ${isActive("courses") ? "active" : ""}`}
                   >
                     <span className="sidebar-link-icon">&#x1F4DD;</span>
                     Curriculum
@@ -187,6 +194,14 @@ export default function AppShell({ children, courseTitle }: Props) {
                     <span className="sidebar-link-icon">&#x1F578;</span>
                     Graph
                   </Link>
+                  <Link
+                    to={`/courses/${courseId}/messenger`}
+                    className={`sidebar-link ${isActive("messenger") ? "active" : ""}`}
+                  >
+                    <span className="sidebar-link-icon">&#x1F4AC;</span>
+                    Messenger
+                    {unreadCount > 0 && <span className="sidebar-badge">{unreadCount}</span>}
+                  </Link>
                 </>
               )}
             </>
@@ -223,7 +238,7 @@ export default function AppShell({ children, courseTitle }: Props) {
                 <>
                   <Link
                     to={`/courses/${courseId}`}
-                    className={`sidebar-link ${isActive("courses") && !isActive("notes") ? "active" : ""}`}
+                    className={`sidebar-link ${isActive("courses") ? "active" : ""}`}
                   >
                     <span className="sidebar-link-icon">&#x1F4CB;</span>
                     Curriculum
