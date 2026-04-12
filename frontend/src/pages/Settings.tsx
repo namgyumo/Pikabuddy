@@ -238,6 +238,17 @@ export default function Settings() {
               <option value="student">학생</option>
               <option value="personal">개인</option>
             </select>
+            <button
+              style={{ marginTop: 8, padding: "6px 14px", fontSize: 12, borderRadius: 6, border: "1px solid var(--outline-variant)", background: "var(--surface-container-low)", cursor: "pointer", color: "var(--on-surface)" }}
+              onClick={async () => {
+                try {
+                  const { data } = await api.post("/auth/recover-enrollments");
+                  alert(data.message || "복구 완료");
+                } catch { alert("복구 실패"); }
+              }}
+            >
+              수강 등록 복구 (역할 변경으로 사라진 강의 복구)
+            </button>
           </div>
 
           {/* Name */}

@@ -254,6 +254,45 @@ async def switch_role(body: SwitchRoleRequest, user: dict = Depends(get_current_
     return result.data
 
 
+@router.post("/recover-enrollments")
+async def recover_enrollments(user: dict = Depends(get_current_user)):
+    """노트가 존재하는 코스에 대해 수강 등록을 복구한다."""
+    supabase = get_supabase()
+    uid = user["id"]
+
+    # 1) 이 유저의 노트가 있는 코스 ID 조회
+    notes = supabase.table("notes").select("course_id").eq("student_id", uid).execute()
+    note_course_ids = list(set(n["course_id"] for n in (notes.data or []) if n.get("course_id")))
+
+    if not note_course_ids:
+        return {"recovered": 0, "message": "복구할 수강 등록이 없습니다."}
+
+    # 2) 이미 등록된 코스 제외
+    existing = supabase.table("enrollments").select("course_id").eq("student_id", uid).execute()
+    existing_ids = set(e["course_id"] for e in (existing.data or []))
+
+    to_recover = [cid for cid in note_course_ids if cid not in existing_ids]
+
+    # 3) 개인 코스 제외 (is_personal=True인 코스)
+    if to_recover:
+        courses = supabase.table("courses").select("id, is_personal").in_("id", to_recover).execute()
+        to_recover = [c["id"] for c in (courses.data or []) if not c.get("is_personal")]
+
+    # 4) 수강 등록 복구
+    recovered = 0
+    for cid in to_recover:
+        try:
+            supabase.table("enrollments").insert({
+                "student_id": uid,
+                "course_id": cid,
+            }).execute()
+            recovered += 1
+        except Exception:
+            pass
+
+    return {"recovered": recovered, "message": f"{recovered}개 강의 수강 등록이 복구되었습니다."}
+
+
 class ProfileUpdateRequest(BaseModel):
     name: str | None = None
     school: str | None = None
