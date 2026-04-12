@@ -271,11 +271,12 @@ def _run_c_judge(code: str, stdin_data: str, timeout: float, cpp: bool = False) 
     tmpdir = tempfile.mkdtemp()
     ext = ".cpp" if cpp else ".c"
     compiler = "g++" if cpp else "gcc"
+    std_flag = "-std=c++17" if cpp else "-std=c11"
     src = os.path.join(tmpdir, f"main{ext}")
     exe = os.path.join(tmpdir, "main.exe")
     try:
         with open(src, "w", encoding="utf-8") as f: f.write(code)
-        compile_res = _run_with_timeout([compiler, src, "-o", exe, "-lm", "-lpthread", "-O2"], "", 10)
+        compile_res = _run_with_timeout([compiler, std_flag, src, "-o", exe, "-lm", "-lpthread", "-O2"], "", 10)
         if not compile_res["success"]:
             return {"success": False, "output": "", "error": "컴파일 에러:\n" + compile_res["error"], "timeout": False}
         return _run_with_timeout([exe], stdin_data, timeout)
@@ -294,7 +295,7 @@ def _run_java_judge(code: str, stdin_data: str, timeout: float) -> dict:
     src = os.path.join(tmpdir, f"{class_name}.java")
     try:
         with open(src, "w", encoding="utf-8") as f: f.write(code)
-        compile_res = _run_with_timeout(["javac", src], "", 15)
+        compile_res = _run_with_timeout(["javac", "-encoding", "UTF-8", src], "", 15)
         if not compile_res["success"]:
             return {"success": False, "output": "", "error": "컴파일 에러:\n" + compile_res["error"], "timeout": False}
         return _run_with_timeout(["java", "-cp", tmpdir, class_name], stdin_data, timeout)
@@ -396,6 +397,7 @@ def _run_c(code: str, stdin_data: str, cpp: bool = False) -> dict:
     tmpdir = tempfile.mkdtemp()
     ext = ".cpp" if cpp else ".c"
     compiler = "g++" if cpp else "gcc"
+    std_flag = "-std=c++17" if cpp else "-std=c11"
     src = os.path.join(tmpdir, f"main{ext}")
     exe = os.path.join(tmpdir, "main.exe")
 
@@ -404,7 +406,7 @@ def _run_c(code: str, stdin_data: str, cpp: bool = False) -> dict:
             f.write(code)
 
         # Compile
-        compile_result = _execute([compiler, src, "-o", exe, "-lm", "-lpthread", "-O2"])
+        compile_result = _execute([compiler, std_flag, src, "-o", exe, "-lm", "-lpthread", "-O2"])
         if not compile_result["success"]:
             compile_result["error"] = "컴파일 에러:\n" + compile_result["error"]
             return compile_result
@@ -438,7 +440,7 @@ def _run_java(code: str, stdin_data: str) -> dict:
             f.write(code)
 
         # Compile
-        compile_result = _execute(["javac", src])
+        compile_result = _execute(["javac", "-encoding", "UTF-8", src])
         if not compile_result["success"]:
             compile_result["error"] = "컴파일 에러:\n" + compile_result["error"]
             return compile_result
@@ -466,7 +468,7 @@ def _run_csharp(code: str, stdin_data: str) -> dict:
     try:
         with open(src, "w", encoding="utf-8") as f:
             f.write(code)
-        compile_result = _execute(["mcs", "-out:" + exe, src])
+        compile_result = _execute(["mcs", "-langversion:latest", "-out:" + exe, src])
         if not compile_result["success"]:
             compile_result["error"] = "컴파일 에러:\n" + compile_result["error"]
             return compile_result
@@ -482,7 +484,7 @@ def _run_csharp_judge(code: str, stdin_data: str, timeout: float) -> dict:
     try:
         with open(src, "w", encoding="utf-8") as f:
             f.write(code)
-        compile_res = _run_with_timeout(["mcs", "-out:" + exe, src], "", 15)
+        compile_res = _run_with_timeout(["mcs", "-langversion:latest", "-out:" + exe, src], "", 15)
         if not compile_res["success"]:
             return {"success": False, "output": "", "error": "컴파일 에러:\n" + compile_res["error"], "timeout": False}
         return _run_with_timeout(["mono", exe], stdin_data, timeout)
@@ -525,7 +527,7 @@ def _run_rust(code: str, stdin_data: str) -> dict:
     try:
         with open(src, "w", encoding="utf-8") as f:
             f.write(code)
-        compile_result = _execute(["rustc", src, "-o", exe])
+        compile_result = _execute(["rustc", "--edition", "2021", src, "-o", exe])
         if not compile_result["success"]:
             compile_result["error"] = "컴파일 에러:\n" + compile_result["error"]
             return compile_result
@@ -541,7 +543,7 @@ def _run_rust_judge(code: str, stdin_data: str, timeout: float) -> dict:
     try:
         with open(src, "w", encoding="utf-8") as f:
             f.write(code)
-        compile_res = _run_with_timeout(["rustc", src, "-o", exe], "", 30)
+        compile_res = _run_with_timeout(["rustc", "--edition", "2021", src, "-o", exe], "", 30)
         if not compile_res["success"]:
             return {"success": False, "output": "", "error": "컴파일 에러:\n" + compile_res["error"], "timeout": False}
         return _run_with_timeout([exe], stdin_data, timeout)

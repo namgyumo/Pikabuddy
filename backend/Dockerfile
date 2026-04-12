@@ -8,14 +8,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     g++ \
     libstdc++-12-dev \
     default-jdk \
-    nodejs \
-    npm \
     mono-mcs \
     mono-runtime \
     golang-go \
     nasm \
     curl \
     gnupg \
+    ca-certificates \
     libcurl4 \
     libedit2 \
     libxml2 \
@@ -23,6 +22,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config \
     libfreetype6-dev \
     libpng-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Node.js LTS (v20) — apt 기본 버전이 너무 낮으므로 NodeSource 사용
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 # Rust 설치 (rustup → minimal)
