@@ -530,8 +530,8 @@ export default function AllNotesGraph() {
     const scoreCol = scoreColor(node.score);
     ctx.beginPath();
     ctx.arc(x, y, r + 2, 0, Math.PI * 2);
-    ctx.strokeStyle = scoreCol + (gc.isDark ? "90" : "B0");
-    ctx.lineWidth = 2.2;
+    ctx.strokeStyle = scoreCol + (gc.isDark ? "A0" : "C0");
+    ctx.lineWidth = 3.5;
     ctx.stroke();
 
     // Main circle (course color fill)

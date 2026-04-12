@@ -623,8 +623,8 @@ export default function NoteGraph() {
     ctx.fillStyle = col;
     ctx.fill();
     // Thick score-colored border for visibility
-    ctx.strokeStyle = col + (gc.isDark ? "90" : "B0");
-    ctx.lineWidth = isParent ? 2.5 : 1.8;
+    ctx.strokeStyle = col + (gc.isDark ? "A0" : "C0");
+    ctx.lineWidth = isParent ? 4 : 3;
     ctx.stroke();
 
     // inner highlight (gives depth)
