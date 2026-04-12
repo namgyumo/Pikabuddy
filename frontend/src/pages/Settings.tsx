@@ -26,6 +26,7 @@ export default function Settings() {
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [roleConfirm, setRoleConfirm] = useState<"professor" | "student" | "personal" | null>(null);
+  const [recoverMsg, setRecoverMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Test account reset
   const isTestAccount = (user?.email || "").endsWith("@pikabuddy.admin");
@@ -241,14 +242,24 @@ export default function Settings() {
             <button
               style={{ marginTop: 8, padding: "6px 14px", fontSize: 12, borderRadius: 6, border: "1px solid var(--outline-variant)", background: "var(--surface-container-low)", cursor: "pointer", color: "var(--on-surface)" }}
               onClick={async () => {
+                setRecoverMsg(null);
                 try {
                   const { data } = await api.post("/auth/recover-enrollments");
-                  setMessage({ type: data.recovered > 0 ? "success" : "error", text: data.message });
-                } catch { setMessage({ type: "error", text: "복구에 실패했습니다." }); }
+                  setRecoverMsg({ type: data.recovered > 0 ? "success" : "success", text: data.message });
+                } catch { setRecoverMsg({ type: "error", text: "복구에 실패했습니다." }); }
               }}
             >
               수강 등록 복구 (역할 변경으로 사라진 강의 복구)
             </button>
+            {recoverMsg && (
+              <div style={{
+                marginTop: 6, padding: "8px 12px", borderRadius: 6, fontSize: 12,
+                background: recoverMsg.type === "success" ? "var(--success-light, #ecfdf5)" : "var(--error-light, #fef2f2)",
+                color: recoverMsg.type === "success" ? "var(--success, #10b981)" : "var(--error, #ef4444)",
+              }}>
+                {recoverMsg.text}
+              </div>
+            )}
           </div>
 
           {/* Name */}
