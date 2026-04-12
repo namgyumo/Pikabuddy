@@ -455,6 +455,22 @@ export default function NoteGraph() {
   const edgeVisRef = useRef({ parent: true, link: true, similar: true });
   edgeVisRef.current = { parent: showParentEdges, link: showLinkEdges, similar: showSimilarEdges };
 
+  // Hover 시 연결된 노드 집합 계산
+  const hoverNeighbors = useMemo(() => {
+    if (!hovered || !gd.links.length) return null;
+    const neighbors = new Set<string>();
+    neighbors.add(hovered.id);
+    for (const l of gd.links) {
+      const sId = typeof l.source === "string" ? l.source : l.source.id;
+      const tId = typeof l.target === "string" ? l.target : l.target.id;
+      if (sId === hovered.id) neighbors.add(tId);
+      if (tId === hovered.id) neighbors.add(sId);
+    }
+    return neighbors;
+  }, [hovered, gd.links]);
+  const hoverNeighborsRef = useRef(hoverNeighbors);
+  hoverNeighborsRef.current = hoverNeighbors;
+
   const highlightLinkRef = useRef(highlightLink);
   highlightLinkRef.current = highlightLink;
 
@@ -571,6 +587,10 @@ export default function NoteGraph() {
     if (x == null || y == null || !isFinite(x) || !isFinite(y)) return;
     const gc = gColorsRef.current;
 
+    const hn = hoverNeighborsRef.current;
+    const isDimmed = hn != null && !hn.has(node.id);
+    if (isDimmed) { ctx.globalAlpha = 0.15; }
+
     const isHov = hovered?.id === node.id;
     const isParent = node.hasChildren;
     const r = isHov ? node.size + 3 : node.size;
@@ -615,7 +635,7 @@ export default function NoteGraph() {
 
     // label
     const showLbl = isHov || (showLabels && globalScale > 0.55);
-    if (!showLbl) return;
+    if (!showLbl) { if (isDimmed) ctx.globalAlpha = 1; return; }
 
     const fs = Math.min(isParent ? 12 : 10, Math.max(7, (isParent ? 11 : 9) / globalScale));
     ctx.font = `${isHov || isParent ? "600" : "400"} ${fs}px "Pretendard", -apple-system, system-ui, sans-serif`;
@@ -661,6 +681,7 @@ export default function NoteGraph() {
     ctx.textBaseline = "middle";
     ctx.fillStyle = isHov ? gc.labelTextHover : isParent ? gc.labelTextRoot : gc.labelText;
     ctx.fillText(txt, lx, ly);
+    if (isDimmed) { ctx.globalAlpha = 1; }
   }, [hovered, showLabels]);
 
   /* ── link paint (theme-aware) ── */
@@ -680,6 +701,13 @@ export default function NoteGraph() {
 
     const gc = gColorsRef.current;
     const lw = 1 / globalScale;
+
+    // Hover dimming: dim edges not connected to hovered node
+    const hn = hoverNeighborsRef.current;
+    const linkDimmed = hn != null && !hn.has(s.id) && !hn.has(t.id);
+    if (linkDimmed) { ctx.globalAlpha = 0.08; }
+    // Highlight edge connected to hovered node
+    const linkHighlighted = hn != null && !linkDimmed && (hn.has(s.id) || hn.has(t.id));
 
     if (link.type === "parent") {
       // Cyan curved line
@@ -730,44 +758,47 @@ export default function NoteGraph() {
       ctx.setLineDash([]);
 
     } else {
-      // Similar — weight → thickness, glow intensity
-      const w = Math.min(link.weight || 2, 8);
-      const t_norm = (w - 2) / 6; // 0..1
-      const thickness = 1.2 + t_norm * 1.5;
-      const isWeak = w <= 2;
+      // Similar — weight (1~10) → thickness, opacity, glow intensity
+      const w = Math.min(Math.max(link.weight || 1, 1), 10);
+      const t_norm = (w - 1) / 9; // 0..1 normalized
+      const thickness = 0.8 + t_norm * 2.5; // 0.8px ~ 3.3px
+      const isWeak = w <= 3;
 
       const { simR: r, simG: g, simB: b } = gc;
-      const coreOpacity = gc.simCoreBase + t_norm * gc.simCoreDelta;
+      // opacity ramps more aggressively with weight
+      const coreOpacity = 0.2 + t_norm * 0.65; // 0.2 ~ 0.85
 
-      // Layer 1: wide soft glow (always)
-      ctx.beginPath();
-      ctx.moveTo(s.x!, s.y!);
-      ctx.lineTo(t.x!, t.y!);
-      ctx.strokeStyle = `rgba(${r},${g},${b},${gc.simGlow1Base + t_norm * gc.simGlow1Delta})`;
-      ctx.lineWidth = Math.max((thickness + 6) / globalScale, thickness + 5);
-      ctx.setLineDash([]);
-      ctx.stroke();
-
-      // Layer 2: medium glow (weight >= 3)
-      if (w >= 3) {
+      // Layer 1: wide soft glow (only for weight >= 4)
+      if (w >= 4) {
         ctx.beginPath();
         ctx.moveTo(s.x!, s.y!);
         ctx.lineTo(t.x!, t.y!);
-        ctx.strokeStyle = `rgba(${r},${g},${b},${gc.simGlow2Base + t_norm * gc.simGlow2Delta})`;
+        ctx.strokeStyle = `rgba(${r},${g},${b},${0.05 + t_norm * 0.15})`;
+        ctx.lineWidth = Math.max((thickness + 6) / globalScale, thickness + 5);
+        ctx.setLineDash([]);
+        ctx.stroke();
+      }
+
+      // Layer 2: medium glow (weight >= 6)
+      if (w >= 6) {
+        ctx.beginPath();
+        ctx.moveTo(s.x!, s.y!);
+        ctx.lineTo(t.x!, t.y!);
+        ctx.strokeStyle = `rgba(${r},${g},${b},${0.1 + t_norm * 0.2})`;
         ctx.lineWidth = Math.max((thickness + 3) / globalScale, thickness + 2.5);
         ctx.setLineDash([]);
         ctx.stroke();
       }
 
-      // Layer 3: bright inner glow (weight >= 5)
-      if (w >= 5) {
+      // Layer 3: bright inner glow (weight >= 8)
+      if (w >= 8) {
         ctx.beginPath();
         ctx.moveTo(s.x!, s.y!);
         ctx.lineTo(t.x!, t.y!);
         const g3r = gc.isDark ? 232 : 180;
         const g3g = gc.isDark ? 121 : 50;
         const g3b = gc.isDark ? 249 : 210;
-        ctx.strokeStyle = `rgba(${g3r},${g3g},${g3b},${gc.simGlow3Base + t_norm * gc.simGlow3Delta})`;
+        ctx.strokeStyle = `rgba(${g3r},${g3g},${g3b},${0.2 + t_norm * 0.25})`;
         ctx.lineWidth = Math.max((thickness + 1.5) / globalScale, thickness + 1);
         ctx.setLineDash([]);
         ctx.stroke();
@@ -780,7 +811,7 @@ export default function NoteGraph() {
       ctx.strokeStyle = `rgba(${r},${g},${b},${coreOpacity})`;
       ctx.lineWidth = Math.max(thickness / globalScale, thickness * 0.7);
       if (isWeak) {
-        ctx.setLineDash([4 / globalScale, 5 / globalScale]);
+        ctx.setLineDash([3 / globalScale, 6 / globalScale]);
       } else {
         ctx.setLineDash([]);
       }
@@ -814,6 +845,7 @@ export default function NoteGraph() {
         ctx.restore();
       }
     }
+    if (linkDimmed) { ctx.globalAlpha = 1; }
   }, []);
 
   const loadReport = useCallback(async () => {

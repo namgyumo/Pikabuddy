@@ -374,15 +374,17 @@ async def get_graph_data(course_id: str, user: dict = Depends(get_current_user))
     # 3) 유사도 계산 (numpy 행렬 연산, API 호출 없음)
     has_embeddings = any(e for e in embeddings)
     if has_embeddings:
-        for i, j, sim in pairwise_similarities(embeddings, threshold=0.62):
+        for i, j, sim in pairwise_similarities(embeddings, threshold=0.75):
             pair = tuple(sorted([notes[i]["id"], notes[j]["id"]]))
             if pair not in existing_edges:
                 existing_edges.add(pair)
+                # 가중치를 1~10 스케일로 변환 (0.75→1, 1.0→10)
+                scaled_weight = max(1, round((sim - 0.75) / 0.25 * 9 + 1))
                 edges.append({
                     "source": notes[i]["id"],
                     "target": notes[j]["id"],
                     "type": "similar",
-                    "weight": sim,
+                    "weight": scaled_weight,
                 })
     else:
         # 임베딩 실패 시 카테고리 기반 폴백
@@ -395,7 +397,7 @@ async def get_graph_data(course_id: str, user: dict = Depends(get_current_user))
                 if not cats_j:
                     continue
                 shared = cats_i & cats_j
-                if len(shared) >= 2:
+                if len(shared) >= 3:
                     pair = tuple(sorted([notes[i]["id"], notes[j]["id"]]))
                     if pair not in existing_edges:
                         existing_edges.add(pair)
@@ -403,7 +405,7 @@ async def get_graph_data(course_id: str, user: dict = Depends(get_current_user))
                             "source": notes[i]["id"],
                             "target": notes[j]["id"],
                             "type": "similar",
-                            "weight": len(shared),
+                            "weight": min(len(shared), 10),
                         })
 
     return {"nodes": nodes, "edges": edges}
@@ -556,15 +558,16 @@ async def get_unified_graph(user: dict = Depends(get_current_user)):
 
     has_embeddings = any(e for e in embeddings)
     if has_embeddings:
-        for i, j, sim in pairwise_similarities(embeddings, threshold=0.62):
+        for i, j, sim in pairwise_similarities(embeddings, threshold=0.75):
             pair = tuple(sorted([all_notes[i]["id"], all_notes[j]["id"]]))
             if pair not in existing_edges:
                 existing_edges.add(pair)
+                scaled_weight = max(1, round((sim - 0.75) / 0.25 * 9 + 1))
                 edges.append({
                     "source": all_notes[i]["id"],
                     "target": all_notes[j]["id"],
                     "type": "similar",
-                    "weight": sim,
+                    "weight": scaled_weight,
                 })
     else:
         for i in range(len(all_notes)):
@@ -576,7 +579,7 @@ async def get_unified_graph(user: dict = Depends(get_current_user)):
                 if not cats_j:
                     continue
                 shared = cats_i & cats_j
-                if len(shared) >= 2:
+                if len(shared) >= 3:
                     pair = tuple(sorted([all_notes[i]["id"], all_notes[j]["id"]]))
                     if pair not in existing_edges:
                         existing_edges.add(pair)
@@ -584,7 +587,7 @@ async def get_unified_graph(user: dict = Depends(get_current_user)):
                             "source": all_notes[i]["id"],
                             "target": all_notes[j]["id"],
                             "type": "similar",
-                            "weight": len(shared),
+                            "weight": min(len(shared), 10),
                         })
 
     return {"nodes": nodes, "edges": edges}
