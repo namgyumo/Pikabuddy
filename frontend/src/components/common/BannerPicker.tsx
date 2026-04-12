@@ -110,6 +110,13 @@ export default function BannerPicker({ current, onChange, onSave, onCancel, uplo
             onClick={handleSave} disabled={saving}>
             {saving ? "저장 중..." : "저장"}
           </button>
+          {current && (
+            <button className="btn btn-ghost" style={{ fontSize: 12, padding: "6px 8px", color: "var(--error, #e53935)" }}
+              onClick={async () => { setSaving(true); try { await onSave(null); } finally { setSaving(false); } }}
+              disabled={saving}>
+              삭제
+            </button>
+          )}
           <button className="btn btn-ghost" style={{ fontSize: 12, padding: "6px 8px" }}
             onClick={onCancel}>취소</button>
         </div>
