@@ -7,19 +7,19 @@ from config import get_settings
 _configured = False
 
 # ── Model tiers ──
-MODEL_HEAVY = "gemini-2.5-flash"       # 분석, 튜터, 문제 생성 등 복잡한 작업
+MODEL_HEAVY = "gemini-3.0-flash"       # 분석, 튜터, 문제 생성 등 복잡한 작업
 MODEL_LIGHT = "gemini-2.5-flash-lite"   # 요약, 분류, 테스트케이스 등 경량 작업
 
 # 503 과부하 시 순서대로 시도할 모델 목록
-FALLBACK_MODELS = [MODEL_HEAVY, "gemini-2.0-flash", MODEL_LIGHT]
+FALLBACK_MODELS = [MODEL_HEAVY, "gemini-2.5-flash", MODEL_LIGHT]
 
 # ── Pricing (USD per 1M tokens) ──
 PRICING = {
+    "gemini-3.0-flash":      {"input": 0.50, "output": 3.00},
     "gemini-2.5-flash":      {"input": 0.30, "output": 2.50},
     "gemini-2.5-flash-lite": {"input": 0.10, "output": 0.40},
-    "gemini-2.0-flash":      {"input": 0.10, "output": 0.40},
 }
-_DEFAULT_PRICE = {"input": 0.30, "output": 2.50}
+_DEFAULT_PRICE = {"input": 0.50, "output": 3.00}
 
 # ── Token tracker ──
 _lock = threading.Lock()
