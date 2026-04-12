@@ -13,8 +13,6 @@
     "@excalidraw/excalidraw": "^0.18.0",
     "@monaco-editor/react": "^4.7.0",
     "@supabase/supabase-js": "^2.101.1",
-    "@tiptap/extension-collaboration": "^3.22.3",
-    "@tiptap/extension-collaboration-cursor": "^2.26.2",
     "@tiptap/extension-color": "^3.22.2",
     "@tiptap/extension-highlight": "^3.22.2",
     "@tiptap/extension-image": "^3.22.2",
