@@ -371,23 +371,34 @@ async def get_graph_data(course_id: str, user: dict = Depends(get_current_user))
         except Exception:
             pass
 
-    # 3) 유사도 계산 (numpy 행렬 연산, API 호출 없음)
+    # 3) 유사도 계산 — 높은 threshold + 노드당 최대 3개 연결로 제한
     has_embeddings = any(e for e in embeddings)
     if has_embeddings:
-        for i, j, sim in pairwise_similarities(embeddings, threshold=0.75):
+        # 모든 쌍의 유사도를 수집 후, 높은 것만 선별
+        all_sims = pairwise_similarities(embeddings, threshold=0.85)
+        # 각 노드당 최대 3개의 유사 간선만 허용 (가장 유사한 것만)
+        all_sims.sort(key=lambda x: x[2], reverse=True)
+        sim_count: dict[int, int] = {}
+        max_per_node = 3
+        for i, j, sim in all_sims:
             pair = tuple(sorted([notes[i]["id"], notes[j]["id"]]))
-            if pair not in existing_edges:
-                existing_edges.add(pair)
-                # 가중치를 1~10 스케일로 변환 (0.75→1, 1.0→10)
-                scaled_weight = max(1, round((sim - 0.75) / 0.25 * 9 + 1))
-                edges.append({
-                    "source": notes[i]["id"],
-                    "target": notes[j]["id"],
-                    "type": "similar",
-                    "weight": scaled_weight,
-                })
+            if pair in existing_edges:
+                continue
+            if sim_count.get(i, 0) >= max_per_node or sim_count.get(j, 0) >= max_per_node:
+                continue
+            existing_edges.add(pair)
+            sim_count[i] = sim_count.get(i, 0) + 1
+            sim_count[j] = sim_count.get(j, 0) + 1
+            # 가중치를 1~10 스케일로 변환 (0.85→1, 1.0→10)
+            scaled_weight = max(1, round((sim - 0.85) / 0.15 * 9 + 1))
+            edges.append({
+                "source": notes[i]["id"],
+                "target": notes[j]["id"],
+                "type": "similar",
+                "weight": scaled_weight,
+            })
     else:
-        # 임베딩 실패 시 카테고리 기반 폴백
+        # 임베딩 실패 시 카테고리 기반 폴백 — 4개 이상 공유 카테고리
         for i in range(len(notes)):
             cats_i = set(cat_map.get(notes[i]["id"], []))
             if not cats_i:
@@ -397,7 +408,7 @@ async def get_graph_data(course_id: str, user: dict = Depends(get_current_user))
                 if not cats_j:
                     continue
                 shared = cats_i & cats_j
-                if len(shared) >= 3:
+                if len(shared) >= 4:
                     pair = tuple(sorted([notes[i]["id"], notes[j]["id"]]))
                     if pair not in existing_edges:
                         existing_edges.add(pair)
@@ -558,17 +569,26 @@ async def get_unified_graph(user: dict = Depends(get_current_user)):
 
     has_embeddings = any(e for e in embeddings)
     if has_embeddings:
-        for i, j, sim in pairwise_similarities(embeddings, threshold=0.75):
+        all_sims = pairwise_similarities(embeddings, threshold=0.85)
+        all_sims.sort(key=lambda x: x[2], reverse=True)
+        sim_count: dict[int, int] = {}
+        max_per_node = 3
+        for i, j, sim in all_sims:
             pair = tuple(sorted([all_notes[i]["id"], all_notes[j]["id"]]))
-            if pair not in existing_edges:
-                existing_edges.add(pair)
-                scaled_weight = max(1, round((sim - 0.75) / 0.25 * 9 + 1))
-                edges.append({
-                    "source": all_notes[i]["id"],
-                    "target": all_notes[j]["id"],
-                    "type": "similar",
-                    "weight": scaled_weight,
-                })
+            if pair in existing_edges:
+                continue
+            if sim_count.get(i, 0) >= max_per_node or sim_count.get(j, 0) >= max_per_node:
+                continue
+            existing_edges.add(pair)
+            sim_count[i] = sim_count.get(i, 0) + 1
+            sim_count[j] = sim_count.get(j, 0) + 1
+            scaled_weight = max(1, round((sim - 0.85) / 0.15 * 9 + 1))
+            edges.append({
+                "source": all_notes[i]["id"],
+                "target": all_notes[j]["id"],
+                "type": "similar",
+                "weight": scaled_weight,
+            })
     else:
         for i in range(len(all_notes)):
             cats_i = set(cat_map.get(all_notes[i]["id"], []))
@@ -579,7 +599,7 @@ async def get_unified_graph(user: dict = Depends(get_current_user)):
                 if not cats_j:
                     continue
                 shared = cats_i & cats_j
-                if len(shared) >= 3:
+                if len(shared) >= 4:
                     pair = tuple(sorted([all_notes[i]["id"], all_notes[j]["id"]]))
                     if pair not in existing_edges:
                         existing_edges.add(pair)
