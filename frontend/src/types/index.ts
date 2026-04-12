@@ -21,6 +21,8 @@ export interface Course {
   objectives: string[] | null;
   invite_code: string;
   is_personal?: boolean;
+  banner_url: string | null;
+  custom_banner_url?: string | null;
   created_at: string;
 }
 

@@ -8,6 +8,8 @@ import Underline from "@tiptap/extension-underline";
 import Image from "@tiptap/extension-image";
 import { Table, TableRow, TableCell, TableHeader } from "@tiptap/extension-table";
 import { MathInline, MathBlock } from "../lib/MathExtension";
+import { CitationExtension } from "../lib/CitationExtension";
+import DeadlineTimer from "../components/DeadlineTimer";
 import { renderMarkdown } from "../lib/markdown";
 import api from "../lib/api";
 import { supabase } from "../lib/supabase";
@@ -73,6 +75,7 @@ export default function WritingEditor() {
       TableHeader,
       MathInline,
       MathBlock,
+      CitationExtension,
     ],
     content: "",
     onUpdate: ({ editor: ed }) => {
@@ -96,6 +99,8 @@ export default function WritingEditor() {
       const text = data.getData("text/plain");
       if (!text || text.length < 50) return; // short pastes ignored
       if (text === lastInternalCopyRef.current) return; // internal
+      // 인용 블록 안에서는 복붙 감지 무시
+      if (editor.isActive("citation")) return;
       setPasteSet((prev) => new Set(prev).add(text));
       // Log to backend
       if (assignmentId) {
@@ -477,9 +482,9 @@ export default function WritingEditor() {
                   {submitting ? "AI 분석 중..." : "제출하기"}
                 </button>
                 {assignment?.due_date && (
-                  <span style={{ fontSize: 12, color: "var(--on-surface-variant)", textAlign: "center", display: "block", marginTop: 4 }}>
-                    마감: {new Date(assignment.due_date).toLocaleDateString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                  </span>
+                  <div style={{ marginTop: 6 }}>
+                    <DeadlineTimer dueDate={assignment.due_date} compact />
+                  </div>
                 )}
               </>
             )}

@@ -288,8 +288,14 @@ export default function TeamManager() {
                     >
                       <option value="python">Python</option>
                       <option value="c">C</option>
+                      <option value="cpp">C++</option>
                       <option value="java">Java</option>
                       <option value="javascript">JavaScript</option>
+                      <option value="csharp">C#</option>
+                      <option value="swift">Swift</option>
+                      <option value="rust">Rust</option>
+                      <option value="go">Go</option>
+                      <option value="asm">Assembly</option>
                     </select>
                     <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--on-surface-variant)" }}>
                       문제 수

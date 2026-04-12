@@ -2,7 +2,7 @@ import { create } from "zustand";
 import api from "../lib/api";
 
 export interface NotificationItem {
-  type: "message" | "comment";
+  type: "message" | "comment" | "deadline" | "new_material";
   id: string;
   // message fields
   course_id?: string;
@@ -17,6 +17,9 @@ export interface NotificationItem {
   commenter_name?: string;
   commenter_avatar?: string | null;
   block_index?: number | null;
+  // deadline fields
+  assignment_title?: string;
+  due_date?: string;
   // common
   preview: string;
   created_at: string;

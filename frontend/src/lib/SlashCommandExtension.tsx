@@ -80,6 +80,16 @@ export const SLASH_ITEMS: SlashItem[] = [
     action: (e) => e.chain().focus().toggleBlockquote().run(),
   },
   {
+    id: "citation",
+    label: "출처 인용",
+    description: "출처가 있는 인용 (복붙 감지 제외)",
+    icon: "\uD83D\uDCDA",
+    keywords: ["citation", "cite", "출처", "인용", "각주", "참고문헌", "footnote"],
+    action: () => {
+      window.dispatchEvent(new CustomEvent("editor-insert-citation"));
+    },
+  },
+  {
     id: "code",
     label: "코드 블록",
     description: "코드 입력 블록",
@@ -129,6 +139,26 @@ export const SLASH_ITEMS: SlashItem[] = [
     icon: "\u222B",
     keywords: ["math", "latex", "수식", "block"],
     action: (e) => e.chain().focus().insertContent({ type: "mathBlock", attrs: { formula: "" } }).run(),
+  },
+  {
+    id: "link",
+    label: "링크",
+    description: "URL 하이퍼링크 삽입",
+    icon: "🔗",
+    keywords: ["link", "url", "href", "링크", "하이퍼링크"],
+    action: (e) => {
+      window.dispatchEvent(new CustomEvent("editor-insert-link"));
+    },
+  },
+  {
+    id: "note-link",
+    label: "노트 링크",
+    description: "다른 노트로 연결 ([[)",
+    icon: "📎",
+    keywords: ["note", "link", "노트", "링크", "연결", "참조"],
+    action: (e) => {
+      window.dispatchEvent(new CustomEvent("editor-insert-notelink"));
+    },
   },
   {
     id: "sub-note",

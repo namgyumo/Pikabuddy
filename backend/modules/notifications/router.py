@@ -1,5 +1,6 @@
-"""알림 센터 API — 안 읽은 메시지 + 미해결 코멘트 통합"""
+"""알림 센터 API — 안 읽은 메시지 + 미해결 코멘트 + 마감 임박 과제 통합"""
 
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends
 from middleware.auth import get_current_user
 from common.supabase_client import get_supabase
@@ -58,6 +59,110 @@ async def get_notifications(user: dict = Depends(get_current_user)):
         else:
             comment_result = type("R", (), {"data": [], "count": 0})()
 
+    # ── 3) 마감 임박 과제 (24시간 이내) ──
+    deadline_items = []
+    now = datetime.now(timezone.utc)
+    deadline_cutoff = (now + timedelta(hours=24)).isoformat()
+
+    if role == "student":
+        # 학생이 등록된 코스의 과제 중 마감 임박한 것
+        enrollments = sb.table("enrollments").select("course_id").eq("student_id", uid).execute()
+        enrolled_course_ids = [e["course_id"] for e in (enrollments.data or [])]
+        if enrolled_course_ids:
+            deadlines = sb.table("assignments").select(
+                "id, title, course_id, due_date, courses(title)"
+            ).in_("course_id", enrolled_course_ids) \
+             .neq("due_date", None) \
+             .gt("due_date", now.isoformat()) \
+             .lt("due_date", deadline_cutoff) \
+             .eq("status", "published") \
+             .order("due_date") \
+             .limit(5) \
+             .execute()
+            for a in (deadlines.data or []):
+                course_info = a.pop("courses", {}) or {}
+                deadline_items.append({
+                    "type": "deadline",
+                    "id": a["id"],
+                    "course_id": a["course_id"],
+                    "course_title": course_info.get("title", ""),
+                    "assignment_title": a["title"],
+                    "due_date": a["due_date"],
+                    "preview": f"'{a['title']}' 마감이 임박했습니다",
+                    "created_at": a["due_date"],
+                })
+    elif role == "personal":
+        # 개인 모드 — 본인이 만든 과제
+        personal_courses = sb.table("courses").select("id").eq("professor_id", uid).eq("is_personal", True).execute()
+        p_cids = [c["id"] for c in (personal_courses.data or [])]
+        if p_cids:
+            deadlines = sb.table("assignments").select(
+                "id, title, course_id, due_date"
+            ).in_("course_id", p_cids) \
+             .neq("due_date", None) \
+             .gt("due_date", now.isoformat()) \
+             .lt("due_date", deadline_cutoff) \
+             .order("due_date") \
+             .limit(5) \
+             .execute()
+            for a in (deadlines.data or []):
+                deadline_items.append({
+                    "type": "deadline",
+                    "id": a["id"],
+                    "course_id": a["course_id"],
+                    "course_title": "",
+                    "assignment_title": a["title"],
+                    "due_date": a["due_date"],
+                    "preview": f"'{a['title']}' 마감이 임박했습니다",
+                    "created_at": a["due_date"],
+                })
+
+    # ── 4) 새 과제/자료 알림 (학생용, 최근 24시간 이내 등록된 것) ──
+    new_material_items = []
+    if role == "student":
+        recent_cutoff = (now - timedelta(hours=24)).isoformat()
+        # enrolled_course_ids already computed in section 3
+        if enrolled_course_ids:
+            # 새 과제
+            new_assignments = sb.table("assignments").select(
+                "id, title, course_id, created_at, courses(title)"
+            ).in_("course_id", enrolled_course_ids) \
+             .eq("status", "published") \
+             .gt("created_at", recent_cutoff) \
+             .order("created_at", desc=True) \
+             .limit(5) \
+             .execute()
+            for a in (new_assignments.data or []):
+                course_info = a.pop("courses", {}) or {}
+                new_material_items.append({
+                    "type": "new_material",
+                    "id": a["id"],
+                    "course_id": a["course_id"],
+                    "course_title": course_info.get("title", ""),
+                    "assignment_title": a["title"],
+                    "preview": f"새 과제: '{a['title']}'",
+                    "created_at": a["created_at"],
+                })
+            # 새 자료
+            new_materials = sb.table("course_materials").select(
+                "id, title, course_id, created_at, courses(title)"
+            ).in_("course_id", enrolled_course_ids) \
+             .gt("created_at", recent_cutoff) \
+             .order("created_at", desc=True) \
+             .limit(5) \
+             .execute()
+            for m in (new_materials.data or []):
+                course_info = m.pop("courses", {}) or {}
+                new_material_items.append({
+                    "type": "new_material",
+                    "id": m["id"],
+                    "course_id": m["course_id"],
+                    "course_title": course_info.get("title", ""),
+                    "assignment_title": m["title"],
+                    "preview": f"새 자료: '{m['title']}'",
+                    "created_at": m["created_at"],
+                })
+
     # ── 알림 항목 조합 ──
     items = []
 
@@ -93,13 +198,22 @@ async def get_notifications(user: dict = Depends(get_current_user)):
             "created_at": cmt["created_at"],
         })
 
+    # 마감 알림 추가
+    items.extend(deadline_items)
+    # 새 과제/자료 알림 추가
+    items.extend(new_material_items)
+
     # 최신순 정렬
     items.sort(key=lambda x: x["created_at"], reverse=True)
 
+    deadline_count = len(deadline_items)
+    new_material_count = len(new_material_items)
     return {
         "unread_messages": unread_msgs.count or 0,
         "unresolved_comments": getattr(comment_result, "count", None) or len(comment_result.data or []),
-        "total": (unread_msgs.count or 0) + (getattr(comment_result, "count", None) or len(comment_result.data or [])),
+        "upcoming_deadlines": deadline_count,
+        "new_materials": new_material_count,
+        "total": (unread_msgs.count or 0) + (getattr(comment_result, "count", None) or len(comment_result.data or [])) + deadline_count + new_material_count,
         "items": items[:20],
     }
 

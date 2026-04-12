@@ -8,6 +8,7 @@ import api from "../lib/api";
 import AppShell from "../components/common/AppShell";
 import { toast } from "../lib/toast";
 import { SkeletonList } from "../components/common/Skeleton";
+import { BANNER_PRESETS, getBannerStyle, getEffectiveBanner } from "../lib/bannerPresets";
 
 interface CalendarItem {
   id: string;
@@ -90,6 +91,10 @@ export default function StudentHome() {
 
   // 할 일
   const [todos, setTodos] = useState<TodoItem[]>([]);
+
+  // 배너 커스텀
+  const [bannerEditId, setBannerEditId] = useState<string | null>(null);
+  const [bannerPick, setBannerPick] = useState("");
 
   const tutorialStart = useTutorialStore((s) => s.start);
   const tutorialCompleted = useTutorialStore((s) => s.isCompleted);
@@ -211,16 +216,71 @@ export default function StudentHome() {
           </div>
         ) : (
           <div className="course-grid" data-tutorial="course-list">
-            {courses.map((course) => (
-              <Link
-                key={course.id}
-                to={`/courses/${course.id}`}
-                className="card course-card"
-              >
-                <h3>{course.title}</h3>
-                <p>{course.description || "설명 없음"}</p>
-              </Link>
-            ))}
+            {courses.map((course) => {
+              const effectiveBanner = getEffectiveBanner(course);
+              return (
+                <div key={course.id} className="card course-card" style={{ position: "relative" }}>
+                  {effectiveBanner && (
+                    <div className="course-card-banner" style={{ background: getBannerStyle(effectiveBanner) }} />
+                  )}
+                  <Link to={`/courses/${course.id}`} className="course-card-link">
+                    <h3>{course.title}</h3>
+                    <p>{course.description || "설명 없음"}</p>
+                  </Link>
+                  <button
+                    className="banner-edit-btn"
+                    title="배너 변경"
+                    onClick={(e) => { e.preventDefault(); setBannerEditId(course.id); setBannerPick(getEffectiveBanner(course) || ""); }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  </button>
+                  {bannerEditId === course.id && (
+                    <>
+                      <div className="banner-picker-backdrop" onClick={() => setBannerEditId(null)} />
+                      <div className="banner-picker-dropdown">
+                        <div className="banner-picker-title">배너 선택</div>
+                        <div className="banner-preset-grid">
+                          {BANNER_PRESETS.map((p) => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              className={`banner-preset-item${bannerPick === `gradient:${p.id}` ? " active" : ""}`}
+                              style={{ background: p.gradient }}
+                              onClick={() => setBannerPick(`gradient:${p.id}`)}
+                              title={p.label}
+                            />
+                          ))}
+                        </div>
+                        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                          <button className="btn btn-primary" style={{ flex: 1, fontSize: 13, padding: "6px 0" }}
+                            onClick={async () => {
+                              try {
+                                await api.patch(`/courses/${course.id}/my-banner`, { banner_url: bannerPick || null });
+                                const updated = courses.map((c) => c.id === course.id ? { ...c, custom_banner_url: bannerPick || null } : c);
+                                useCourseStore.setState({ courses: updated });
+                                setBannerEditId(null);
+                              } catch { toast.error("배너 변경 실패"); }
+                            }}>저장</button>
+                          {course.custom_banner_url && (
+                            <button className="btn btn-ghost" style={{ fontSize: 12, padding: "6px 8px", color: "var(--on-surface-variant)" }}
+                              onClick={async () => {
+                                try {
+                                  await api.patch(`/courses/${course.id}/my-banner`, { banner_url: null });
+                                  const updated = courses.map((c) => c.id === course.id ? { ...c, custom_banner_url: null } : c);
+                                  useCourseStore.setState({ courses: updated });
+                                  setBannerEditId(null);
+                                } catch { toast.error("초기화 실패"); }
+                              }}>기본값으로</button>
+                          )}
+                          <button className="btn btn-ghost" style={{ fontSize: 12, padding: "6px 8px" }}
+                            onClick={() => setBannerEditId(null)}>취소</button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
         {/* ── 캘린더 ── */}

@@ -4,6 +4,7 @@ import api from "../lib/api";
 import { toast } from "../lib/toast";
 import { customConfirm } from "../lib/confirm";
 import { useExamMode } from "../lib/useExamMode";
+import DeadlineTimer from "../components/DeadlineTimer";
 import AppShell from "../components/common/AppShell";
 
 interface QuizProblem {
@@ -230,6 +231,11 @@ export default function QuizEditor() {
               </div>
             )}
           </div>
+          {assignment?.due_date && (
+            <div style={{ marginTop: 8 }}>
+              <DeadlineTimer dueDate={assignment.due_date} compact />
+            </div>
+          )}
           {assignment?.topic && (
             <p style={{ color: "var(--on-surface-variant)", marginTop: 4 }}>
               {assignment.topic}

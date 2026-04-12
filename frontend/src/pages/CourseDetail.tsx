@@ -5,6 +5,7 @@ import api from "../lib/api";
 import { useAuthStore } from "../store/authStore";
 import AppShell from "../components/common/AppShell";
 import { toast } from "../lib/toast";
+import { getBannerStyle, getEffectiveBanner } from "../lib/bannerPresets";
 import type { Course, Assignment, CourseMaterial } from "../types";
 
 function getKoreanHolidays(year: number): { date: string; title: string }[] {
@@ -75,6 +76,7 @@ export default function CourseDetail() {
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
   const [calMonth, setCalMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const [showCompleted, setShowCompleted] = useState(false);
+  const [showExpired, setShowExpired] = useState(false);
 
   const reloadAssignments = useCallback(() => {
     if (!courseId) return;
@@ -204,6 +206,10 @@ export default function CourseDetail() {
   return (
     <AppShell courseTitle={course.title}>
       <main className="content">
+        {/* Course Banner */}
+        {getEffectiveBanner(course) && (
+          <div className="course-detail-banner" style={{ background: getBannerStyle(getEffectiveBanner(course)) }} />
+        )}
         {/* Course Info */}
         <div className="card course-info">
           <h2>{course.title}</h2>
@@ -293,8 +299,14 @@ export default function CourseDetail() {
                 >
                   <option value="python">Python</option>
                   <option value="c">C</option>
+                  <option value="cpp">C++</option>
                   <option value="java">Java</option>
                   <option value="javascript">JavaScript</option>
+                  <option value="csharp">C#</option>
+                  <option value="swift">Swift</option>
+                  <option value="rust">Rust</option>
+                  <option value="go">Go</option>
+                  <option value="asm">Assembly</option>
                 </select>
               )}
               <select
@@ -607,8 +619,16 @@ export default function CourseDetail() {
           })()
         ) : (
           (() => {
-            const activeAssignments = assignments.filter((a) => !a.has_submitted);
-            const completedAssignments = assignments.filter((a) => a.has_submitted);
+            const now = new Date();
+            const expiredAssignments = canManage
+              ? assignments.filter((a) => a.due_date && new Date(a.due_date) < now)
+              : [];
+            const activeAssignments = canManage
+              ? assignments.filter((a) => !a.due_date || new Date(a.due_date) >= now)
+              : assignments.filter((a) => !a.has_submitted);
+            const completedAssignments = canManage
+              ? []
+              : assignments.filter((a) => a.has_submitted);
 
             const renderAssignmentCard = (a: Assignment) => {
               const isOverdue = a.due_date && new Date(a.due_date) < new Date();
@@ -721,6 +741,22 @@ export default function CourseDetail() {
                     {showCompleted && (
                       <div className="course-grid" style={{ marginTop: 10 }}>
                         {completedAssignments.map(renderAssignmentCard)}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {expiredAssignments.length > 0 && (
+                  <div style={{ marginTop: 20 }}>
+                    <button
+                      className="completed-toggle"
+                      onClick={() => setShowExpired(!showExpired)}
+                    >
+                      <span className={`completed-toggle-arrow${showExpired ? " open" : ""}`}>&#x25B6;</span>
+                      마감된 과제 ({expiredAssignments.length})
+                    </button>
+                    {showExpired && (
+                      <div className="course-grid" style={{ marginTop: 10 }}>
+                        {expiredAssignments.map(renderAssignmentCard)}
                       </div>
                     )}
                   </div>

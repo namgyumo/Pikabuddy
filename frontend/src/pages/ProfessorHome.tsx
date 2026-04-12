@@ -8,6 +8,7 @@ import api from "../lib/api";
 import { toast } from "../lib/toast";
 import AppShell from "../components/common/AppShell";
 import { SkeletonList } from "../components/common/Skeleton";
+import { BANNER_PRESETS, getBannerStyle } from "../lib/bannerPresets";
 
 interface CalendarItem {
   id: string;
@@ -57,6 +58,11 @@ export default function ProfessorHome() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [objectives, setObjectives] = useState("");
+  const [bannerUrl, setBannerUrl] = useState("gradient:ocean");
+
+  // 배너 수정 (기존 코스)
+  const [bannerEditId, setBannerEditId] = useState<string | null>(null);
+  const [bannerPick, setBannerPick] = useState("");
 
   // 캘린더
   const [calItems, setCalItems] = useState<CalendarItem[]>([]);
@@ -98,11 +104,13 @@ export default function ProfessorHome() {
       objectives: objectives
         ? objectives.split("\n").filter((o) => o.trim())
         : undefined,
+      banner_url: bannerUrl || undefined,
     });
     setShowCreate(false);
     setTitle("");
     setDescription("");
     setObjectives("");
+    setBannerUrl("gradient:ocean");
   };
 
   return (
@@ -146,6 +154,21 @@ export default function ProfessorHome() {
               onChange={(e) => setObjectives(e.target.value)}
               rows={3}
             />
+            <div style={{ marginTop: 8 }}>
+              <label style={{ fontSize: 13, fontWeight: 600, color: "var(--on-surface-variant)", display: "block", marginBottom: 8 }}>배너 이미지</label>
+              <div className="banner-preset-grid">
+                {BANNER_PRESETS.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className={`banner-preset-item${bannerUrl === `gradient:${p.id}` ? " active" : ""}`}
+                    style={{ background: p.gradient }}
+                    onClick={() => setBannerUrl(`gradient:${p.id}`)}
+                    title={p.label}
+                  />
+                ))}
+              </div>
+            </div>
             <div className="form-actions">
               <button className="btn btn-primary" onClick={handleCreate}>
                 생성
@@ -171,19 +194,60 @@ export default function ProfessorHome() {
         ) : (
           <div className="course-grid" data-tutorial="course-list">
             {courses.map((course) => (
-              <Link
-                key={course.id}
-                to={`/courses/${course.id}`}
-                className="card course-card"
-              >
-                <h3>{course.title}</h3>
-                <p>{course.description || "설명 없음"}</p>
-                <div className="course-meta">
-                  <span className="badge badge-invite">
-                    {course.invite_code}
-                  </span>
-                </div>
-              </Link>
+              <div key={course.id} className="card course-card" style={{ position: "relative" }}>
+                {course.banner_url && (
+                  <div className="course-card-banner" style={{ background: getBannerStyle(course.banner_url) }} />
+                )}
+                <Link to={`/courses/${course.id}`} className="course-card-link">
+                  <h3>{course.title}</h3>
+                  <p>{course.description || "설명 없음"}</p>
+                  <div className="course-meta">
+                    <span className="badge badge-invite">
+                      {course.invite_code}
+                    </span>
+                  </div>
+                </Link>
+                <button
+                  className="banner-edit-btn"
+                  title="배너 변경"
+                  onClick={(e) => { e.preventDefault(); setBannerEditId(course.id); setBannerPick(course.banner_url || ""); }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                {bannerEditId === course.id && (
+                  <>
+                    <div className="banner-picker-backdrop" onClick={() => setBannerEditId(null)} />
+                    <div className="banner-picker-dropdown">
+                      <div className="banner-picker-title">배너 선택</div>
+                      <div className="banner-preset-grid">
+                        {BANNER_PRESETS.map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            className={`banner-preset-item${bannerPick === `gradient:${p.id}` ? " active" : ""}`}
+                            style={{ background: p.gradient }}
+                            onClick={() => setBannerPick(`gradient:${p.id}`)}
+                            title={p.label}
+                          />
+                        ))}
+                      </div>
+                      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                        <button className="btn btn-primary" style={{ flex: 1, fontSize: 13, padding: "6px 0" }}
+                          onClick={async () => {
+                            try {
+                              await api.patch(`/courses/${course.id}`, { banner_url: bannerPick || null });
+                              const updated = courses.map((c) => c.id === course.id ? { ...c, banner_url: bannerPick || null } : c);
+                              useCourseStore.setState({ courses: updated });
+                              setBannerEditId(null);
+                            } catch { toast.error("배너 변경 실패"); }
+                          }}>저장</button>
+                        <button className="btn btn-ghost" style={{ fontSize: 12, padding: "6px 8px" }}
+                          onClick={() => setBannerEditId(null)}>취소</button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
             ))}
           </div>
         )}

@@ -470,7 +470,6 @@ textarea.input {
 .course-card {
   cursor: pointer;
   position: relative;
-  overflow: hidden;
 }
 .course-card::after {
   content: "";
@@ -480,6 +479,7 @@ textarea.input {
   right: 0;
   height: 3px;
   background: linear-gradient(90deg, var(--primary), var(--tertiary));
+  border-radius: 0 0 var(--radius) var(--radius);
   opacity: 0;
   transition: opacity 0.25s var(--ease);
 }
@@ -504,6 +504,110 @@ textarea.input {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+/* Course card banner */
+.course-card-banner {
+  height: 100px;
+  margin: -20px -20px 16px -20px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background-size: cover;
+  background-position: center;
+}
+
+/* Banner preset picker grid */
+.banner-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+.banner-preset-item {
+  height: 40px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s var(--ease);
+}
+.banner-preset-item:hover {
+  transform: scale(1.08);
+  box-shadow: var(--shadow);
+}
+.banner-preset-item.active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary);
+  transform: scale(1.05);
+}
+
+/* Banner edit button on course cards */
+.banner-edit-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--outline-variant);
+  color: var(--on-surface-variant);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s var(--ease), background 0.15s;
+  z-index: 3;
+}
+.course-card:hover .banner-edit-btn {
+  opacity: 1;
+}
+.banner-edit-btn:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+/* Course card link (when card is a div) */
+.course-card-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+.course-card-link h3 {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.course-card-link > p {
+  font-size: 14px;
+  color: var(--on-surface-variant);
+  margin-bottom: 14px;
+}
+
+/* Banner picker backdrop (closes on outside click) */
+.banner-picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+}
+
+/* Banner picker dropdown */
+.banner-picker-dropdown {
+  position: absolute;
+  top: 40px;
+  right: 8px;
+  background: var(--surface);
+  border: 1px solid var(--outline-variant);
+  border-radius: 12px;
+  padding: 12px;
+  z-index: 10;
+  box-shadow: var(--shadow-lg);
+  min-width: 260px;
+}
+.banner-picker-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--on-surface-variant);
+  margin-bottom: 8px;
 }
 
 /* Create Form — accent strip via pseudo-element, no border */
@@ -641,6 +745,15 @@ textarea.input {
 }
 .table tbody tr:hover {
   background: var(--surface-container-low);
+}
+
+/* Course detail page banner */
+.course-detail-banner {
+  height: 160px;
+  border-radius: var(--radius-xl);
+  margin-bottom: 20px;
+  background-size: cover;
+  background-position: center;
 }
 
 /* ===== Course Info ===== */
@@ -1509,6 +1622,97 @@ textarea.input {
   margin: 12px 0;
   font-style: italic;
 }
+
+/* ── Citation Block (출처 인용) ── */
+.note-editor .tiptap .citation-block {
+  border-left: 4px solid var(--tertiary, #7c68ee);
+  background: var(--surface-container-low);
+  padding: 14px 18px 10px;
+  margin: 16px 0;
+  border-radius: 0 8px 8px 0;
+  font-style: italic;
+  counter-increment: citation;
+  position: relative;
+}
+.note-editor .tiptap .citation-block::before {
+  content: counter(citation);
+  position: absolute;
+  top: -8px;
+  left: -14px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--tertiary, #7c68ee);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  font-style: normal;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.note-editor .tiptap .citation-block .citation-content {
+  font-style: italic;
+  color: var(--on-surface);
+  margin-bottom: 6px;
+}
+.note-editor .tiptap .citation-block .citation-source {
+  font-size: 12px;
+  font-style: normal;
+  color: var(--on-surface-variant);
+  border-top: 1px solid var(--outline-variant);
+  padding-top: 6px;
+  margin-top: 8px;
+}
+.note-editor .tiptap .citation-block .citation-source a {
+  color: var(--primary);
+  text-decoration: underline;
+}
+.note-editor .tiptap {
+  counter-reset: citation;
+}
+
+/* Citation input popup */
+.citation-input-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  padding: 14px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+}
+
+/* ── Collaboration Cursors (y-prosemirror) ── */
+.note-editor .tiptap .ProseMirror-yjs-cursor {
+  position: relative;
+  border-left: 2px solid orange;
+  margin-left: -1px;
+  margin-right: -1px;
+  word-break: normal;
+  pointer-events: none;
+}
+.note-editor .tiptap .ProseMirror-yjs-cursor > div {
+  position: absolute;
+  top: -1.5em;
+  left: -2px;
+  font-size: 10px;
+  font-weight: 600;
+  font-style: normal;
+  padding: 1px 6px;
+  border-radius: 4px 4px 4px 0;
+  color: #fff;
+  white-space: nowrap;
+  pointer-events: none;
+  line-height: 1.5;
+  user-select: none;
+}
+.note-editor .tiptap .yRemoteSelection {
+  opacity: 0.3;
+}
+
 .note-editor .tiptap code {
   font-family: var(--font-code);
   font-size: 0.875rem;
@@ -6421,6 +6625,23 @@ select.form-input {
   background: var(--warning-light, rgba(245,158,11,0.12));
   color: var(--warning, #d97706);
 }
+.notification-item-tag.deadline {
+  background: rgba(220,38,38,0.1);
+  color: var(--error, #dc2626);
+}
+.notification-item-tag.material {
+  background: rgba(16,185,129,0.1);
+  color: var(--success, #10b981);
+}
+.notification-deadline-icon,
+.notification-material-icon {
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
 .notification-item-preview {
   font-size: 12px;
   color: var(--on-surface-variant);
@@ -6816,4 +7037,65 @@ select.form-input {
   .landing-stat-value { font-size: 1.5rem; }
   .landing-header .logo { font-size: 18px; }
   .not-found-code { font-size: 5rem; }
+}
+
+/* ── Deadline Timer ── */
+.deadline-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--surface-container);
+  color: var(--on-surface);
+  border: 1px solid var(--outline-variant);
+}
+.deadline-timer.compact {
+  padding: 3px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+.deadline-timer.urgent {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #f59e0b;
+}
+.deadline-timer.critical {
+  background: #fef2f2;
+  color: #991b1b;
+  border-color: #ef4444;
+  animation: deadline-pulse 1s ease-in-out infinite;
+}
+.deadline-timer.expired {
+  background: var(--surface-container);
+  color: var(--on-surface-variant);
+  border-color: var(--outline-variant);
+  opacity: 0.7;
+}
+@keyframes deadline-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); box-shadow: 0 0 12px rgba(239,68,68,0.3); }
+}
+.deadline-timer .deadline-icon { font-size: 15px; }
+.deadline-timer .deadline-text strong { font-weight: 700; }
+
+/* Dark theme overrides for deadline timer */
+[data-theme="dark"] .deadline-timer.urgent,
+.dark .deadline-timer.urgent {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.4);
+}
+[data-theme="dark"] .deadline-timer.critical,
+.dark .deadline-timer.critical {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
 }

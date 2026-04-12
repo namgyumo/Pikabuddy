@@ -74,11 +74,12 @@ export default function GlobalContextMenu() {
 
   useEffect(() => {
     document.addEventListener("contextmenu", handleContextMenu);
-    document.addEventListener("click", handleClick);
+    // capture phase so stopPropagation in children can't block it
+    document.addEventListener("click", handleClick, true);
     document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.removeEventListener("contextmenu", handleContextMenu);
-      document.removeEventListener("click", handleClick);
+      document.removeEventListener("click", handleClick, true);
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [handleContextMenu, handleClick, handleKeyDown]);

@@ -817,9 +817,15 @@ export default function PersonalHome() {
                   <label className="form-label">언어</label>
                   <select className="form-input" value={language} onChange={(e) => setLanguage(e.target.value)}>
                     <option value="python">Python</option>
-                    <option value="javascript">JavaScript</option>
                     <option value="c">C</option>
+                    <option value="cpp">C++</option>
                     <option value="java">Java</option>
+                    <option value="javascript">JavaScript</option>
+                    <option value="csharp">C#</option>
+                    <option value="swift">Swift</option>
+                    <option value="rust">Rust</option>
+                    <option value="go">Go</option>
+                    <option value="asm">Assembly</option>
                   </select>
                 </div>
               </div>

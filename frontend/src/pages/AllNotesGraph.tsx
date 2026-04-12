@@ -37,21 +37,21 @@ function getGraphColors() {
   const onSurface = cs.getPropertyValue("--on-surface").trim() || "#1a1c23";
   const onSurfaceVar = cs.getPropertyValue("--on-surface-variant").trim() || "#44474f";
   const isDark = parseColorLuminance(surface) < 0.4;
-  const parentCore = isDark ? "rgba(34,211,238,0.5)" : "rgba(6,150,170,0.65)";
-  const parentGlow = isDark ? "rgba(34,211,238,0.12)" : "rgba(6,150,170,0.15)";
-  const linkCore = isDark ? "rgba(251,191,36,0.4)" : "rgba(180,120,0,0.55)";
-  const linkGlow = isDark ? "rgba(251,191,36,0.08)" : "rgba(180,120,0,0.12)";
-  const simR = isDark ? 192 : 140;
-  const simG = isDark ? 38 : 20;
-  const simB = isDark ? 211 : 180;
-  const simCoreBase = isDark ? 0.25 : 0.35;
-  const simCoreDelta = isDark ? 0.35 : 0.35;
-  const simGlow1Base = isDark ? 0.04 : 0.06;
-  const simGlow1Delta = isDark ? 0.08 : 0.1;
-  const simGlow2Base = isDark ? 0.1 : 0.14;
-  const simGlow2Delta = isDark ? 0.12 : 0.14;
-  const simGlow3Base = isDark ? 0.15 : 0.2;
-  const simGlow3Delta = isDark ? 0.1 : 0.12;
+  const parentCore = isDark ? "rgba(34,211,238,0.75)" : "rgba(6,150,170,0.85)";
+  const parentGlow = isDark ? "rgba(34,211,238,0.2)" : "rgba(6,150,170,0.25)";
+  const linkCore = isDark ? "rgba(251,191,36,0.7)" : "rgba(180,120,0,0.8)";
+  const linkGlow = isDark ? "rgba(251,191,36,0.15)" : "rgba(180,120,0,0.2)";
+  const simR = isDark ? 220 : 160;
+  const simG = isDark ? 80 : 40;
+  const simB = isDark ? 240 : 200;
+  const simCoreBase = isDark ? 0.45 : 0.55;
+  const simCoreDelta = isDark ? 0.35 : 0.3;
+  const simGlow1Base = isDark ? 0.08 : 0.1;
+  const simGlow1Delta = isDark ? 0.12 : 0.14;
+  const simGlow2Base = isDark ? 0.16 : 0.2;
+  const simGlow2Delta = isDark ? 0.16 : 0.18;
+  const simGlow3Base = isDark ? 0.22 : 0.28;
+  const simGlow3Delta = isDark ? 0.14 : 0.14;
   const nodeStroke = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.12)";
   const nodeStrokeRoot = isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.2)";
   const nodeHighlight = isDark ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.35)";
@@ -605,7 +605,7 @@ export default function AllNotesGraph() {
       ctx.moveTo(s.x!, s.y!);
       ctx.quadraticCurveTo(cx, cy, t.x!, t.y!);
       ctx.strokeStyle = gc.parentGlow;
-      ctx.lineWidth = Math.max(lw * 4, 4);
+      ctx.lineWidth = Math.max(lw * 5, 5);
       ctx.setLineDash([]);
       ctx.stroke();
 
@@ -613,14 +613,14 @@ export default function AllNotesGraph() {
       ctx.moveTo(s.x!, s.y!);
       ctx.quadraticCurveTo(cx, cy, t.x!, t.y!);
       ctx.strokeStyle = gc.parentCore;
-      ctx.lineWidth = Math.max(lw * 1.2, 1);
+      ctx.lineWidth = Math.max(lw * 1.8, 1.5);
       ctx.stroke();
     } else if (link.type === "link") {
       ctx.beginPath();
       ctx.moveTo(s.x!, s.y!);
       ctx.lineTo(t.x!, t.y!);
       ctx.strokeStyle = gc.linkGlow;
-      ctx.lineWidth = Math.max(lw * 3, 3);
+      ctx.lineWidth = Math.max(lw * 4, 4);
       ctx.setLineDash([]);
       ctx.stroke();
 
@@ -628,15 +628,15 @@ export default function AllNotesGraph() {
       ctx.moveTo(s.x!, s.y!);
       ctx.lineTo(t.x!, t.y!);
       ctx.strokeStyle = gc.linkCore;
-      ctx.lineWidth = Math.max(lw * 0.8, 0.6);
-      ctx.setLineDash([5 / globalScale, 4 / globalScale]);
+      ctx.lineWidth = Math.max(lw * 1.2, 1);
+      ctx.setLineDash([6 / globalScale, 4 / globalScale]);
       ctx.stroke();
       ctx.setLineDash([]);
     } else {
       // Similar — multi-layer glow (matches NoteGraph)
       const w = Math.min(link.weight || 2, 8);
       const t_norm = (w - 2) / 6;
-      const thickness = 0.8 + t_norm * 1.2;
+      const thickness = 1.2 + t_norm * 1.5;
       const isWeak = w <= 2;
       const { simR: r, simG: g, simB: b } = gc;
       const coreOpacity = gc.simCoreBase + t_norm * gc.simCoreDelta;

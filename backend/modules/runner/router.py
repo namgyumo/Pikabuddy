@@ -15,7 +15,7 @@ router = APIRouter(prefix="/code", tags=["코드 실행"])
 TIMEOUT = 5  # seconds
 MAX_OUTPUT = 5000  # characters
 
-# 언어별 시간 배수 — 표준 입출력 기준 (C/C++ 1x, Java/JS 2x, Python 3x)
+# 언어별 시간 배수 — 표준 입출력 기준 (C/C++ 1x, Java/JS/C#/Go 2x, Python 3x)
 _TIME_MULTIPLIER = {
     "c": 1.0,
     "cpp": 1.0,
@@ -23,6 +23,11 @@ _TIME_MULTIPLIER = {
     "javascript": 2.0,
     "js": 2.0,
     "python": 3.0,
+    "csharp": 2.0,
+    "swift": 1.5,
+    "rust": 1.0,
+    "go": 1.5,
+    "asm": 1.0,
 }
 
 # Windows: 낮은 우선순위 + 싱글코어로 실행 (온라인 저지급 성능 시뮬레이션)
@@ -47,6 +52,19 @@ _BLOCKED_PATTERNS = {
         r"require\s*\(\s*['\"]net",
         r"require\s*\(\s*['\"]fs",
         r"process\.env",
+    ],
+    "csharp": [
+        r"System\.Diagnostics\.Process",
+        r"System\.Net\.Sockets",
+    ],
+    "go": [
+        r"os/exec",
+        r"net\b",
+        r"syscall",
+    ],
+    "rust": [
+        r"std::process::Command",
+        r"std::net",
     ],
 }
 
@@ -143,6 +161,16 @@ def _judge_single(code: str, language: str, stdin_data: str, expected: str,
             result = _run_c_judge(code, stdin_data, time_limit, cpp=(language == "cpp"))
         elif language == "java":
             result = _run_java_judge(code, stdin_data, time_limit)
+        elif language == "csharp":
+            result = _run_csharp_judge(code, stdin_data, time_limit)
+        elif language == "swift":
+            result = _run_swift_judge(code, stdin_data, time_limit)
+        elif language == "rust":
+            result = _run_rust_judge(code, stdin_data, time_limit)
+        elif language == "go":
+            result = _run_go_judge(code, stdin_data, time_limit)
+        elif language == "asm":
+            result = _run_asm_judge(code, stdin_data, time_limit)
         else:
             return {"verdict": "CE", "time_ms": 0, "memory_mb": 0, "output": "", "error": f"지원하지 않는 언어: {language}"}
         wall_ms = (time.perf_counter() - start) * 1000
@@ -299,6 +327,16 @@ async def run_code(body: RunRequest, user: dict = Depends(get_current_user)):
             result = _run_c(code, stdin_data, cpp=(language == "cpp"))
         elif language == "java":
             result = _run_java(code, stdin_data)
+        elif language == "csharp":
+            result = _run_csharp(code, stdin_data)
+        elif language == "swift":
+            result = _run_swift(code, stdin_data)
+        elif language == "rust":
+            result = _run_rust(code, stdin_data)
+        elif language == "go":
+            result = _run_go(code, stdin_data)
+        elif language == "asm":
+            result = _run_asm(code, stdin_data)
         else:
             return {"success": False, "output": "", "error": f"지원하지 않는 언어: {language}"}
 
@@ -417,3 +455,182 @@ def _run_java(code: str, stdin_data: str) -> dict:
             os.rmdir(tmpdir)
         except OSError:
             pass
+
+
+# ── C# (Mono) ──
+
+def _run_csharp(code: str, stdin_data: str) -> dict:
+    tmpdir = tempfile.mkdtemp()
+    src = os.path.join(tmpdir, "Main.cs")
+    exe = os.path.join(tmpdir, "Main.exe")
+    try:
+        with open(src, "w", encoding="utf-8") as f:
+            f.write(code)
+        compile_result = _execute(["mcs", "-out:" + exe, src])
+        if not compile_result["success"]:
+            compile_result["error"] = "컴파일 에러:\n" + compile_result["error"]
+            return compile_result
+        return _execute(["mono", exe], stdin_data)
+    finally:
+        _cleanup_dir(tmpdir)
+
+
+def _run_csharp_judge(code: str, stdin_data: str, timeout: float) -> dict:
+    tmpdir = tempfile.mkdtemp()
+    src = os.path.join(tmpdir, "Main.cs")
+    exe = os.path.join(tmpdir, "Main.exe")
+    try:
+        with open(src, "w", encoding="utf-8") as f:
+            f.write(code)
+        compile_res = _run_with_timeout(["mcs", "-out:" + exe, src], "", 15)
+        if not compile_res["success"]:
+            return {"success": False, "output": "", "error": "컴파일 에러:\n" + compile_res["error"], "timeout": False}
+        return _run_with_timeout(["mono", exe], stdin_data, timeout)
+    finally:
+        _cleanup_dir(tmpdir)
+
+
+# ── Swift ──
+
+def _run_swift(code: str, stdin_data: str) -> dict:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".swift", delete=False, encoding="utf-8") as f:
+        f.write(code); f.flush()
+        try:
+            return _execute(["swift", f.name], stdin_data)
+        finally:
+            os.unlink(f.name)
+
+
+def _run_swift_judge(code: str, stdin_data: str, timeout: float) -> dict:
+    tmpdir = tempfile.mkdtemp()
+    src = os.path.join(tmpdir, "main.swift")
+    exe = os.path.join(tmpdir, "main")
+    try:
+        with open(src, "w", encoding="utf-8") as f:
+            f.write(code)
+        compile_res = _run_with_timeout(["swiftc", src, "-o", exe], "", 30)
+        if not compile_res["success"]:
+            return {"success": False, "output": "", "error": "컴파일 에러:\n" + compile_res["error"], "timeout": False}
+        return _run_with_timeout([exe], stdin_data, timeout)
+    finally:
+        _cleanup_dir(tmpdir)
+
+
+# ── Rust ──
+
+def _run_rust(code: str, stdin_data: str) -> dict:
+    tmpdir = tempfile.mkdtemp()
+    src = os.path.join(tmpdir, "main.rs")
+    exe = os.path.join(tmpdir, "main")
+    try:
+        with open(src, "w", encoding="utf-8") as f:
+            f.write(code)
+        compile_result = _execute(["rustc", src, "-o", exe])
+        if not compile_result["success"]:
+            compile_result["error"] = "컴파일 에러:\n" + compile_result["error"]
+            return compile_result
+        return _execute([exe], stdin_data)
+    finally:
+        _cleanup_dir(tmpdir)
+
+
+def _run_rust_judge(code: str, stdin_data: str, timeout: float) -> dict:
+    tmpdir = tempfile.mkdtemp()
+    src = os.path.join(tmpdir, "main.rs")
+    exe = os.path.join(tmpdir, "main")
+    try:
+        with open(src, "w", encoding="utf-8") as f:
+            f.write(code)
+        compile_res = _run_with_timeout(["rustc", src, "-o", exe], "", 30)
+        if not compile_res["success"]:
+            return {"success": False, "output": "", "error": "컴파일 에러:\n" + compile_res["error"], "timeout": False}
+        return _run_with_timeout([exe], stdin_data, timeout)
+    finally:
+        _cleanup_dir(tmpdir)
+
+
+# ── Go ──
+
+def _run_go(code: str, stdin_data: str) -> dict:
+    tmpdir = tempfile.mkdtemp()
+    src = os.path.join(tmpdir, "main.go")
+    try:
+        with open(src, "w", encoding="utf-8") as f:
+            f.write(code)
+        return _execute(["go", "run", src], stdin_data, cwd=tmpdir)
+    finally:
+        _cleanup_dir(tmpdir)
+
+
+def _run_go_judge(code: str, stdin_data: str, timeout: float) -> dict:
+    tmpdir = tempfile.mkdtemp()
+    src = os.path.join(tmpdir, "main.go")
+    exe = os.path.join(tmpdir, "main")
+    try:
+        with open(src, "w", encoding="utf-8") as f:
+            f.write(code)
+        compile_res = _run_with_timeout(["go", "build", "-o", exe, src], "", 30, cwd=tmpdir)
+        if not compile_res["success"]:
+            return {"success": False, "output": "", "error": "컴파일 에러:\n" + compile_res["error"], "timeout": False}
+        return _run_with_timeout([exe], stdin_data, timeout)
+    finally:
+        _cleanup_dir(tmpdir)
+
+
+# ── Assembly (x86_64 NASM, Linux) ──
+
+def _run_asm(code: str, stdin_data: str) -> dict:
+    tmpdir = tempfile.mkdtemp()
+    src = os.path.join(tmpdir, "main.asm")
+    obj = os.path.join(tmpdir, "main.o")
+    exe = os.path.join(tmpdir, "main")
+    try:
+        with open(src, "w", encoding="utf-8") as f:
+            f.write(code)
+        # Assemble
+        asm_result = _execute(["nasm", "-f", "elf64", src, "-o", obj])
+        if not asm_result["success"]:
+            asm_result["error"] = "어셈블 에러:\n" + asm_result["error"]
+            return asm_result
+        # Link
+        link_result = _execute(["gcc", "-no-pie", obj, "-o", exe])
+        if not link_result["success"]:
+            link_result["error"] = "��크 에러:\n" + link_result["error"]
+            return link_result
+        return _execute([exe], stdin_data)
+    finally:
+        _cleanup_dir(tmpdir)
+
+
+def _run_asm_judge(code: str, stdin_data: str, timeout: float) -> dict:
+    tmpdir = tempfile.mkdtemp()
+    src = os.path.join(tmpdir, "main.asm")
+    obj = os.path.join(tmpdir, "main.o")
+    exe = os.path.join(tmpdir, "main")
+    try:
+        with open(src, "w", encoding="utf-8") as f:
+            f.write(code)
+        asm_res = _run_with_timeout(["nasm", "-f", "elf64", src, "-o", obj], "", 10)
+        if not asm_res["success"]:
+            return {"success": False, "output": "", "error": "어셈블 에러:\n" + asm_res["error"], "timeout": False}
+        link_res = _run_with_timeout(["gcc", "-no-pie", obj, "-o", exe], "", 10)
+        if not link_res["success"]:
+            return {"success": False, "output": "", "error": "링크 에러:\n" + link_res["error"], "timeout": False}
+        return _run_with_timeout([exe], stdin_data, timeout)
+    finally:
+        _cleanup_dir(tmpdir)
+
+
+# ── Helpers ──
+
+def _cleanup_dir(tmpdir: str):
+    """임시 디렉토리와 그 안의 파일들을 정리한다."""
+    try:
+        for fname in os.listdir(tmpdir):
+            try:
+                os.unlink(os.path.join(tmpdir, fname))
+            except OSError:
+                pass
+        os.rmdir(tmpdir)
+    except OSError:
+        pass

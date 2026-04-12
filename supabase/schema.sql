@@ -34,6 +34,7 @@ CREATE TABLE courses (
     objectives JSONB,
     invite_code VARCHAR(10) NOT NULL UNIQUE,
     is_personal BOOLEAN NOT NULL DEFAULT false,
+    banner_url TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -46,6 +47,7 @@ CREATE TABLE enrollments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     student_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    custom_banner_url TEXT,
     enrolled_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE(student_id, course_id)
 );

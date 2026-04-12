@@ -174,9 +174,22 @@ class EffectManager {
 
   /** Trigger an event-based effect */
   trigger(id: string, data?: any) {
+    const isActive = this.active.has(id);
     const effect = this.active.get(id) || this.effects.get(id);
-    if (effect?.trigger) {
-      effect.trigger(data);
+    if (!effect?.trigger) return;
+
+    // If not active, temporarily activate to inject CSS styles needed by trigger
+    if (!isActive) {
+      try { effect.activate({}); } catch { /* ignore */ }
+    }
+    effect.trigger(data);
+    // Schedule cleanup if we temporarily activated
+    if (!isActive) {
+      setTimeout(() => {
+        if (!this.active.has(id)) {
+          try { effect.deactivate(); } catch { /* ignore */ }
+        }
+      }, 5000);
     }
   }
 

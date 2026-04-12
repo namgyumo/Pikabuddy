@@ -7,6 +7,7 @@ import { toast } from "../lib/toast";
 import { customConfirm } from "../lib/confirm";
 
 const BlockEditorLazy = lazy(() => import("../components/BlockEditor"));
+import DeadlineTimer from "../components/DeadlineTimer";
 import { supabase } from "../lib/supabase";
 import { getAdminToken } from "../store/authStore";
 import { useExamMode } from "../lib/useExamMode";
@@ -34,6 +35,20 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
 }
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8001/api";
+
+/** Map our language IDs to Monaco editor language IDs */
+const MONACO_LANG: Record<string, string> = {
+  python: "python", c: "c", cpp: "cpp", java: "java",
+  javascript: "javascript", csharp: "csharp", swift: "swift",
+  rust: "rust", go: "go", asm: "plaintext",
+};
+
+/** Display names for language badges */
+const LANG_LABEL: Record<string, string> = {
+  python: "Python", c: "C", cpp: "C++", java: "Java",
+  javascript: "JavaScript", csharp: "C#", swift: "Swift",
+  rust: "Rust", go: "Go", asm: "ASM",
+};
 
 function stripScoreLine(text: string): string {
   return text.replace(/🤖\s*피카버디의 추천 점수는.*?점이에요!?\s*\n?/g, "")
@@ -572,7 +587,7 @@ export default function CodeEditor() {
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <span className="badge" style={{ background: "rgba(255,255,255,0.12)", color: "#fff" }}>
-            {(assignment?.language || "python").toUpperCase()}
+            {LANG_LABEL[assignment?.language || "python"] || (assignment?.language || "python").toUpperCase()}
           </span>
           <span className="badge badge-policy">
             AI 정책: {policyLabels[assignment?.ai_policy || ""] || "-"}
@@ -650,7 +665,7 @@ export default function CodeEditor() {
             ) : (
               <Editor
                 height="100%"
-                language={assignment?.language || "python"}
+                language={MONACO_LANG[assignment?.language || "python"] || "plaintext"}
                 theme="vs-dark"
                 value={code}
                 onChange={handleCodeChange}
@@ -1019,9 +1034,9 @@ export default function CodeEditor() {
                   {submitting ? "AI 분석 중..." : "제출하기"}
                 </button>
                 {assignment?.due_date && (
-                  <span style={{ fontSize: 12, color: "var(--on-surface-variant)", textAlign: "center", display: "block", marginTop: 4 }}>
-                    마감: {new Date(assignment.due_date).toLocaleDateString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                  </span>
+                  <div style={{ marginTop: 6 }}>
+                    <DeadlineTimer dueDate={assignment.due_date} compact />
+                  </div>
                 )}
               </>
             )}

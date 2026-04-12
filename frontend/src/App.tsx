@@ -67,6 +67,22 @@ export default function App() {
     fetchUser();
   }, [fetchUser]);
 
+  // ── 로그인 만료 감지 표시 ──
+  useEffect(() => {
+    const handler = () => {
+      // Show session expired overlay
+      const existing = document.getElementById("session-expired-toast");
+      if (existing) return;
+      const el = document.createElement("div");
+      el.id = "session-expired-toast";
+      el.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:12px 20px;background:#ef4444;color:#fff;font-size:14px;font-weight:600;gap:12px;animation:slideDown .3s ease";
+      el.innerHTML = `<span>로그인이 만료되었습니다. 다시 로그인해 주세요.</span><button onclick="window.location.href='/'" style="padding:4px 14px;border-radius:6px;border:none;background:#fff;color:#ef4444;font-weight:600;cursor:pointer;font-size:13px">로그인</button>`;
+      document.body.appendChild(el);
+    };
+    window.addEventListener("session-expired", handler);
+    return () => window.removeEventListener("session-expired", handler);
+  }, []);
+
   return (
     <ErrorBoundary>
       <BrowserRouter>

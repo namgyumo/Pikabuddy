@@ -165,7 +165,7 @@
     <span>사용 가이드</span>
   </h1>
   <p>AI 기반 학습 플랫폼 PikaBuddy의 모든 기능을 상세하게 안내합니다.<br>교수, 학생, 개인 모드 각각에 맞는 사용법을 확인하세요.</p>
-  <div class="version">v1.0 &middot; 2026.04</div>
+  <div class="version">v2.0 &middot; 2026.04</div>
 </div>
 
 <div class="container">
@@ -195,6 +195,7 @@
         <li><a href="#course-join">강의 참가</a></li>
         <li><a href="#course-material">강의자료 관리</a></li>
         <li><a href="#course-calendar">캘린더 / 일정</a></li>
+        <li><a href="#course-banner">배너 이미지</a></li>
       </ul>
     </li>
     <li><a href="#assignments">과제 시스템</a>
@@ -202,6 +203,7 @@
         <li><a href="#assign-create">AI 과제 생성</a></li>
         <li><a href="#assign-types">과제 유형</a></li>
         <li><a href="#assign-policy">AI 정책 &amp; 채점 기준</a></li>
+        <li><a href="#assign-manage">과제 관리 (발행/수정/삭제)</a></li>
       </ul>
     </li>
     <li><a href="#code-editor">코드 에디터</a>
@@ -220,15 +222,26 @@
         <li><a href="#note-ai">AI 분석 &amp; AI 다듬기</a></li>
         <li><a href="#note-draw">드로잉 &amp; 수식</a></li>
         <li><a href="#note-link">노트 링크 &amp; 그래프</a></li>
+        <li><a href="#note-snapshot">스냅샷 &amp; 버전 비교</a></li>
+        <li><a href="#note-collab">실시간 협업</a></li>
         <li><a href="#note-export">내보내기</a></li>
         <li><a href="#note-shortcuts">키보드 단축키</a></li>
       </ul>
     </li>
     <li><a href="#workspace">워크스페이스</a></li>
+    <li><a href="#teams">팀 &amp; 협업</a>
+      <ul class="sub">
+        <li><a href="#team-manage">팀 관리</a></li>
+        <li><a href="#team-vote">팀 투표 제출</a></li>
+      </ul>
+    </li>
     <li><a href="#messenger">메신저</a></li>
+    <li><a href="#notifications">알림 시스템</a></li>
+    <li><a href="#all-notes">전체 노트 &amp; 통합 그래프</a></li>
     <li><a href="#dashboard">대시보드 &amp; 분석</a></li>
     <li><a href="#student-notes">학생 노트 리뷰 (교수)</a></li>
     <li><a href="#comments">코멘트 시스템</a></li>
+    <li><a href="#ai-agents">AI 에이전트</a></li>
     <li><a href="#gamification">게이미피케이션</a></li>
     <li><a href="#profile">프로필</a></li>
     <li><a href="#themes">테마 &amp; 이펙트 커스텀</a></li>
@@ -270,17 +283,17 @@
   <div class="feature-item">
     <div class="icon">&#x1F4D3;</div>
     <h5>노트 에디터</h5>
-    <p>Tiptap 기반 블록 에디터 + 수식 + 드로잉 + Excalidraw + AI 분석</p>
+    <p>Tiptap 기반 블록 에디터 + 수식 + 드로잉 + Excalidraw + AI 분석 + 실시간 협업</p>
   </div>
   <div class="feature-item">
     <div class="icon">&#x1F578;&#xFE0F;</div>
     <h5>지식 그래프</h5>
-    <p>노트 간 연결을 시각화하는 인터랙티브 그래프</p>
+    <p>노트 간 연결을 시각화하는 인터랙티브 그래프 (강의별 + 통합 그래프)</p>
   </div>
   <div class="feature-item">
     <div class="icon">&#x1F4AC;</div>
     <h5>메신저</h5>
-    <p>교수 &#8596; 학생 1:1 메시지, 읽음 확인, 실시간 알림</p>
+    <p>교수 &#8596; 학생, 학생 &#8596; 학생 메시지, 읽음 확인, 실시간 알림</p>
   </div>
   <div class="feature-item">
     <div class="icon">&#x1F4CA;</div>
@@ -288,9 +301,24 @@
     <p>제출 통계, 점수 분포, AI 인사이트, 학생별 상세 분석</p>
   </div>
   <div class="feature-item">
+    <div class="icon">&#x1F465;</div>
+    <h5>팀 협업</h5>
+    <p>팀 생성, 팀 노트 실시간 동시 편집, 팀 과제 투표 제출</p>
+  </div>
+  <div class="feature-item">
+    <div class="icon">&#x1F514;</div>
+    <h5>알림 시스템</h5>
+    <p>메시지, 코멘트 통합 알림벨, 클릭 시 해당 위치로 즉시 이동</p>
+  </div>
+  <div class="feature-item">
     <div class="icon">&#x1F3AE;</div>
     <h5>게이미피케이션</h5>
     <p>EXP 시스템, 6단계 티어(씨앗~숲), 과제/챌린지 제출·노트 작성으로 경험치 획득</p>
+  </div>
+  <div class="feature-item">
+    <div class="icon">&#x1F6E1;&#xFE0F;</div>
+    <h5>시험 감독</h5>
+    <p>전체화면 강제, 화면 캡쳐, 이탈 감지, 위반 기록, 교수 모니터링</p>
   </div>
   <div class="feature-item">
     <div class="icon">&#x1F3A8;</div>
@@ -299,8 +327,8 @@
   </div>
   <div class="feature-item">
     <div class="icon">&#x1F916;</div>
-    <h5>AI 기능 모음</h5>
-    <p>과제 생성, 코드 피드백, 글쓰기 피드백, 노트 분석, AI 다듬기, 튜터 채팅, 클래스 인사이트</p>
+    <h5>AI 에이전트</h5>
+    <p>학생 AI 튜터 + 교수 AI 조교, 세션 기반 대화, 맥락 인식 답변</p>
   </div>
 </div>
 
@@ -332,12 +360,12 @@
   <tr>
     <td><span class="badge prof">교수</span></td>
     <td>강의를 개설하고 과제를 관리하는 역할</td>
-    <td>강의 생성, AI 과제 생성, 대시보드, 학생 노트 리뷰, 채점</td>
+    <td>강의 생성, AI 과제 생성, 대시보드, 학생 노트 리뷰, 채점, 팀 관리</td>
   </tr>
   <tr>
     <td><span class="badge student">학생</span></td>
     <td>강의에 참가하여 과제를 수행하는 역할</td>
-    <td>과제 풀기, 노트 작성, AI 피드백, 메신저, 지식 그래프</td>
+    <td>과제 풀기, 노트 작성, AI 피드백, 메신저, 지식 그래프, 팀 협업</td>
   </tr>
   <tr>
     <td><span class="badge personal">개인</span></td>
@@ -360,15 +388,18 @@
 <ul>
   <li><strong>내 강의 목록</strong> &mdash; 개설한 모든 강의가 카드로 표시됩니다. 강의명, 수강생 수, 초대 코드를 확인할 수 있습니다.</li>
   <li><strong>강의 개설</strong> &mdash; "강의 만들기" 버튼으로 새 강의를 생성합니다.</li>
+  <li><strong>캘린더</strong> &mdash; 모든 강의의 과제 마감일, 개인 일정, 한국 공휴일이 월별 캘린더에 표시됩니다. 개인 이벤트를 추가/수정/삭제할 수 있습니다.</li>
   <li><strong>강의 클릭</strong> &mdash; 특정 강의를 클릭하면 커리큘럼(과제 목록) 화면으로 이동합니다.</li>
 </ul>
 <p><strong>사이드바 메뉴:</strong></p>
 <ul>
   <li>&#x1F4DA; <strong>Classroom</strong> &mdash; 강의 목록 (홈)</li>
+  <li>&#x1F4AC; <strong>Messenger</strong> &mdash; 강의 밖에서도 바로가기 (최근 대화 코스로 이동)</li>
+  <li>&#x1F4DD; <strong>Notes</strong> &mdash; 전체 노트 (모든 강의의 노트를 한 곳에서)</li>
   <li>&#x1F4CA; <strong>Dashboard</strong> &mdash; 강의 선택 후 대시보드</li>
   <li>&#x1F4DD; <strong>Curriculum</strong> &mdash; 강의 선택 후 과제/자료 관리</li>
   <li>&#x1F4D3; <strong>Student Notes</strong> &mdash; 학생들의 노트 열람</li>
-  <li>&#x1F4AC; <strong>Messenger</strong> &mdash; 학생과 1:1 메시지</li>
+  <li>&#x1F4AC; <strong>Messenger</strong> &mdash; 강의 선택 후 학생과 메시지</li>
   <li>&#x2699; <strong>Settings</strong> &mdash; 계정 설정, 테마, 튜토리얼</li>
 </ul>
 
@@ -378,14 +409,16 @@
   <li><strong>수강 중인 강의 목록</strong> &mdash; 참가한 강의가 카드로 표시됩니다.</li>
   <li><strong>강의 참가</strong> &mdash; "강의 참가하기" 버튼으로 초대 코드를 입력합니다.</li>
   <li><strong>할 일 목록</strong> &mdash; 미제출 과제 목록이 우측에 표시됩니다.</li>
-  <li><strong>캘린더</strong> &mdash; 이번 달 과제 마감일과 공휴일이 캘린더에 표시됩니다.</li>
+  <li><strong>캘린더</strong> &mdash; 모든 수강 강의의 과제 마감일, 개인 일정, 한국 공휴일이 캘린더에 표시됩니다. 과제를 클릭하면 해당 에디터로 바로 이동합니다.</li>
 </ul>
 <p><strong>사이드바 메뉴 (강의 선택 후):</strong></p>
 <ul>
   <li>&#x1F4DA; <strong>Classroom</strong> &mdash; 강의 목록 (홈)</li>
+  <li>&#x1F4AC; <strong>Messenger</strong> &mdash; 강의 밖에서도 바로가기</li>
+  <li>&#x1F4DD; <strong>Notes</strong> &mdash; 전체 노트</li>
   <li>&#x1F4CB; <strong>Curriculum</strong> &mdash; 과제 목록</li>
-  <li>&#x1F4DD; <strong>Notes</strong> &mdash; 내 노트</li>
-  <li>&#x1F4AC; <strong>Messenger</strong> &mdash; 교수와 1:1 메시지</li>
+  <li>&#x1F4DD; <strong>Notes</strong> &mdash; 강의별 내 노트</li>
+  <li>&#x1F4AC; <strong>Messenger</strong> &mdash; 교수/학생과 메시지</li>
   <li>&#x2699; <strong>Settings</strong> &mdash; 계정 설정</li>
 </ul>
 
@@ -395,6 +428,7 @@
   <li><strong>대시보드 탭</strong> &mdash; 제출 수, 평균 점수, 노트 수, 점수 추이 차트, 챌린지별 성적 차트</li>
   <li><strong>챌린지 탭</strong> &mdash; 직접 챌린지를 만들고 풀 수 있습니다. AI가 문제를 생성해줍니다.</li>
   <li><strong>자료 탭</strong> &mdash; PDF 등 학습 자료를 업로드하면 AI 챌린지 생성 시 참고됩니다.</li>
+  <li><strong>캘린더</strong> &mdash; 챌린지 마감일과 개인 일정, 한국 공휴일이 표시됩니다. 이벤트 추가/수정/삭제가 가능합니다.</li>
   <li><strong>노트</strong> &mdash; 사이드바에서 Notes를 클릭하여 노트를 작성합니다.</li>
   <li><strong>지식 그래프</strong> &mdash; Graph 메뉴에서 노트 간 연결을 시각화합니다.</li>
 </ul>
@@ -424,7 +458,7 @@
 <ul>
   <li>커리큘럼 페이지 상단에 초대 코드가 표시됩니다.</li>
   <li><strong>QR 코드</strong> 버튼을 클릭하면 QR 코드가 팝업으로 나타나 학생들이 스캔하여 참가할 수 있습니다.</li>
-  <li>초대 링크(<code>/join/초대코드</code>)를 직접 공유할 수도 있습니다.</li>
+  <li>초대 링크(<code>/join/초대코드</code>)를 직접 공유할 수도 있습니다. 링크에 접속하면 강의 정보가 미리보기로 표시됩니다.</li>
 </ul>
 
 <h3 id="course-join">4-3. 강의 참가 <span class="badge student">학생</span></h3>
@@ -449,11 +483,52 @@
 </ul>
 
 <h3 id="course-calendar">4-5. 캘린더 / 일정</h3>
-<p>커리큘럼 페이지에서 <strong>목록 보기</strong>와 <strong>캘린더 보기</strong>를 전환할 수 있습니다.</p>
+<p>캘린더는 <strong>홈 화면</strong>과 <strong>커리큘럼 페이지</strong> 모두에서 사용할 수 있습니다.</p>
 <ul>
-  <li>캘린더에는 과제 마감일, 교수가 등록한 이벤트, 한국 공휴일이 표시됩니다.</li>
-  <li>학생 홈 화면에도 이번 달 캘린더가 표시됩니다.</li>
+  <li><strong>홈 화면 캘린더</strong> &mdash; 교수, 학생, 개인 모드 모두 홈 화면에 월별 캘린더가 표시됩니다. 모든 강의의 과제 마감일이 통합됩니다.</li>
+  <li><strong>커리큘럼 캘린더</strong> &mdash; 강의 내 커리큘럼 페이지에서 목록 보기와 캘린더 보기를 전환할 수 있습니다.</li>
+  <li><strong>한국 공휴일</strong> &mdash; 음력 포함 한국 공휴일(설, 추석, 부처님오신날 등)이 빨간색으로 표시됩니다.</li>
+  <li><strong>개인 이벤트</strong> &mdash; 날짜를 클릭하여 개인 일정을 추가/수정/삭제할 수 있습니다.</li>
+  <li><strong>과제 색상</strong> &mdash; 과제 유형별로 색상이 구분됩니다 (코딩, 글쓰기, 퀴즈 등). 어느 강의의 과제인지도 표시됩니다.</li>
 </ul>
+
+<h3 id="course-banner">4-6. 배너 이미지</h3>
+<p>강의 카드와 상세 페이지에 표시되는 <strong>배너 이미지</strong>를 설정할 수 있습니다. 12가지 그라디언트 프리셋 중 선택합니다.</p>
+
+<div class="card tip">
+  <div class="card-label">&#x1F3A8; 교수 vs 학생 배너</div>
+  <strong>교수</strong>가 설정한 배너는 모든 수강생에게 기본 배너로 표시됩니다.
+  <strong>학생</strong>은 자신만 볼 수 있는 커스텀 배너를 따로 설정할 수 있으며, 다른 사람에게는 교수가 설정한 기본 배너가 보입니다.
+</div>
+
+<h4>교수: 배너 설정 <span class="badge prof">교수</span></h4>
+<div class="steps">
+  <div class="step">
+    <div class="step-content"><strong>강의 생성 시</strong> &mdash; 새 강의를 만들 때 하단의 그라디언트 프리셋 중 원하는 배너를 선택합니다.</div>
+  </div>
+  <div class="step">
+    <div class="step-content"><strong>기존 강의 변경</strong> &mdash; 강의 카드에 마우스를 올리면 우측 상단에 <strong>연필 아이콘</strong>이 나타납니다. 클릭하면 배너 선택 팝업이 열립니다.</div>
+  </div>
+  <div class="step">
+    <div class="step-content">원하는 프리셋을 선택하고 <strong>"저장"</strong>을 누르면 해당 강의의 기본 배너가 변경됩니다.</div>
+  </div>
+</div>
+
+<h4>학생: 커스텀 배너 <span class="badge student">학생</span></h4>
+<div class="steps">
+  <div class="step">
+    <div class="step-content">강의 카드에 마우스를 올리면 우측 상단에 <strong>연필 아이콘</strong>이 나타납니다.</div>
+  </div>
+  <div class="step">
+    <div class="step-content">클릭하여 원하는 그라디언트 프리셋을 선택하고 <strong>"저장"</strong>을 누릅니다.</div>
+  </div>
+  <div class="step">
+    <div class="step-content">변경한 배너는 <strong>본인에게만</strong> 표시됩니다. 다른 수강생이나 교수에게는 보이지 않습니다.</div>
+  </div>
+  <div class="step">
+    <div class="step-content">교수의 기본 배너로 되돌리려면 <strong>"기본값으로"</strong> 버튼을 클릭합니다.</div>
+  </div>
+</div>
 
 
 <!-- ═══════════ 5. 과제 시스템 ═══════════ -->
@@ -528,7 +603,7 @@
   <tr><td><strong>자유 (free)</strong></td><td>AI 사용 및 복붙을 허용합니다. 복붙 여부는 참고만 합니다.</td></tr>
   <tr><td><strong>보통 (normal)</strong></td><td>복붙은 감지되며, 과도한 복붙은 감점 요소입니다.</td></tr>
   <tr><td><strong>엄격 (strict)</strong></td><td>AI 사용과 복붙이 제한됩니다. 복붙 발견 시 상당한 감점.</td></tr>
-  <tr><td><strong>시험 (exam)</strong></td><td>모든 외부 도구와 복붙이 금지. 복붙 발견 시 부정행위로 처리.</td></tr>
+  <tr><td><strong>시험 (exam)</strong></td><td>모든 외부 도구와 복붙이 금지. 전체화면 감독 모드 활성화. 복붙 발견 시 부정행위로 처리.</td></tr>
 </table>
 
 <h4>채점 기준 (채점 엄격도)</h4>
@@ -543,6 +618,17 @@
   <div class="card-label">&#x1F4A1; Tip</div>
   교수는 "교수 유의사항(grading_note)"을 추가로 입력할 수 있습니다. 이 메모는 AI 채점 시 반드시 반영됩니다. 예: "들여쓰기를 엄격하게 평가해주세요."
 </div>
+
+<h3 id="assign-manage">5-4. 과제 관리 <span class="badge prof">교수</span></h3>
+<p>생성된 과제에 대해 다양한 관리 작업을 할 수 있습니다:</p>
+<ul>
+  <li><strong>발행/비발행</strong> &mdash; 과제를 "발행"하면 학생에게 공개됩니다. 비발행 상태에서는 학생이 볼 수 없습니다.</li>
+  <li><strong>문제 수정</strong> &mdash; 개별 문제의 내용, 테스트 케이스, 기본 코드를 수정할 수 있습니다.</li>
+  <li><strong>문제 추가/삭제</strong> &mdash; 과제에 문제를 추가하거나 삭제할 수 있습니다.</li>
+  <li><strong>문제 은행</strong> &mdash; 다른 과제에서 문제를 가져올 수 있는 공유 문제 은행입니다.</li>
+  <li><strong>AI 정책 변경</strong> &mdash; 과제 생성 후에도 AI 정책, 채점 기준, 글쓰기 프롬프트를 변경할 수 있습니다.</li>
+  <li><strong>과제 상세</strong> &mdash; 과제를 클릭하면 전체 제출 현황, 학생별 점수, 복붙 로그, 코드 스냅샷을 확인할 수 있습니다.</li>
+</ul>
 
 
 <!-- ═══════════ 6. 코드 에디터 ═══════════ -->
@@ -598,16 +684,50 @@
 <ul>
   <li>현재 작성 중인 코드와 문제 맥락을 AI가 이해합니다.</li>
   <li>"이 코드에서 에러가 발생하는데 왜 그런가요?" 같은 질문을 할 수 있습니다.</li>
+  <li>AI 튜터는 <strong>소크라테스식</strong>으로 답변합니다 &mdash; 직접 정답을 알려주지 않고 질문으로 유도합니다.</li>
   <li>AI 튜터의 응답도 실시간 스트리밍됩니다.</li>
 </ul>
 
 <h3 id="code-exam">6-3. 시험 모드 &amp; 감독</h3>
-<p>AI 정책이 <strong>시험(exam)</strong>으로 설정된 과제에서는 시험 모드가 활성화됩니다.</p>
+<p>AI 정책이 <strong>시험(exam)</strong>으로 설정된 과제에서는 시험 모드가 활성화됩니다. 코드, 글쓰기, 퀴즈 과제 모두에서 동작합니다.</p>
+
+<h4>학생 측 (시험 응시)</h4>
+<div class="steps">
+  <div class="step">
+    <div class="step-content">과제에 접속하면 <strong>시험 안내 화면</strong>이 나타납니다. 전체화면 전환과 화면 공유가 필요하다는 안내가 표시됩니다.</div>
+  </div>
+  <div class="step">
+    <div class="step-content"><strong>"시험 시작"</strong> 버튼을 클릭하면 전체화면으로 전환되고, 화면 캡쳐 공유 권한을 요청합니다.</div>
+  </div>
+  <div class="step">
+    <div class="step-content">시험 중 상단에 <strong>위반 횟수</strong>와 <strong>"시험 끝내기"</strong> 버튼이 표시됩니다.</div>
+  </div>
+  <div class="step">
+    <div class="step-content">시험 종료 시 정상 종료(성공 화면) 또는 강제 종료(경고 화면)가 표시됩니다.</div>
+  </div>
+</div>
+
+<h4>이탈 감지 &amp; 위반 기록</h4>
 <ul>
-  <li><strong>전체 화면</strong>이 강제됩니다.</li>
-  <li>탭 전환, 다른 창으로 이동 시 <strong>경고</strong>가 기록됩니다.</li>
-  <li>복사/붙여넣기가 차단되거나 엄격히 감시됩니다.</li>
-  <li>교수는 대시보드에서 감독 기록을 확인할 수 있습니다.</li>
+  <li><strong>전체화면 해제</strong> &mdash; ESC 등으로 전체화면을 나가면 위반 기록 + 자동 전체화면 재진입</li>
+  <li><strong>탭 전환</strong> &mdash; 다른 탭으로 전환하면 위반 기록</li>
+  <li><strong>창 포커스 이탈</strong> &mdash; 다른 창으로 이동하면 위반 기록</li>
+  <li><strong>화면 공유 중단</strong> &mdash; 화면 공유를 직접 중단하면 위반 기록</li>
+  <li>위반이 <strong>최대 허용 횟수</strong>를 초과하면 시험이 자동 종료됩니다.</li>
+</ul>
+
+<div class="card warn">
+  <div class="card-label">&#x26A0;&#xFE0F; 주의</div>
+  시험이 종료되면 <strong>재입장이 불가능</strong>합니다. 교수가 대시보드에서 별도로 초기화해야 재응시할 수 있습니다.
+</div>
+
+<h4>교수 측 (시험 감독) <span class="badge prof">교수</span></h4>
+<ul>
+  <li><strong>시험 설정</strong> &mdash; 스크린샷 촬영 간격(초), 최대 위반 허용 횟수, 스크린샷 품질, 전체화면 필수 여부를 설정합니다.</li>
+  <li><strong>스크린샷 열람</strong> &mdash; 학생별 캡쳐된 화면을 시간순으로 확인합니다.</li>
+  <li><strong>위반 기록</strong> &mdash; 학생별 위반 유형(전체화면 해제, 탭 전환, 포커스 이탈 등)과 시간을 확인합니다.</li>
+  <li><strong>시험 요약</strong> &mdash; 학생별 스크린샷 수, 위반 횟수, 시험 상태(완료/미응시)를 한눈에 확인합니다.</li>
+  <li><strong>시험 초기화</strong> &mdash; 특정 학생의 시험을 초기화하여 재응시를 허용합니다 (감사 로그 기록).</li>
 </ul>
 
 <h3 id="code-block">6-4. 블록 코딩 (Blockly)</h3>
@@ -634,6 +754,7 @@
       <li>&#x1F4A1; <strong>개선 제안</strong></li>
     </ul>
   </li>
+  <li>시험 모드(exam) 과제에서는 시험 감독 기능이 동일하게 적용됩니다.</li>
 </ul>
 
 
@@ -650,6 +771,7 @@
   <li>제출 시 객관식과 주관식은 <strong>자동 채점</strong>됩니다.</li>
   <li>서술형은 AI가 분석하여 피드백을 제공합니다.</li>
   <li>타이머가 설정된 경우 시간 제한이 적용됩니다.</li>
+  <li>시험 모드(exam) 과제에서는 시험 감독 기능이 동일하게 적용됩니다.</li>
 </ul>
 
 
@@ -669,16 +791,24 @@
   <tr><td><strong>코드 블록</strong></td><td>구문 강조 코드</td><td><kbd>/</kbd> &rarr; 코드</td></tr>
   <tr><td><strong>인용문</strong></td><td>인용 블록</td><td><kbd>/</kbd> &rarr; 인용문</td></tr>
   <tr><td><strong>구분선</strong></td><td>수평 구분선</td><td><kbd>/</kbd> &rarr; 구분선</td></tr>
-  <tr><td><strong>표</strong></td><td>3x3 기본 테이블</td><td><kbd>/</kbd> &rarr; 표</td></tr>
+  <tr><td><strong>표</strong></td><td>3x3 기본 테이블 (행/열 추가 가능)</td><td><kbd>/</kbd> &rarr; 표</td></tr>
   <tr><td><strong>이미지</strong></td><td>URL로 이미지 삽입</td><td><kbd>/</kbd> &rarr; 이미지</td></tr>
+  <tr><td><strong>링크</strong></td><td>URL 하이퍼링크 삽입</td><td><kbd>/</kbd> &rarr; 링크 또는 툴바 링크 버튼</td></tr>
+  <tr><td><strong>노트 링크</strong></td><td>다른 노트로 연결</td><td><kbd>/</kbd> &rarr; 노트 링크 또는 <kbd>[[</kbd> 입력</td></tr>
   <tr><td><strong>수식 (인라인)</strong></td><td>LaTeX 인라인 수식</td><td><kbd>/</kbd> &rarr; 수식</td></tr>
   <tr><td><strong>수식 (블록)</strong></td><td>LaTeX 블록 수식</td><td><kbd>/</kbd> &rarr; 수식 블록</td></tr>
-  <tr><td><strong>드로잉</strong></td><td>자유 드로잉 캔버스</td><td><kbd>/</kbd> &rarr; 드로잉</td></tr>
-  <tr><td><strong>Excalidraw</strong></td><td>다이어그램/화이트보드</td><td><kbd>/</kbd> &rarr; Excalidraw</td></tr>
-  <tr><td><strong>토글</strong></td><td>접기/펼치기 가능한 섹션</td><td><kbd>/</kbd> &rarr; 토글</td></tr>
-  <tr><td><strong>콜아웃</strong></td><td>강조 메시지 박스 (팁, 주의 등)</td><td><kbd>/</kbd> &rarr; 콜아웃</td></tr>
-  <tr><td><strong>하위 노트</strong></td><td>다른 노트를 현재 노트에 임베드</td><td><kbd>/</kbd> &rarr; 하위 노트</td></tr>
+  <tr><td><strong>드로잉</strong></td><td>Excalidraw 다이어그램/화이트보드</td><td><kbd>/</kbd> &rarr; 드로잉</td></tr>
+  <tr><td><strong>하위 노트</strong></td><td>노트 안에 새 페이지 만들기</td><td><kbd>/</kbd> &rarr; 하위 노트</td></tr>
 </table>
+
+<h4>표 편집</h4>
+<p>표 안에 커서를 놓으면 상단 툴바에 <strong>"표" 드롭다운</strong>이 나타납니다:</p>
+<ul>
+  <li><strong>열 추가 / 열 삭제</strong></li>
+  <li><strong>행 추가 / 행 삭제</strong></li>
+  <li><strong>셀 병합/분리</strong></li>
+  <li><strong>표 삭제</strong></li>
+</ul>
 
 <h4>사이드바 탭</h4>
 <p>노트 에디터 우측에는 4개의 사이드바 탭이 있습니다:</p>
@@ -736,18 +866,12 @@
 
 <h3 id="note-draw">9-3. 드로잉 &amp; 수식</h3>
 
-<h4>드로잉 캔버스</h4>
-<p><kbd>/</kbd> &rarr; 드로잉을 선택하면 자유 드로잉 캔버스가 삽입됩니다.</p>
-<ul>
-  <li>펜, 지우개, 색상 선택, 굵기 조절</li>
-  <li>그림을 그려 개념을 시각화할 수 있습니다.</li>
-</ul>
-
-<h4>Excalidraw</h4>
-<p><kbd>/</kbd> &rarr; Excalidraw를 선택하면 화이트보드 스타일 다이어그램 에디터가 삽입됩니다.</p>
+<h4>Excalidraw 드로잉</h4>
+<p><kbd>/</kbd> &rarr; 그리기를 선택하면 Excalidraw 기반 화이트보드가 삽입됩니다.</p>
 <ul>
   <li>도형, 화살표, 텍스트를 이용한 다이어그램 작성</li>
   <li>플로우차트, 개념도, 아키텍처 다이어그램 등에 유용합니다.</li>
+  <li>자유 드로잉, 펜, 지우개, 색상 선택 지원</li>
 </ul>
 
 <h4>수식 (LaTeX)</h4>
@@ -760,8 +884,10 @@
 <h3 id="note-link">9-4. 노트 링크 &amp; 그래프</h3>
 
 <h4>노트 링크</h4>
-<p>노트 에디터에서 <kbd>[[</kbd>를 입력하면 <strong>노트 링크 검색</strong>이 활성화됩니다.</p>
+<p>노트 에디터에서 노트 간 상호 참조를 만드는 두 가지 방법이 있습니다:</p>
 <ul>
+  <li><kbd>[[</kbd>를 입력하면 <strong>노트 링크 검색 팝업</strong>이 나타납니다.</li>
+  <li><kbd>/</kbd> &rarr; <strong>노트 링크</strong>를 선택해도 동일한 검색 팝업이 열립니다.</li>
   <li>같은 강의 내 다른 노트를 검색하여 링크를 삽입합니다.</li>
   <li>링크된 노트를 클릭하면 해당 노트로 이동합니다.</li>
   <li>이 연결 관계가 지식 그래프에 반영됩니다.</li>
@@ -777,17 +903,34 @@
   <li><strong>필터</strong>: 점수 범위, 태그, 날짜 범위로 노드를 필터링</li>
   <li><strong>링킹 모드</strong>: 노드를 클릭하여 새 연결을 만들 수 있습니다.</li>
   <li>노드를 클릭하면 해당 노트로 이동합니다.</li>
-  <li>사이드 패널에서 <strong>학습 경로</strong>와 <strong>AI 리포트</strong>를 확인할 수 있습니다.</li>
+  <li>사이드 패널에서 <strong>AI 학습 경로</strong>와 <strong>주간 리포트</strong>를 확인할 수 있습니다.</li>
 </ul>
 
-<h3 id="note-export">9-5. 내보내기</h3>
+<h3 id="note-snapshot">9-5. 스냅샷 &amp; 버전 비교</h3>
+<p>노트는 저장할 때마다 <strong>스냅샷(버전)</strong>이 자동으로 기록됩니다.</p>
+<ul>
+  <li>노트 에디터 상단의 <strong>스냅샷 아이콘</strong>을 클릭하면 버전 히스토리가 열립니다.</li>
+  <li>과거 스냅샷을 선택하면 현재 내용과의 <strong>Diff 비교</strong>를 볼 수 있습니다.</li>
+  <li>추가된 블록, 삭제된 블록, 변경된 블록이 색상으로 구분됩니다.</li>
+  <li>특정 시점의 노트 상태를 확인할 수 있습니다.</li>
+</ul>
+
+<h3 id="note-collab">9-6. 실시간 협업</h3>
+<p><strong>팀 노트</strong>에서는 팀원들이 동시에 같은 노트를 편집할 수 있습니다.</p>
+<ul>
+  <li>다른 팀원이 편집 중이면 상단에 <strong>"OOO 편집 중"</strong> 인디케이터가 표시됩니다.</li>
+  <li>변경 사항이 <strong>실시간으로 동기화</strong>됩니다 (Supabase Realtime 기반).</li>
+  <li><strong>동기화 중...</strong> 표시가 나타나며, 충돌 없이 동시 편집이 가능합니다.</li>
+</ul>
+
+<h3 id="note-export">9-7. 내보내기</h3>
 <p>노트 에디터 상단 메뉴에서 다양한 형식으로 내보낼 수 있습니다:</p>
 <ul>
   <li><strong>Markdown</strong> 파일로 내보내기</li>
   <li><strong>JSON</strong> 형식으로 내보내기 (Tiptap 형식)</li>
 </ul>
 
-<h3 id="note-shortcuts">9-6. 노트 에디터 키보드 단축키</h3>
+<h3 id="note-shortcuts">9-8. 노트 에디터 키보드 단축키</h3>
 <table>
   <tr><th>단축키</th><th>기능</th></tr>
   <tr><td><kbd>Ctrl + S</kbd></td><td>저장</td></tr>
@@ -831,33 +974,111 @@
 </div>
 
 
-<!-- ═══════════ 11. 메신저 ═══════════ -->
-<h2 id="messenger">11. &#x1F4AC; 메신저</h2>
-<p><span class="badge prof">교수</span> <span class="badge student">학생</span> 교수와 학생 간 1:1 메시지를 주고받을 수 있습니다. (5초마다 자동 새로고침)</p>
+<!-- ═══════════ 11. 팀 & 협업 ═══════════ -->
+<h2 id="teams">11. &#x1F465; 팀 &amp; 협업</h2>
+<p>PikaBuddy는 팀 기반 학습을 지원합니다. 교수가 팀을 구성하면, 팀원들은 노트를 함께 편집하고 과제를 합의하여 제출할 수 있습니다.</p>
+
+<h3 id="team-manage">11-1. 팀 관리 <span class="badge prof">교수</span></h3>
+<p>강의 내 사이드바에서 <strong>팀 관리</strong> 페이지에 접근합니다.</p>
+<ul>
+  <li><strong>팀 생성</strong> &mdash; 팀 이름을 입력하고 수강생 중에서 팀원을 선택합니다.</li>
+  <li><strong>팀 수정</strong> &mdash; 팀 이름 변경, 팀원 추가/제거가 가능합니다.</li>
+  <li><strong>팀 삭제</strong> &mdash; 팀을 삭제하면 팀 멤버 정보도 함께 삭제됩니다.</li>
+  <li><strong>팀 목록</strong> &mdash; 모든 팀과 구성원을 한눈에 확인합니다.</li>
+</ul>
+
+<h3 id="team-vote">11-2. 팀 투표 제출 <span class="badge student">학생</span></h3>
+<p>팀 과제에서는 과제를 제출하기 전에 <strong>팀원 전원의 동의</strong>가 필요합니다.</p>
+<div class="steps">
+  <div class="step">
+    <div class="step-content">팀원 중 한 명이 <strong>"제출 투표 시작"</strong> 버튼을 클릭합니다.</div>
+  </div>
+  <div class="step">
+    <div class="step-content">투표가 시작되면 <strong>10분 카운트다운</strong>이 표시됩니다. 투표를 시작한 사람은 자동으로 찬성됩니다.</div>
+  </div>
+  <div class="step">
+    <div class="step-content">다른 팀원들이 <strong>찬성(Approve) 또는 반대(Reject)</strong>를 투표합니다.</div>
+  </div>
+  <div class="step">
+    <div class="step-content">전원 찬성 시 자동으로 과제가 제출되고, 모든 팀원에게 제출 기록이 생성됩니다. 시간 초과 또는 반대가 있으면 투표가 거부됩니다.</div>
+  </div>
+</div>
+
+<div class="card tip">
+  <div class="card-label">&#x1F4A1; Tip</div>
+  1인 팀은 투표 없이 바로 제출됩니다. 투표 상태는 4초마다 자동 갱신됩니다.
+</div>
+
+
+<!-- ═══════════ 12. 메신저 ═══════════ -->
+<h2 id="messenger">12. &#x1F4AC; 메신저</h2>
+<p><span class="badge prof">교수</span> <span class="badge student">학생</span> 같은 강의 내에서 메시지를 주고받을 수 있습니다. (5초마다 자동 새로고침)</p>
 <ul>
   <li><strong>좌측</strong>: 대화 목록 &mdash; 상대방 이름, 마지막 메시지, 안 읽은 메시지 수 표시</li>
   <li><strong>우측</strong>: 채팅 화면 &mdash; 메시지를 입력하고 전송</li>
-  <li>교수는 해당 강의의 수강생에게만, 학생은 해당 강의의 교수에게만 메시지를 보낼 수 있습니다.</li>
+  <li><strong>교수</strong>는 해당 강의의 모든 수강생에게 메시지를 보낼 수 있습니다.</li>
+  <li><strong>학생</strong>은 해당 강의의 교수와 <strong>같은 강의 수강생</strong>에게 메시지를 보낼 수 있습니다.</li>
   <li>사이드바에 <strong>안 읽은 메시지 뱃지</strong>가 표시됩니다.</li>
   <li>메시지를 열면 자동으로 <strong>읽음 처리</strong>됩니다.</li>
 </ul>
 
 <div class="card tip">
   <div class="card-label">&#x1F4A1; Tip</div>
-  강의를 선택하지 않은 상태에서도 사이드바의 Messenger 링크를 통해 바로 접근할 수 있습니다.
+  강의를 선택하지 않은 상태에서도 사이드바의 Messenger 링크를 통해 가장 최근 대화가 있는 강의로 바로 이동할 수 있습니다.
 </div>
 
 
-<!-- ═══════════ 12. 대시보드 ═══════════ -->
-<h2 id="dashboard">12. &#x1F4CA; 대시보드 &amp; 분석</h2>
+<!-- ═══════════ 13. 알림 시스템 ═══════════ -->
+<h2 id="notifications">13. &#x1F514; 알림 시스템</h2>
+<p><span class="badge all">전체</span> 화면 우측 상단의 <strong>알림 벨 아이콘</strong>을 클릭하면 통합 알림 패널이 열립니다.</p>
+<ul>
+  <li><strong>안 읽은 메시지</strong>와 <strong>미해결 코멘트</strong>가 통합되어 표시됩니다.</li>
+  <li>각 알림에는 보낸 사람, 미리보기, 시간(방금/N분 전/N시간 전/N일 전)이 표시됩니다.</li>
+  <li>알림을 클릭하면 해당 위치로 <strong>즉시 이동</strong>합니다:
+    <ul>
+      <li><strong>메시지 알림</strong> &rarr; 해당 메신저 대화 화면</li>
+      <li><strong>코멘트 알림</strong> &rarr; 해당 노트의 코멘트 블록 위치</li>
+    </ul>
+  </li>
+  <li><strong>"모두 읽음"</strong> 버튼으로 모든 알림을 한 번에 처리합니다.</li>
+  <li>알림은 <strong>30초마다 자동 갱신</strong>됩니다.</li>
+  <li>알림 벨에 <strong>빨간 뱃지</strong>가 표시되어 미확인 알림 수를 알려줍니다.</li>
+</ul>
+
+
+<!-- ═══════════ 14. 전체 노트 & 통합 그래프 ═══════════ -->
+<h2 id="all-notes">14. &#x1F4DD; 전체 노트 &amp; 통합 그래프</h2>
+<p><span class="badge prof">교수</span> <span class="badge student">학생</span> 사이드바의 <strong>Notes</strong> 메뉴(강의 밖)를 클릭하면 <strong>모든 강의의 노트를 한 곳에서</strong> 볼 수 있습니다.</p>
+
+<h4>전체 노트 (<code>/all-notes</code>)</h4>
+<ul>
+  <li>모든 강의의 노트가 통합 목록으로 표시됩니다.</li>
+  <li><strong>검색</strong> &mdash; 노트 제목으로 검색</li>
+  <li><strong>강의 필터</strong> &mdash; 특정 강의의 노트만 필터링</li>
+  <li><strong>정렬</strong> &mdash; 수정일, 생성일, 이해도 점수순 정렬</li>
+  <li><strong>보기 모드</strong> &mdash; 리스트 보기와 그리드 보기 전환</li>
+  <li>각 노트에 강의명, 이해도 점수, 카테고리, 미리보기가 표시됩니다.</li>
+</ul>
+
+<h4>통합 지식 그래프 (<code>/all-notes/graph</code>)</h4>
+<ul>
+  <li>모든 강의의 노트를 하나의 그래프에서 시각화합니다.</li>
+  <li>강의별 노드를 색상으로 구분합니다.</li>
+  <li>AI 유사도 기반 연결을 포함하여 강의 간 지식 연결도 표시됩니다.</li>
+  <li>통합 학습 경로와 주간 리포트도 제공됩니다.</li>
+</ul>
+
+
+<!-- ═══════════ 15. 대시보드 ═══════════ -->
+<h2 id="dashboard">15. &#x1F4CA; 대시보드 &amp; 분석</h2>
 
 <h3>교수 대시보드 <span class="badge prof">교수</span></h3>
 <p>강의를 선택한 후 사이드바의 <strong>Dashboard</strong>를 클릭합니다.</p>
 <ul>
-  <li><strong>수강생 수</strong>, <strong>과제 수</strong>, <strong>총 제출 수</strong> 등 기본 통계</li>
+  <li><strong>수강생 수</strong>, <strong>과제 수</strong>, <strong>총 제출 수</strong>, <strong>위기 학생 수</strong> 등 기본 통계</li>
   <li><strong>과제별 평균 점수</strong> 차트 (바 차트)</li>
   <li><strong>학생 목록</strong> &mdash; 각 학생의 제출 현황, 평균 점수 확인</li>
-  <li><strong>학생 클릭</strong> &rarr; 학생 상세 페이지 (개별 제출물, AI 분석 결과)</li>
+  <li><strong>학생 클릭</strong> &rarr; 학생 상세 페이지 (개별 제출물, 복붙 로그, 코드 스냅샷, AI 분석 결과)</li>
   <li><strong>AI 인사이트</strong> &mdash; AI가 클래스 전체를 분석하여 다음을 제공:
     <ul>
       <li>학습 인사이트 (전체적인 경향)</li>
@@ -884,19 +1105,19 @@
 </ul>
 
 
-<!-- ═══════════ 13. 학생 노트 리뷰 ═══════════ -->
-<h2 id="student-notes">13. &#x1F4D3; 학생 노트 리뷰 <span class="badge prof">교수</span></h2>
+<!-- ═══════════ 16. 학생 노트 리뷰 ═══════════ -->
+<h2 id="student-notes">16. &#x1F4D3; 학생 노트 리뷰 <span class="badge prof">교수</span></h2>
 <p>교수는 사이드바의 <strong>Student Notes</strong> 메뉴에서 수강생들의 노트를 열람할 수 있습니다.</p>
 <ul>
-  <li>학생별로 노트 목록이 표시됩니다.</li>
+  <li>학생별로 노트 목록이 표시됩니다. 각 노트의 코멘트 수도 확인 가능합니다.</li>
   <li>노트를 클릭하면 <strong>리뷰 모드</strong>로 열립니다 (읽기 전용).</li>
   <li>리뷰 모드에서도 코멘트를 남길 수 있습니다.</li>
   <li>학생의 AI 분석 결과(이해도 점수 등)도 함께 확인할 수 있습니다.</li>
 </ul>
 
 
-<!-- ═══════════ 14. 코멘트 시스템 ═══════════ -->
-<h2 id="comments">14. &#x1F4AC; 코멘트 시스템</h2>
+<!-- ═══════════ 17. 코멘트 시스템 ═══════════ -->
+<h2 id="comments">17. &#x1F4AC; 코멘트 시스템</h2>
 <p><span class="badge prof">교수</span> <span class="badge student">학생</span> 노트에 코멘트를 남길 수 있습니다.</p>
 
 <h4>노트 전체 코멘트</h4>
@@ -910,6 +1131,7 @@
 <ul>
   <li>특정 블록(문단)에 대해 개별 코멘트를 남길 수 있습니다.</li>
   <li>블록 옆 거터(gutter)에 코멘트 수가 표시됩니다.</li>
+  <li>알림에서 코멘트를 클릭하면 해당 블록 위치로 자동 스크롤됩니다.</li>
 </ul>
 
 <h4>코멘트 관리</h4>
@@ -920,8 +1142,34 @@
 </ul>
 
 
-<!-- ═══════════ 15. 게이미피케이션 ═══════════ -->
-<h2 id="gamification">15. &#x1F3AE; 게이미피케이션</h2>
+<!-- ═══════════ 18. AI 에이전트 ═══════════ -->
+<h2 id="ai-agents">18. &#x1F916; AI 에이전트</h2>
+<p>PikaBuddy는 역할별 전용 AI 에이전트를 제공합니다. 세션 기반으로 대화 맥락이 유지됩니다.</p>
+
+<h3>학생 AI 에이전트 <span class="badge student">학생</span> <span class="badge personal">개인</span></h3>
+<ul>
+  <li><strong>소크라테스식 튜터</strong> &mdash; 직접 정답을 알려주지 않고, 질문과 힌트로 이해를 유도합니다.</li>
+  <li>현재 과제, 코드, 문제 맥락을 이해하고 맞춤 답변을 제공합니다.</li>
+  <li>개념 설명(재귀, 알고리즘 등)은 정답 없이도 설명해줍니다.</li>
+  <li>대화 히스토리가 세션 동안 유지됩니다.</li>
+</ul>
+
+<h3>교수 AI 에이전트 <span class="badge prof">교수</span></h3>
+<ul>
+  <li><strong>AI 조교</strong> &mdash; 교수의 수업 준비와 학생 관리를 돕습니다.</li>
+  <li>과제 자료 작성, 성적 분석, 피드백 제안, 채점 기준 설계를 지원합니다.</li>
+  <li>대화 히스토리가 세션 동안 유지됩니다.</li>
+</ul>
+
+<h4>세션 관리</h4>
+<ul>
+  <li>세션 정보 확인 및 대화 기록 열람이 가능합니다.</li>
+  <li>세션을 초기화하면 대화 기록이 삭제되고 새로운 대화가 시작됩니다.</li>
+</ul>
+
+
+<!-- ═══════════ 19. 게이미피케이션 ═══════════ -->
+<h2 id="gamification">19. &#x1F3AE; 게이미피케이션</h2>
 <p><span class="badge student">학생</span> <span class="badge personal">개인</span> PikaBuddy는 학습 동기 부여를 위한 EXP/티어 시스템을 갖추고 있습니다.</p>
 
 <h4>경험치(EXP) 획득</h4>
@@ -941,7 +1189,7 @@
   <tr><td><strong>열매 (Fruit)</strong></td><td>&#x1F34E;</td><td>성과를 맺는 단계</td></tr>
   <tr><td><strong>숲 (Forest)</strong></td><td>&#x1F332;</td><td>최고 경지에 도달한 단계</td></tr>
 </table>
-<p>사이드바 하단에 현재 티어와 EXP 진행률이 표시됩니다.</p>
+<p>사이드바 하단에 현재 티어와 EXP 진행률이 표시됩니다. 각 티어에는 I~IV 세부 등급이 있어 총 24단계입니다.</p>
 
 <div class="card tip">
   <div class="card-label">&#x1F4A1; Tip</div>
@@ -949,13 +1197,13 @@
 </div>
 
 
-<!-- ═══════════ 16. 프로필 ═══════════ -->
-<h2 id="profile">16. &#x1F464; 프로필</h2>
+<!-- ═══════════ 20. 프로필 ═══════════ -->
+<h2 id="profile">20. &#x1F464; 프로필</h2>
 <p><span class="badge all">전체</span> 사이드바의 프로필 영역을 클릭하거나 <code>/profile/사용자ID</code>로 접근합니다.</p>
 
 <h4>프로필 페이지 구성</h4>
 <ul>
-  <li><strong>배너</strong> &mdash; 프로필 색상 기반 그라데이션 배경</li>
+  <li><strong>배너</strong> &mdash; 프로필 배너 이미지 (설정에서 업로드) 또는 프로필 색상 기반 그라데이션 배경</li>
   <li><strong>아바타</strong> &mdash; 원형 프로필 이미지 (설정에서 업로드 &amp; 크롭)</li>
   <li><strong>기본 정보</strong> &mdash; 이름, 역할 뱃지(교수/학생/개인), 학교, 학과</li>
   <li><strong>자기소개</strong> &mdash; 설정에서 입력한 소개글</li>
@@ -969,8 +1217,8 @@
 </div>
 
 
-<!-- ═══════════ 17. 테마 & 이펙트 ═══════════ -->
-<h2 id="themes">17. &#x1F3A8; 테마 &amp; 이펙트 커스텀</h2>
+<!-- ═══════════ 21. 테마 & 이펙트 ═══════════ -->
+<h2 id="themes">21. &#x1F3A8; 테마 &amp; 이펙트 커스텀</h2>
 <p><span class="badge all">전체</span> 설정(Settings)의 <strong>외관</strong> 섹션에서 앱의 전체 디자인을 바꿀 수 있습니다.</p>
 
 <h3>내장 테마</h3>
@@ -1012,14 +1260,15 @@
 </div>
 
 
-<!-- ═══════════ 18. 설정 ═══════════ -->
-<h2 id="settings">18. &#x2699;&#xFE0F; 설정</h2>
+<!-- ═══════════ 22. 설정 ═══════════ -->
+<h2 id="settings">22. &#x2699;&#xFE0F; 설정</h2>
 <p>사이드바의 <strong>Settings</strong>를 클릭하면 설정 페이지로 이동합니다.</p>
 
 <h4>프로필 정보</h4>
 <ul>
   <li><strong>이름</strong>, <strong>학교</strong>, <strong>학과</strong>, <strong>학번</strong>, <strong>자기소개</strong></li>
   <li><strong>프로필 이미지</strong> &mdash; 이미지 업로드 후 크롭하여 설정</li>
+  <li><strong>배너 이미지</strong> &mdash; 프로필 페이지의 배경 배너 이미지 업로드</li>
   <li><strong>프로필 색상</strong> &mdash; 프로필에 표시되는 대표 색상</li>
   <li><strong>소셜 링크</strong> &mdash; GitHub, 블로그 URL</li>
 </ul>
@@ -1037,12 +1286,12 @@
 
 <h4>외관</h4>
 <ul>
-  <li>테마 선택, 커스텀 테마 관리, 이펙트 설정 (위 <a href="#themes">15. 테마 &amp; 이펙트</a> 섹션 참고)</li>
+  <li>테마 선택, 커스텀 테마 관리, 이펙트 설정 (위 <a href="#themes">21. 테마 &amp; 이펙트</a> 섹션 참고)</li>
 </ul>
 
 
-<!-- ═══════════ 19. 전체 키보드 단축키 ═══════════ -->
-<h2 id="shortcuts-all">19. &#x2328;&#xFE0F; 전체 키보드 단축키 모음</h2>
+<!-- ═══════════ 23. 전체 키보드 단축키 ═══════════ -->
+<h2 id="shortcuts-all">23. &#x2328;&#xFE0F; 전체 키보드 단축키 모음</h2>
 
 <h4>노트 에디터</h4>
 <table>

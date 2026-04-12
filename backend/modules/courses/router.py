@@ -11,6 +11,7 @@ class CourseCreateRequest(BaseModel):
     title: str
     description: str | None = None
     objectives: list[str] | None = None
+    banner_url: str | None = None
 
 
 class JoinCourseRequest(BaseModel):
@@ -23,19 +24,17 @@ async def create_course(body: CourseCreateRequest, user: dict = Depends(require_
     supabase = get_supabase()
     invite_code = secrets.token_urlsafe(6)[:8].upper()
 
-    result = (
-        supabase.table("courses")
-        .insert(
-            {
-                "professor_id": user["id"],
-                "title": body.title,
-                "description": body.description,
-                "objectives": body.objectives,
-                "invite_code": invite_code,
-            }
-        )
-        .execute()
-    )
+    row = {
+        "professor_id": user["id"],
+        "title": body.title,
+        "description": body.description,
+        "objectives": body.objectives,
+        "invite_code": invite_code,
+    }
+    if body.banner_url:
+        row["banner_url"] = body.banner_url
+
+    result = supabase.table("courses").insert(row).execute()
     return result.data[0]
 
 
@@ -64,19 +63,24 @@ async def list_courses(user: dict = Depends(get_current_user)):
     else:
         enrollment_result = (
             supabase.table("enrollments")
-            .select("course_id")
+            .select("course_id, custom_banner_url")
             .eq("student_id", user["id"])
             .execute()
         )
-        course_ids = [e["course_id"] for e in enrollment_result.data]
-        if not course_ids:
+        if not enrollment_result.data:
             return []
+        course_ids = [e["course_id"] for e in enrollment_result.data]
+        custom_banners = {e["course_id"]: e.get("custom_banner_url") for e in enrollment_result.data}
         result = (
             supabase.table("courses")
             .select("*")
             .in_("id", course_ids)
             .execute()
         )
+        # 학생 커스텀 배너가 있으면 덮어쓰기
+        for course in result.data:
+            cb = custom_banners.get(course["id"])
+            course["custom_banner_url"] = cb
 
     return result.data
 
@@ -134,6 +138,36 @@ async def join_course_by_code(
     return {"message": "강의에 참여했습니다.", "course": course.data}
 
 
+class CourseUpdateRequest(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    banner_url: str | None = None
+
+
+@router.patch("/{course_id}")
+async def update_course(course_id: str, body: CourseUpdateRequest, user: dict = Depends(require_professor_or_personal)):
+    """강의 정보 수정 (배너 등)"""
+    supabase = get_supabase()
+    # 소유권 확인
+    course = supabase.table("courses").select("id, professor_id").eq("id", course_id).single().execute()
+    if not course.data or course.data["professor_id"] != user["id"]:
+        raise HTTPException(status_code=403, detail="본인 강의만 수정할 수 있습니다.")
+
+    updates = {}
+    if body.title is not None:
+        updates["title"] = body.title
+    if body.description is not None:
+        updates["description"] = body.description
+    if body.banner_url is not None:
+        updates["banner_url"] = body.banner_url
+
+    if not updates:
+        raise HTTPException(status_code=400, detail="수정할 내용이 없습니다.")
+
+    result = supabase.table("courses").update(updates).eq("id", course_id).execute()
+    return result.data[0]
+
+
 @router.get("/{course_id}")
 async def get_course(course_id: str, user: dict = Depends(get_current_user)):
     """강의 상세 조회"""
@@ -168,7 +202,7 @@ async def get_course(course_id: str, user: dict = Depends(get_current_user)):
         elif role == "student":
             enrollment = (
                 supabase.table("enrollments")
-                .select("id")
+                .select("id, custom_banner_url")
                 .eq("student_id", user["id"])
                 .eq("course_id", course_id)
                 .execute()
@@ -185,4 +219,35 @@ async def get_course(course_id: str, user: dict = Depends(get_current_user)):
         .single()
         .execute()
     )
-    return result.data
+    data = result.data
+    # 학생이면 커스텀 배너 포함
+    if not is_admin and user.get("role") == "student" and enrollment.data:
+        data["custom_banner_url"] = enrollment.data[0].get("custom_banner_url")
+    return data
+
+
+class CustomBannerRequest(BaseModel):
+    banner_url: str | None = None
+
+
+@router.patch("/{course_id}/my-banner")
+async def set_custom_banner(course_id: str, body: CustomBannerRequest, user: dict = Depends(get_current_user)):
+    """학생이 자기만 보이는 커스텀 배너를 설정한다. null이면 교수 기본 배너로 복원."""
+    supabase = get_supabase()
+    enrollment = (
+        supabase.table("enrollments")
+        .select("id")
+        .eq("student_id", user["id"])
+        .eq("course_id", course_id)
+        .execute()
+    )
+    if not enrollment.data:
+        raise HTTPException(status_code=403, detail="수강 중인 강의가 아닙니다.")
+
+    supabase.table("enrollments") \
+        .update({"custom_banner_url": body.banner_url}) \
+        .eq("student_id", user["id"]) \
+        .eq("course_id", course_id) \
+        .execute()
+
+    return {"custom_banner_url": body.banner_url}

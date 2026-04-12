@@ -36,6 +36,10 @@ import { SlashCommandExtension } from "../lib/SlashCommandExtension";
 import { BlockHandleExtension } from "../lib/BlockHandleExtension";
 import { ToggleExtension } from "../lib/ToggleExtension";
 import { CalloutExtension } from "../lib/CalloutExtension";
+import { CitationExtension } from "../lib/CitationExtension";
+import * as Y from "yjs";
+import { ySyncPlugin, ySyncPluginKey, yCursorPlugin, yCursorPluginKey, yUndoPlugin, yUndoPluginKey, prosemirrorJSONToYXmlFragment } from "y-prosemirror";
+import { SupabaseYjsProvider, getCollabColor } from "../lib/SupabaseYjsProvider";
 import MiniNoteTree from "../components/MiniNoteTree";
 import CommentsPanel from "../components/comments/CommentsPanel";
 import BlockCommentOverlay from "../components/comments/BlockCommentOverlay";
@@ -182,6 +186,9 @@ export default function NoteEditor() {
   const [saved, setSaved] = useState(false);
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
+  const [showCitationInput, setShowCitationInput] = useState(false);
+  const [citationSource, setCitationSource] = useState("");
+  const [citationSourceUrl, setCitationSourceUrl] = useState("");
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [polishing, setPolishing] = useState(false);
   const [polishedMarkdown, setPolishedMarkdown] = useState<string | null>(null);
@@ -251,6 +258,7 @@ export default function NoteEditor() {
       BlockHandleExtension.configure({ isReviewMode }),
       ToggleExtension,
       CalloutExtension,
+      CitationExtension,
     ],
     content: "",
   });
@@ -304,14 +312,42 @@ export default function NoteEditor() {
     useCommentStore.getState().fetchCounts(noteId);
   }, [noteId, courseId, editor, searchParams, isReviewMode, studentId, user?.id]);
 
-  // ── 팀 노트 실시간 동기화 + Presence ──────────────────
-  useEffect(() => {
-    if (!noteTeamId || !noteId || noteId === "new" || !user?.id) return;
+  // ── 팀 노트 실시간 협업 (Yjs + Supabase Realtime) ──────────────────
+  const ydocRef = useRef<Y.Doc | null>(null);
+  const yjsProviderRef = useRef<SupabaseYjsProvider | null>(null);
 
-    const channelName = `team-note:${noteId}`;
+  useEffect(() => {
+    if (!noteTeamId || !noteId || noteId === "new" || !user?.id || !editor) return;
+
+    // ── 1. Yjs 문서 + 프로바이더 생성 ──
+    const ydoc = new Y.Doc();
+    const provider = new SupabaseYjsProvider(ydoc);
+    ydocRef.current = ydoc;
+    yjsProviderRef.current = provider;
+
+    const fragment = ydoc.getXmlFragment("default");
+
+    // 현재 에디터 내용으로 Y.Doc 초기화
+    const currentContent = editor.getJSON();
+    if (currentContent?.content?.length) {
+      prosemirrorJSONToYXmlFragment(editor.schema, currentContent, fragment);
+    }
+
+    // ── 2. ProseMirror 플러그인 등록 (실시간 동기화 + 커서) ──
+    editor.registerPlugin(ySyncPlugin(fragment));
+    editor.registerPlugin(yUndoPlugin());
+
+    provider.awareness.setLocalStateField("user", {
+      name: user.name || "Anonymous",
+      color: getCollabColor(user.id),
+    });
+    editor.registerPlugin(yCursorPlugin(provider.awareness));
+
+    // ── 3. Supabase 채널 구독 (Presence + Yjs 동기화) ──
+    const channelName = `team-collab:${noteId}`;
     const channel = supabase.channel(channelName, { config: { presence: { key: user.id } } });
 
-    // Presence: 현재 편집 중인 팀원 표시
+    // Presence: 편집 중인 팀원 표시
     channel.on("presence", { event: "sync" }, () => {
       const state = channel.presenceState();
       const members: { userId: string; name: string; avatarUrl: string | null }[] = [];
@@ -325,30 +361,6 @@ export default function NoteEditor() {
       setTeamPresence(members);
     });
 
-    // Broadcast: 다른 멤버가 저장하면 내용 새로고침
-    channel.on("broadcast", { event: "note-saved" }, (payload) => {
-      const senderId = payload.payload?.userId;
-      if (senderId && senderId !== user.id && editor) {
-        // 원격 저장 감지 → 내용 새로고침
-        setRemoteUpdatePending(true);
-        const notesUrl = isReviewMode && studentId
-          ? `/courses/${courseId}/notes?student_id=${studentId}`
-          : `/courses/${courseId}/notes`;
-        api.get(notesUrl).then(({ data }) => {
-          const note = (data || []).find((n: { id: string }) => n.id === noteId);
-          if (note?.content) {
-            const cursorPos = editor.state.selection.from;
-            editor.commands.setContent(note.content);
-            // 커서 위치 복원 시도
-            try {
-              const maxPos = editor.state.doc.content.size;
-              editor.commands.setTextSelection(Math.min(cursorPos, maxPos));
-            } catch { /* ignore */ }
-          }
-        }).catch(() => {}).finally(() => setRemoteUpdatePending(false));
-      }
-    });
-
     channel.subscribe(async (status) => {
       if (status === "SUBSCRIBED") {
         await channel.track({
@@ -356,16 +368,28 @@ export default function NoteEditor() {
           name: user.name || "Unknown",
           avatarUrl: user.avatar_url || null,
         });
+        // Yjs 프로바이더를 채널에 연결 (구독 후)
+        provider.connect(channel);
       }
     });
 
     realtimeChannelRef.current = channel;
 
     return () => {
+      // 플러그인 해제
+      try { editor.unregisterPlugin(ySyncPluginKey); } catch { /* ignore */ }
+      try { editor.unregisterPlugin(yCursorPluginKey); } catch { /* ignore */ }
+      try { editor.unregisterPlugin(yUndoPluginKey); } catch { /* ignore */ }
+      // 프로바이더 정리
+      provider.destroy();
+      ydoc.destroy();
+      ydocRef.current = null;
+      yjsProviderRef.current = null;
+      // 채널 해제
       channel.unsubscribe();
       realtimeChannelRef.current = null;
     };
-  }, [noteTeamId, noteId, user?.id, user?.name, user?.avatar_url, editor, courseId, isReviewMode, studentId]);
+  }, [noteTeamId, noteId, user?.id, user?.name, editor]);
 
   // ── 저장 & 분석 ───────────────────────────────────────
   const handleSave = useCallback(async () => {
@@ -556,6 +580,16 @@ export default function NoteEditor() {
   }, [handleSave, handleAnalyze]);
 
   // ── [[ 노트 링크 ─────────────────────────────────────
+  const openNoteLinkPopup = useCallback(() => {
+    setNoteLinkSearch(true);
+    setNoteLinkQuery("");
+    if (courseId) {
+      api.get(`/courses/${courseId}/notes`).then(({ data }) => {
+        setNoteLinkResults(data.filter((n: Note) => n.id !== noteId));
+      });
+    }
+  }, [courseId, noteId]);
+
   useEffect(() => {
     if (!editor) return;
     const handler = () => {
@@ -565,19 +599,36 @@ export default function NoteEditor() {
       if (textBefore === "[[") {
         // Delete the [[ characters
         editor.chain().deleteRange({ from: from - 2, to: from }).run();
-        setNoteLinkSearch(true);
-        setNoteLinkQuery("");
-        // Load all notes for search
-        if (courseId) {
-          api.get(`/courses/${courseId}/notes`).then(({ data }) => {
-            setNoteLinkResults(data.filter((n: Note) => n.id !== noteId));
-          });
-        }
+        openNoteLinkPopup();
       }
     };
     editor.on("update", handler);
     return () => { editor.off("update", handler); };
-  }, [editor, courseId, noteId]);
+  }, [editor, openNoteLinkPopup]);
+
+  // ── 슬래시 커맨드 이벤트 리스너 (링크, 노트 링크) ──
+  useEffect(() => {
+    const handleInsertLink = () => {
+      setShowLinkInput(true);
+      setLinkUrl(editor?.getAttributes("link").href || "");
+    };
+    const handleInsertNoteLink = () => {
+      openNoteLinkPopup();
+    };
+    const handleInsertCitation = () => {
+      setShowCitationInput(true);
+      setCitationSource("");
+      setCitationSourceUrl("");
+    };
+    window.addEventListener("editor-insert-link", handleInsertLink);
+    window.addEventListener("editor-insert-notelink", handleInsertNoteLink);
+    window.addEventListener("editor-insert-citation", handleInsertCitation);
+    return () => {
+      window.removeEventListener("editor-insert-link", handleInsertLink);
+      window.removeEventListener("editor-insert-notelink", handleInsertNoteLink);
+      window.removeEventListener("editor-insert-citation", handleInsertCitation);
+    };
+  }, [editor, openNoteLinkPopup]);
 
   const insertNoteLink = useCallback((targetNote: Note) => {
     if (!editor) return;
@@ -614,7 +665,13 @@ export default function NoteEditor() {
     setLinkUrl(""); setShowLinkInput(false);
   };
 
-  const isInTable = editor?.isActive("table") ?? false;
+  const insertCitation = () => {
+    if (!editor) return;
+    (editor.commands as any).insertCitation({ source: citationSource.trim(), sourceUrl: citationSourceUrl.trim() });
+    setCitationSource(""); setCitationSourceUrl(""); setShowCitationInput(false);
+  };
+
+  const isInTable = editor ? (editor.isActive("table") || editor.isActive("tableCell") || editor.isActive("tableHeader") || editor.isActive("tableRow")) : false;
 
   return (
     <div className="editor-page">
@@ -793,6 +850,23 @@ export default function NoteEditor() {
                 onChange={(e) => setLinkUrl(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") insertLink(); if (e.key === "Escape") setShowLinkInput(false); }} autoFocus />
               <button className="btn btn-primary" style={{ fontSize: 12, padding: "4px 12px" }} onClick={insertLink}>적용</button>
+            </div>
+          )}
+
+          {/* 출처 인용 입력 팝업 */}
+          {showCitationInput && (
+            <div className="toolbar-popup citation-input-popup" style={{ position: "absolute", top: 100, left: 60, zIndex: 100 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>출처 인용 삽입</div>
+              <input className="input" style={{ fontSize: 13, padding: "6px 10px", width: 280, marginBottom: 6 }} placeholder="출처 (예: 홍길동, 2024, p.42)"
+                value={citationSource} onChange={(e) => setCitationSource(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Escape") setShowCitationInput(false); }} autoFocus />
+              <input className="input" style={{ fontSize: 13, padding: "6px 10px", width: 280, marginBottom: 6 }} placeholder="출처 URL (선택)"
+                value={citationSourceUrl} onChange={(e) => setCitationSourceUrl(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") insertCitation(); if (e.key === "Escape") setShowCitationInput(false); }} />
+              <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                <button className="btn btn-ghost" style={{ fontSize: 12, padding: "4px 12px" }} onClick={() => setShowCitationInput(false)}>취소</button>
+                <button className="btn btn-primary" style={{ fontSize: 12, padding: "4px 12px" }} onClick={insertCitation}>삽입</button>
+              </div>
             </div>
           )}
 

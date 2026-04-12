@@ -35,7 +35,6 @@ export default function NotificationBell() {
     if (item.type === "message" && item.course_id && item.sender_id) {
       navigate(`/courses/${item.course_id}/messenger/${item.sender_id}`);
     } else if (item.type === "comment" && item.note_id && item.course_id) {
-      // 코멘트 → 해당 노트로 이동 (교수는 student-notes 경로)
       if (user?.role === "professor" && item.student_id) {
         navigate(`/courses/${item.course_id}/student-notes/${item.student_id}/${item.note_id}`, {
           state: { fromNotification: true, commentBlockIndex: item.block_index },
@@ -45,6 +44,10 @@ export default function NotificationBell() {
           state: { fromNotification: true, commentBlockIndex: item.block_index },
         });
       }
+    } else if (item.type === "deadline" && item.course_id) {
+      navigate(`/courses/${item.course_id}/assignments/${item.id}`);
+    } else if (item.type === "new_material" && item.course_id) {
+      navigate(`/courses/${item.course_id}`);
     }
   };
 
@@ -96,6 +99,10 @@ export default function NotificationBell() {
                     ) : (
                       <span>{item.sender_name?.charAt(0)?.toUpperCase() || "?"}</span>
                     )
+                  ) : item.type === "deadline" ? (
+                    <span className="notification-deadline-icon">⏰</span>
+                  ) : item.type === "new_material" ? (
+                    <span className="notification-material-icon">📄</span>
                   ) : (
                     item.commenter_avatar ? (
                       <img src={item.commenter_avatar} alt="" />
@@ -111,6 +118,16 @@ export default function NotificationBell() {
                         <strong>{item.sender_name}</strong>
                         <span className="notification-item-tag msg">메시지</span>
                       </>
+                    ) : item.type === "deadline" ? (
+                      <>
+                        <strong>{item.assignment_title}</strong>
+                        <span className="notification-item-tag deadline">마감 임박</span>
+                      </>
+                    ) : item.type === "new_material" ? (
+                      <>
+                        <strong>{item.course_title}</strong>
+                        <span className="notification-item-tag material">새 자료</span>
+                      </>
                     ) : (
                       <>
                         <strong>{item.commenter_name}</strong>
@@ -125,6 +142,12 @@ export default function NotificationBell() {
                     )}
                     {item.type === "comment" && item.note_title && (
                       <span>{item.note_title}{item.block_index != null ? ` > 블록 ${item.block_index + 1}` : ""}</span>
+                    )}
+                    {item.type === "deadline" && item.course_title && (
+                      <span>{item.course_title}</span>
+                    )}
+                    {item.type === "new_material" && item.course_title && (
+                      <span>{item.course_title}</span>
                     )}
                     <span>{timeAgo(item.created_at)}</span>
                   </div>

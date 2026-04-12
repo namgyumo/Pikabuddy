@@ -1018,16 +1018,49 @@ export default function AssignmentDetail() {
           <div className="card" style={{ marginBottom: 24 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h2 className="section-title">문제 목록</h2>
-              <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button className="btn btn-ghost" onClick={async () => {
                   setShowImport(true);
                   setImportSelected(new Set());
                   try {
                     const { data } = await api.get(`/courses/${courseId}/assignments/problem-bank`);
-                    // 현재 과제의 문제는 제외
                     setProblemBank((data || []).filter((p: { assignment_id: string }) => p.assignment_id !== assignmentId));
                   } catch { setProblemBank([]); }
                 }}>기존 문제 가져오기</button>
+                {/* JSON 내보내기 */}
+                <button className="btn btn-ghost" onClick={() => {
+                  if (!assignment?.problems?.length) return;
+                  const json = JSON.stringify(assignment.problems, null, 2);
+                  const blob = new Blob([json], { type: "application/json" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `problems_${assignment.title.replace(/\s+/g, "_")}.json`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}>JSON 내보내기</button>
+                {/* JSON 가져오기 */}
+                <label className="btn btn-ghost" style={{ cursor: "pointer" }}>
+                  JSON 가져오기
+                  <input type="file" accept=".json" style={{ display: "none" }} onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      const text = await file.text();
+                      const imported = JSON.parse(text);
+                      const problems = Array.isArray(imported) ? imported : [imported];
+                      // 현재 과제에 문제 추가
+                      const existing = assignment?.problems || [];
+                      await api.patch(`/courses/${courseId}/assignments/${assignmentId}`, {
+                        problems: [...existing, ...problems],
+                      });
+                      const { data } = await api.get(`/courses/${courseId}/assignments/${assignmentId}`);
+                      setAssignment(data);
+                      alert(`${problems.length}개 문제를 가져왔습니다.`);
+                    } catch { alert("JSON 파싱 오류: 유효한 문제 JSON 파일이 아닙니다."); }
+                    e.target.value = "";
+                  }} />
+                </label>
                 <button className="btn btn-secondary" onClick={() => setAddingProblem(true)}>+ 문제 추가</button>
               </div>
             </div>

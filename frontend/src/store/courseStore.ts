@@ -14,7 +14,9 @@ interface CourseState {
     title: string;
     description?: string;
     objectives?: string[];
+    banner_url?: string;
   }) => Promise<Course>;
+  updateCourse: (id: string, data: { title?: string; description?: string; banner_url?: string }) => Promise<Course>;
   joinCourse: (courseId: string, inviteCode: string) => Promise<void>;
   createAssignment: (
     courseId: string,
@@ -79,6 +81,15 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     await api.post(`/courses/join`, { invite_code: inviteCode });
     // Invalidate cache so next fetchCourses re-fetches
     set({ lastFetchedAt: 0 });
+  },
+
+  updateCourse: async (id, courseData) => {
+    const { data } = await api.patch(`/courses/${id}`, courseData);
+    set((state) => ({
+      courses: state.courses.map((c) => (c.id === id ? data : c)),
+      currentCourse: state.currentCourse?.id === id ? data : state.currentCourse,
+    }));
+    return data;
   },
 
   createAssignment: async (courseId, assignmentData) => {

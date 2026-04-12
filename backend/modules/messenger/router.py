@@ -47,12 +47,15 @@ def _validate_messenger_access(user: dict, course: dict, partner_id: str):
             raise HTTPException(status_code=403, detail="해당 학생은 이 코스에 등록되어 있지 않습니다.")
 
     elif user["role"] == "student":
-        # 학생: 수강 중인 코스인지 + 상대가 교수인지
+        # 학생: 수강 중인 코스인지 + 상대가 교수 또는 같은 코스 수강생인지
         enrolled = sb.table("enrollments").select("id").eq("course_id", course_id).eq("student_id", user["id"]).execute()
         if not enrolled.data:
             raise HTTPException(status_code=403, detail="수강 중인 코스가 아닙니다.")
         if course["professor_id"] != partner_id:
-            raise HTTPException(status_code=403, detail="교수에게만 메시지를 보낼 수 있습니다.")
+            # 상대가 교수가 아니면 같은 코스 수강생인지 확인
+            partner_enrolled = sb.table("enrollments").select("id").eq("course_id", course_id).eq("student_id", partner_id).execute()
+            if not partner_enrolled.data:
+                raise HTTPException(status_code=403, detail="같은 강의 수강생 또는 교수에게만 메시지를 보낼 수 있습니다.")
 
     else:
         raise HTTPException(status_code=403, detail="메신저는 교수/학생만 사용할 수 있습니다.")
@@ -140,12 +143,18 @@ async def list_conversations(course_id: str, user: dict = Depends(get_current_us
         if not enrolled.data:
             logger.warning(f"[Messenger] Student {user_id} not enrolled in course {course_id}")
             return []
-        # 교수만 대화 상대
+        # 교수 + 같은 코스 수강생 전부 대화 상대
+        partner_ids = []
         prof_id = course.get("professor_id")
-        if not prof_id:
-            logger.warning(f"[Messenger] Course {course_id} has no professor_id")
-            return []
-        partner_ids = [prof_id]
+        if prof_id:
+            partner_ids.append(prof_id)
+        # 같은 코스 수강생
+        peer_enrollments = sb.table("enrollments") \
+            .select("student_id") \
+            .eq("course_id", course_id).execute()
+        for e in (peer_enrollments.data or []):
+            if e["student_id"] != user_id and e["student_id"] not in partner_ids:
+                partner_ids.append(e["student_id"])
     else:
         logger.info(f"[Messenger] User {user_id} role={role} cannot use messenger")
         return []
