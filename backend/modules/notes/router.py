@@ -327,12 +327,8 @@ async def get_graph_data(course_id: str, user: dict = Depends(get_current_user))
     except Exception:
         pass  # 테이블이 아직 없을 수 있음
 
-    # 엣지: 임베딩 유사도 기반 (부모-자식도 유사도 간선 허용 — 중복은 link만 방지)
+    # 엣지: 임베딩 유사도 기반 (기존 간선과 중복 허용)
     existing_edges = set()
-    for e in edges:
-        if e["type"] == "link":
-            pair = tuple(sorted([e["source"], e["target"]]))
-            existing_edges.add(pair)
 
     # 1) DB 캐시된 임베딩 사용, 없는 것만 API 호출
     embeddings: list[list[float]] = []
@@ -540,7 +536,8 @@ async def get_unified_graph(user: dict = Depends(get_current_user)):
         except Exception:
             pass
 
-    # 8) 엣지: 임베딩 유사도 (크로스-코스 포함!)
+    # 8) 엣지: 임베딩 유사도 (크로스-코스 포함!) — 기존 간선과 중복 허용
+    existing_edges.clear()
     embeddings: list[list[float]] = []
     uncached_indices: list[int] = []
     uncached_texts: list[str] = []
