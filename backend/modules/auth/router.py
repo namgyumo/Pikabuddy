@@ -301,12 +301,16 @@ async def recover_enrollments(user: dict = Depends(get_current_user)):
 
     to_recover = [cid for cid in activity_course_ids if cid not in existing_ids]
 
-    # 3) 개인 코스 제외 (is_personal=True인 코스)
-    if to_recover:
-        courses = supabase.table("courses").select("id, is_personal").in_("id", to_recover).execute()
-        to_recover = [c["id"] for c in (courses.data or []) if not c.get("is_personal")]
+    # 3) professor_id로 소유한 코스도 추가 (교수였다가 학생 전환한 경우)
+    try:
+        prof_courses = supabase.table("courses").select("id").eq("professor_id", uid).execute()
+        for c in (prof_courses.data or []):
+            if c["id"] not in existing_ids and c["id"] not in to_recover:
+                to_recover.append(c["id"])
+    except Exception:
+        pass
 
-    # 4) 수강 등록 복구
+    # 5) 수강 등록 복구
     recovered = 0
     for cid in to_recover:
         try:
@@ -318,6 +322,8 @@ async def recover_enrollments(user: dict = Depends(get_current_user)):
         except Exception:
             pass
 
+    if recovered == 0 and not to_recover:
+        return {"recovered": 0, "message": f"이미 모든 강의에 등록되어 있습니다. (활동 감지: {len(activity_course_ids)}개 코스)"}
     return {"recovered": recovered, "message": f"{recovered}개 강의 수강 등록이 복구되었습니다."}
 
 
