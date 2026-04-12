@@ -187,7 +187,7 @@ def _delete_user_data(supabase, teacher: dict | None, student: dict | None):
         "department": "컴퓨터공학과",
         "student_id": None,
         "banner_url": None,
-        "preferences": None,
+        "preferences": {},
     }
     if teacher_id:
         supabase.table("users").update({
@@ -775,7 +775,7 @@ async def save_snapshot(
         raise HTTPException(status_code=400, detail="두 테스트 계정이 모두 필요합니다.")
 
     data = _export_snapshot(sb, teacher, student)
-    result = sb.table("test_snapshots").insert({
+    result = sb.table("note_snapshots").insert({
         "name": body.name,
         "data": data,
     }).execute()
@@ -790,7 +790,7 @@ async def list_snapshots(user: dict = Depends(get_current_user)):
     # All authenticated users can manage test accounts
 
     sb = get_supabase()
-    result = sb.table("test_snapshots").select("id, name, created_at").order("created_at", desc=True).execute()
+    result = sb.table("note_snapshots").select("id, name, created_at").order("created_at", desc=True).execute()
     return result.data or []
 
 
@@ -807,7 +807,7 @@ async def restore_snapshot(
     if not teacher or not student:
         raise HTTPException(status_code=400, detail="두 테스트 계정이 모두 필요합니다.")
 
-    snap = sb.table("test_snapshots").select("*").eq("id", snapshot_id).single().execute()
+    snap = sb.table("note_snapshots").select("*").eq("id", snapshot_id).single().execute()
     if not snap.data:
         raise HTTPException(status_code=404, detail="스냅샷을 찾을 수 없습니다.")
 
@@ -824,7 +824,7 @@ async def delete_snapshot(snapshot_id: str, user: dict = Depends(get_current_use
     # All authenticated users can manage test accounts
 
     sb = get_supabase()
-    sb.table("test_snapshots").delete().eq("id", snapshot_id).execute()
+    sb.table("note_snapshots").delete().eq("id", snapshot_id).execute()
     return {"message": "스냅샷이 삭제되었습니다."}
 
 
@@ -849,11 +849,11 @@ async def save_default_state(
 
     # Delete existing default if any
     try:
-        sb.table("test_snapshots").delete().eq("name", DEFAULT_SNAPSHOT_NAME).execute()
+        sb.table("note_snapshots").delete().eq("name", DEFAULT_SNAPSHOT_NAME).execute()
     except Exception:
         pass
 
-    sb.table("test_snapshots").insert({
+    sb.table("note_snapshots").insert({
         "name": DEFAULT_SNAPSHOT_NAME,
         "data": data,
     }).execute()
@@ -867,7 +867,7 @@ async def has_default_state(user: dict = Depends(get_current_user)):
     # All authenticated users can manage test accounts
 
     sb = get_supabase()
-    result = sb.table("test_snapshots").select("id, created_at").eq("name", DEFAULT_SNAPSHOT_NAME).execute()
+    result = sb.table("note_snapshots").select("id, created_at").eq("name", DEFAULT_SNAPSHOT_NAME).execute()
     exists = len(result.data or []) > 0
     return {
         "exists": exists,
@@ -887,7 +887,7 @@ async def reset_to_default(
     if not teacher or not student:
         raise HTTPException(status_code=400, detail="두 테스트 계정이 모두 필요합니다.")
 
-    snap = sb.table("test_snapshots").select("*").eq("name", DEFAULT_SNAPSHOT_NAME).execute()
+    snap = sb.table("note_snapshots").select("*").eq("name", DEFAULT_SNAPSHOT_NAME).execute()
     if not (snap.data or []):
         raise HTTPException(status_code=404, detail="저장된 기본 상태가 없습니다. 먼저 '현재 상태 저장'을 해주세요.")
 
