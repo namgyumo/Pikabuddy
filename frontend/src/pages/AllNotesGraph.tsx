@@ -167,9 +167,9 @@ export default function AllNotesGraph() {
   const [tagFilter, setTagFilter] = useState("");
   const [timeRange, setTimeRange] = useState(100);
 
-  // Linking / Unlinking mode
+  // Linking mode
   const [linkingFrom, setLinkingFrom] = useState<GNode | null>(null);
-  const [unlinkingFrom, setUnlinkingFrom] = useState<GNode | null>(null);
+  const [highlightLink, setHighlightLink] = useState<{ s: string; t: string } | null>(null);
 
   // Context menu
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; node: GNode | null } | null>(null);
@@ -927,25 +927,6 @@ export default function AllNotesGraph() {
                     setLinkingFrom(null);
                     return;
                   }
-                  if (unlinkingFrom) {
-                    if (node.id !== unlinkingFrom.id) {
-                      api.delete("/notes/manual-link", {
-                        data: { source_note_id: unlinkingFrom.id, target_note_id: node.id },
-                      }).then(() => {
-                        setMergedGraph((prev) => {
-                          if (!prev) return prev;
-                          const ids = [unlinkingFrom.id, node.id].sort();
-                          return { ...prev, edges: prev.edges.filter((e) => {
-                            if (e.type !== "link") return true;
-                            const eIds = [typeof e.source === "string" ? e.source : e.source.id, typeof e.target === "string" ? e.target : e.target.id].sort();
-                            return !(eIds[0] === ids[0] && eIds[1] === ids[1]);
-                          })};
-                        });
-                      }).catch(() => {});
-                    }
-                    setUnlinkingFrom(null);
-                    return;
-                  }
                   navigate(`/courses/${node.courseId}/notes/${node.id}`);
                 }}
                 onNodeHover={(node: GNode | null) => setHovered(node)}
@@ -976,13 +957,6 @@ export default function AllNotesGraph() {
               <strong>{linkingFrom.title.length > 18 ? linkingFrom.title.slice(0, 18) + "..." : linkingFrom.title}</strong>
               에서 연결할 노트를 클릭하세요
               <button onClick={() => setLinkingFrom(null)} style={{ marginLeft: 8, padding: "2px 8px", borderRadius: 4, border: "1px solid var(--outline-variant)", background: "transparent", cursor: "pointer", color: "inherit" }}>취소</button>
-            </div>
-          )}
-          {unlinkingFrom && (
-            <div className="graph-linking-banner" style={{ borderColor: "var(--error, #ef4444)" }}>
-              <strong>{unlinkingFrom.title.length > 18 ? unlinkingFrom.title.slice(0, 18) + "..." : unlinkingFrom.title}</strong>
-              에서 해제할 링크 노트를 클릭하세요
-              <button onClick={() => setUnlinkingFrom(null)} style={{ marginLeft: 8, padding: "2px 8px", borderRadius: 4, border: "1px solid var(--outline-variant)", background: "transparent", cursor: "pointer", color: "inherit" }}>취소</button>
             </div>
           )}
 
@@ -1043,13 +1017,9 @@ export default function AllNotesGraph() {
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     노트 열기
                   </button>
-                  <button className="graph-ctx-item" onClick={() => { setLinkingFrom(ctxMenu.node!); setUnlinkingFrom(null); setCtxMenu(null); }}>
+                  <button className="graph-ctx-item" onClick={() => { setLinkingFrom(ctxMenu.node!); setCtxMenu(null); }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                     링크 연결
-                  </button>
-                  <button className="graph-ctx-item" onClick={() => { setUnlinkingFrom(ctxMenu.node!); setLinkingFrom(null); setCtxMenu(null); }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18.84 12.25l1.72-1.71a5 5 0 0 0-7.07-7.07l-3 3a5 5 0 0 0 .54 7.54"/><path d="M5.16 11.75l-1.72 1.71a5 5 0 0 0 7.07 7.07l3-3a5 5 0 0 0-.54-7.54"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
-                    링크 해제
                   </button>
                   <button className="graph-ctx-item" onClick={() => {
                     const n = ctxMenu.node!;
@@ -1084,6 +1054,54 @@ export default function AllNotesGraph() {
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
                     {ctxMenu.node!.courseId === courseFilter ? "전체 강의 보기" : `${ctxMenu.node!.courseName}만 보기`}
                   </button>
+                  {/* 링크 해제 목록 */}
+                  {(() => {
+                    const nodeId = ctxMenu.node!.id;
+                    const manualLinks = gd.edges.filter((l) => {
+                      if (l.type !== "link") return false;
+                      const sId = typeof l.source === "string" ? l.source : (l.source as GNode).id;
+                      const tId = typeof l.target === "string" ? l.target : (l.target as GNode).id;
+                      return sId === nodeId || tId === nodeId;
+                    });
+                    if (manualLinks.length === 0) return null;
+                    return (
+                      <>
+                        <div className="graph-ctx-divider" />
+                        <div className="graph-ctx-header" style={{ fontSize: 10, opacity: 0.6, padding: "4px 12px 2px" }}>링크 해제</div>
+                        {manualLinks.map((l, i) => {
+                          const sId = typeof l.source === "string" ? l.source : (l.source as GNode).id;
+                          const tId = typeof l.target === "string" ? l.target : (l.target as GNode).id;
+                          const otherId = sId === nodeId ? tId : sId;
+                          const otherNode = gd.nodes.find((n) => n.id === otherId);
+                          const otherTitle = otherNode ? (otherNode.title.length > 16 ? otherNode.title.slice(0, 16) + "..." : otherNode.title) : "?";
+                          return (
+                            <button key={i} className="graph-ctx-item" style={{ color: "#f87171" }}
+                              onMouseEnter={() => setHighlightLink({ s: sId, t: tId })}
+                              onMouseLeave={() => setHighlightLink(null)}
+                              onClick={() => {
+                                setHighlightLink(null);
+                                api.delete("/notes/manual-link", { data: { source_note_id: sId, target_note_id: tId } })
+                                  .then(() => {
+                                    setMergedGraph((prev) => {
+                                      if (!prev) return prev;
+                                      return { ...prev, edges: prev.edges.filter((e) => {
+                                        if (e.type !== "link") return true;
+                                        const eSId = typeof e.source === "string" ? e.source : (e.source as any).id;
+                                        const eTId = typeof e.target === "string" ? e.target : (e.target as any).id;
+                                        return !((eSId === sId && eTId === tId) || (eSId === tId && eTId === sId));
+                                      })};
+                                    });
+                                  }).catch(() => {});
+                                setCtxMenu(null);
+                              }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                              {otherTitle}
+                            </button>
+                          );
+                        })}
+                      </>
+                    );
+                  })()}
                 </>
               ) : (
                 <>
