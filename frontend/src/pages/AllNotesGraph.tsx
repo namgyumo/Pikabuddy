@@ -375,21 +375,32 @@ export default function AllNotesGraph() {
     return { nodes, links };
   }, [mergedGraph, courseColorMap, courseNameMap]);
 
-  // Hover 시 연결된 노드 집합 계산
+  // Hover 시 연결된 노드 집합 계산 — 현재 보이는 간선 타입만 고려
   const hoverNeighbors = useMemo(() => {
     if (!hovered || !gd.links.length) return null;
     const neighbors = new Set<string>();
     neighbors.add(hovered.id);
+    const vis = { parent: showParentEdges, link: showLinkEdges, similar: showSimilarEdges };
     for (const l of gd.links) {
+      if (l.type === "parent" && !vis.parent) continue;
+      if (l.type === "link" && !vis.link) continue;
+      if (l.type === "similar" && !vis.similar) continue;
+      if (l.type === "similar") {
+        const sId = typeof l.source === "string" ? l.source : l.source.id;
+        const tId = typeof l.target === "string" ? l.target : l.target.id;
+        if (structuralPairs.current.has([sId, tId].sort().join("|")) && (vis.parent || vis.link)) continue;
+      }
       const sId = typeof l.source === "string" ? l.source : l.source.id;
       const tId = typeof l.target === "string" ? l.target : l.target.id;
       if (sId === hovered.id) neighbors.add(tId);
       if (tId === hovered.id) neighbors.add(sId);
     }
     return neighbors;
-  }, [hovered, gd.links]);
+  }, [hovered, gd.links, showParentEdges, showLinkEdges, showSimilarEdges]);
   const hoverNeighborsRef = useRef(hoverNeighbors);
   hoverNeighborsRef.current = hoverNeighbors;
+  const hoveredIdRef = useRef<string | null>(null);
+  hoveredIdRef.current = hovered?.id ?? null;
 
   /* ── Visible nodes (course + score + tag + time filters) ── */
   const visibleIds = useMemo(() => {
@@ -625,9 +636,11 @@ export default function AllNotesGraph() {
     const gc = gColorsRef.current;
     const lw = 1 / globalScale;
 
-    // Hover dimming
+    // Hover dimming: 호버된 노드에 직접 연결된 간선만 밝게
     const hn = hoverNeighborsRef.current;
-    const linkDimmed = hn != null && !hn.has(s.id) && !hn.has(t.id);
+    const hovId = hoveredIdRef.current;
+    const isDirectEdge = hovId != null && (s.id === hovId || t.id === hovId);
+    const linkDimmed = hn != null && !isDirectEdge;
     if (linkDimmed) { ctx.globalAlpha = 0.08; }
 
     if (link.type === "parent") {
