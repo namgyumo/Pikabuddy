@@ -816,7 +816,8 @@ textarea.input {
 .banner-picker-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 9;
+  z-index: 9000;
+  background: rgba(0, 0, 0, 0.35);
 }
 
 /* Banner picker dropdown */
@@ -829,7 +830,7 @@ textarea.input {
   border: 1px solid var(--outline-variant);
   border-radius: 12px;
   padding: 16px;
-  z-index: 10;
+  z-index: 9001;
   width: min(340px, 90vw);
   max-height: 80vh;
   overflow-y: auto;

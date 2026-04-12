@@ -2,6 +2,7 @@
  * 배너 선택 피커 — 그라디언트 프리셋 + 이미지 업로드 (크롭 포함)
  */
 import { useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { BANNER_PRESETS } from "../../lib/bannerPresets";
 import ImageCropModal from "./ImageCropModal";
 import api from "../../lib/api";
@@ -55,7 +56,7 @@ export default function BannerPicker({ current, onChange, onSave, onCancel, uplo
     }
   };
 
-  return (
+  return createPortal(
     <>
       <div className="banner-picker-backdrop" onClick={onCancel} />
       <div className="banner-picker-dropdown">
@@ -124,6 +125,7 @@ export default function BannerPicker({ current, onChange, onSave, onCancel, uplo
           onCancel={() => setCropSrc(null)}
         />
       )}
-    </>
+    </>,
+    document.body,
   );
 }
