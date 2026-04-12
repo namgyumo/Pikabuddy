@@ -6,6 +6,8 @@ import { useAuthStore } from "../store/authStore";
 import AppShell from "../components/common/AppShell";
 import { toast } from "../lib/toast";
 import { getBannerStyle, getEffectiveBanner } from "../lib/bannerPresets";
+import BannerPicker from "../components/common/BannerPicker";
+import { useCourseStore } from "../store/courseStore";
 import type { Course, Assignment, CourseMaterial } from "../types";
 
 function getKoreanHolidays(year: number): { date: string; title: string }[] {
@@ -46,6 +48,20 @@ export default function CourseDetail() {
   const [course, setCourse] = useState<Course | null>(null);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [courseInfo, setCourseInfo] = useState<any>(null);
+  const infoCacheRef = useRef<any>(null);
+
+  // 배너 편집 + 표시/숨기기
+  const [bannerEditOpen, setBannerEditOpen] = useState(false);
+  const [bannerPick, setBannerPick] = useState("");
+  const [bannerHidden, setBannerHidden] = useState(() => localStorage.getItem(`banner_hidden_${courseId}`) === "1");
+  const toggleBannerHidden = () => {
+    const next = !bannerHidden;
+    setBannerHidden(next);
+    if (next) localStorage.setItem(`banner_hidden_${courseId}`, "1");
+    else localStorage.removeItem(`banner_hidden_${courseId}`);
+  };
 
   const [showCreate, setShowCreate] = useState(false);
   const [title, setTitle] = useState("");
@@ -207,12 +223,87 @@ export default function CourseDetail() {
     <AppShell courseTitle={course.title}>
       <main className="content">
         {/* Course Banner */}
-        {getEffectiveBanner(course) && (
-          <div className="course-detail-banner" style={{ background: getBannerStyle(getEffectiveBanner(course)) }} />
-        )}
+        <div style={{ position: "relative", minHeight: bannerHidden ? 0 : undefined }}>
+          {!bannerHidden && (
+            getEffectiveBanner(course) ? (
+              <div className="course-detail-banner" style={{ background: getBannerStyle(getEffectiveBanner(course)) }} />
+            ) : (
+              <div className="course-detail-banner" style={{ background: "linear-gradient(135deg, var(--primary-container), var(--surface-container-high))", opacity: 0.5 }} />
+            )
+          )}
+          <div style={{
+            display: "flex", gap: 4, justifyContent: "flex-end",
+            ...(bannerHidden
+              ? { marginBottom: 8 }
+              : { position: "absolute" as const, top: 10, right: 10, zIndex: 2 }),
+          }}>
+            <button
+              className="banner-edit-btn"
+              style={{ position: "static", opacity: 1 }}
+              title={bannerHidden ? "배너 보이기" : "배너 숨기기"}
+              onClick={toggleBannerHidden}
+            >
+              {bannerHidden ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              )}
+            </button>
+            {!bannerHidden && (
+              <button
+                className="banner-edit-btn"
+                style={{ position: "static", opacity: 1 }}
+                title="배너 변경"
+                onClick={() => {
+                  const current = canManage ? (course.banner_url || "") : (course.custom_banner_url || course.banner_url || "");
+                  setBannerPick(current);
+                  setBannerEditOpen(true);
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+            )}
+          </div>
+        </div>
+        {bannerEditOpen && (
+          <BannerPicker
+            current={bannerPick}
+            onChange={setBannerPick}
+            uploadEndpoint={`/courses/${courseId}/banner-image`}
+            onSave={async (value) => {
+              try {
+                if (canManage) {
+                  await api.patch(`/courses/${courseId}`, { banner_url: value });
+                  setCourse((prev) => prev ? { ...prev, banner_url: value } : prev);
+                } else {
+                  await api.patch(`/courses/${courseId}/my-banner`, { banner_url: value });
+                  setCourse((prev) => prev ? { ...prev, custom_banner_url: value } : prev);
+                }
+                useCourseStore.setState({ lastFetchedAt: 0 });
+                setBannerEditOpen(false);
+              } catch {
+                toast.error("배너 변경 실패");
+              }
+              }}
+              onCancel={() => setBannerEditOpen(false)}
+            />
+          )}
         {/* Course Info */}
         <div className="card course-info">
-          <h2>{course.title}</h2>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <h2 style={{ margin: 0 }}>{course.title}</h2>
+            <button
+              className="course-detail-info-btn"
+              title="강의 정보"
+              onClick={() => {
+                if (infoCacheRef.current) { setCourseInfo(infoCacheRef.current); return; }
+                setCourseInfo({ title: course.title, description: course.description, _loading: true });
+                api.get(`/courses/${courseId}/info`).then(({ data }) => { infoCacheRef.current = data; setCourseInfo(data); }).catch(() => toast.error("정보 로드 실패"));
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </button>
+          </div>
           {course.description && <p>{course.description}</p>}
           {course.objectives && course.objectives.length > 0 && (
             <div className="course-objectives">
@@ -1088,6 +1179,76 @@ export default function CourseDetail() {
                 background: "#dc2626", color: "#fff", border: "none",
                 padding: "8px 24px", borderRadius: 8, cursor: "pointer", fontWeight: 600,
               }} onClick={confirmDialog.onConfirm}>삭제</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 강의 정보 모달 */}
+      {courseInfo && (
+        <div className="course-info-modal-backdrop" onClick={() => setCourseInfo(null)}>
+          <div className="course-info-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="course-info-modal-header">
+              <h3>{courseInfo.title}</h3>
+              <button className="course-info-modal-close" onClick={() => setCourseInfo(null)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div className="course-info-modal-body">
+              {courseInfo._loading ? (
+                <div style={{ textAlign: "center", padding: "24px 0", color: "var(--on-surface-variant)", fontSize: 14 }}>
+                  <div className="page-loading-spinner" style={{ width: 28, height: 28, margin: "0 auto 12px" }} />
+                  불러오는 중...
+                </div>
+              ) : (<>
+              <div className="info-stats">
+                <div className="info-stat-card">
+                  <div className="info-stat-value">{courseInfo.student_count}</div>
+                  <div className="info-stat-label">수강생</div>
+                </div>
+                <div className="info-stat-card">
+                  <div className="info-stat-value">{courseInfo.assignment_count}</div>
+                  <div className="info-stat-label">과제</div>
+                </div>
+                <div className="info-stat-card">
+                  <div className="info-stat-value">{courseInfo.note_count}</div>
+                  <div className="info-stat-label">노트</div>
+                </div>
+              </div>
+              {courseInfo.description && (
+                <div className="info-section">
+                  <div className="info-section-label">설명</div>
+                  <div className="info-section-value">{courseInfo.description}</div>
+                </div>
+              )}
+              <div className="info-section">
+                <div className="info-section-label">교수</div>
+                <div className="info-section-value">{courseInfo.professor_name}</div>
+              </div>
+              {courseInfo.invite_code && (
+                <div className="info-section">
+                  <div className="info-section-label">초대코드</div>
+                  <div className="info-section-value mono">{courseInfo.invite_code}</div>
+                </div>
+              )}
+              <div className="info-section">
+                <div className="info-section-label">개설일</div>
+                <div className="info-section-value">{new Date(courseInfo.created_at).toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" })}</div>
+              </div>
+              {courseInfo.objectives && courseInfo.objectives.length > 0 && (
+                <>
+                  <div className="info-divider" />
+                  <div className="info-section">
+                    <div className="info-section-label">강의 목표</div>
+                    <ul className="info-objectives-list">
+                      {courseInfo.objectives.map((obj: string, i: number) => (
+                        <li key={i}>{obj}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </>
+              )}
+              </>)}
             </div>
           </div>
         </div>

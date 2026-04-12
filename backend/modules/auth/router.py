@@ -1,10 +1,13 @@
 import hmac
+import logging
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from pydantic import BaseModel
 from common.supabase_client import get_supabase
 from middleware.auth import get_current_user
 from config import get_settings
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["인증"])
 
@@ -74,7 +77,8 @@ async def admin_login(body: AdminLoginRequest):
                 },
             )
             if create_res.status_code not in (200, 201):
-                raise HTTPException(status_code=500, detail=f"계정 생성 실패: {create_res.text}")
+                logger.error(f"[Admin] 계정 생성 실패: {create_res.text}")
+                raise HTTPException(status_code=500, detail="계정 생성에 실패했습니다.")
 
             # Now sign in
             sign_in2 = await client.post(
@@ -83,7 +87,8 @@ async def admin_login(body: AdminLoginRequest):
                 json={"email": admin_email, "password": body.password},
             )
             if sign_in2.status_code != 200:
-                raise HTTPException(status_code=500, detail=f"로그인 실패: {sign_in2.text}")
+                logger.error(f"[Admin] 로그인 실패: {sign_in2.text}")
+                raise HTTPException(status_code=500, detail="로그인에 실패했습니다.")
             data = sign_in2.json()
 
     access_token = data.get("access_token")
@@ -120,9 +125,9 @@ async def get_test_accounts():
     settings = get_settings()
     accounts = []
     if settings.teachertestid:
-        accounts.append({"role": "professor", "label": "교수 테스트", "username": settings.teachertestid, "password": settings.teachertestpassword})
+        accounts.append({"role": "professor", "label": "교수 테스트", "username": settings.teachertestid})
     if settings.studenttestid:
-        accounts.append({"role": "student", "label": "학생 테스트", "username": settings.studenttestid, "password": settings.studenttestpassword})
+        accounts.append({"role": "student", "label": "학생 테스트", "username": settings.studenttestid})
     return {"accounts": accounts}
 
 
@@ -178,7 +183,8 @@ async def auth_callback(body: AuthCallbackRequest):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"[Auth] 콜백 처리 실패: {e}")
+        raise HTTPException(status_code=500, detail="인증 처리 중 오류가 발생했습니다.")
 
 
 @router.post("/role")
@@ -351,14 +357,25 @@ async def update_profile(body: ProfileUpdateRequest, user: dict = Depends(get_cu
     return result.data
 
 
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+ALLOWED_IMAGE_EXTS = {"jpg", "jpeg", "png", "gif", "webp"}
+MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB
+
+
 @router.post("/avatar")
 async def upload_avatar(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
     """아바타 이미지 업로드"""
-    supabase = get_supabase()
-    ext = file.filename.split(".")[-1] if file.filename else "png"
-    path = f"avatars/{user['id']}/{uuid.uuid4().hex}.{ext}"
+    ext = (file.filename.split(".")[-1] if file.filename else "png").lower()
+    if ext not in ALLOWED_IMAGE_EXTS:
+        raise HTTPException(status_code=400, detail="허용되지 않는 파일 형식입니다. (jpg, png, gif, webp)")
+    if file.content_type and file.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=400, detail="허용되지 않는 이미지 형식입니다.")
     content = await file.read()
+    if len(content) > MAX_IMAGE_SIZE:
+        raise HTTPException(status_code=400, detail="파일 크기가 5MB를 초과합니다.")
 
+    supabase = get_supabase()
+    path = f"avatars/{user['id']}/{uuid.uuid4().hex}.{ext}"
     supabase.storage.from_("avatars").upload(path, content, {"content-type": file.content_type or "image/png"})
     url = supabase.storage.from_("avatars").get_public_url(path)
 
@@ -369,11 +386,17 @@ async def upload_avatar(file: UploadFile = File(...), user: dict = Depends(get_c
 @router.post("/banner")
 async def upload_banner(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
     """배너 이미지 업로드"""
-    supabase = get_supabase()
-    ext = file.filename.split(".")[-1] if file.filename else "png"
-    path = f"banners/{user['id']}/{uuid.uuid4().hex}.{ext}"
+    ext = (file.filename.split(".")[-1] if file.filename else "png").lower()
+    if ext not in ALLOWED_IMAGE_EXTS:
+        raise HTTPException(status_code=400, detail="허용되지 않는 파일 형식입니다. (jpg, png, gif, webp)")
+    if file.content_type and file.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=400, detail="허용되지 않는 이미지 형식입니다.")
     content = await file.read()
+    if len(content) > MAX_IMAGE_SIZE:
+        raise HTTPException(status_code=400, detail="파일 크기가 5MB를 초과합니다.")
 
+    supabase = get_supabase()
+    path = f"banners/{user['id']}/{uuid.uuid4().hex}.{ext}"
     supabase.storage.from_("banners").upload(path, content, {"content-type": file.content_type or "image/png"})
     url = supabase.storage.from_("banners").get_public_url(path)
 

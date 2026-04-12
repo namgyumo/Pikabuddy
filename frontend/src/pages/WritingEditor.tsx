@@ -357,6 +357,11 @@ export default function WritingEditor() {
           <span className="badge badge-policy">
             AI 정책: {({ free: "자유", normal: "보통", strict: "엄격", exam: "시험" } as Record<string, string>)[assignment?.ai_policy || ""] || "-"}
           </span>
+          {isOverdue && (
+            <span className="badge" style={{ background: "var(--error)", color: "var(--on-error)", fontWeight: 600 }}>
+              마감 지남
+            </span>
+          )}
           {/* 시험 모드 상태 + 끝내기 */}
           {assignment?.exam_mode && examStarted && (
             <>

@@ -218,6 +218,153 @@ async def get_notifications(user: dict = Depends(get_current_user)):
     }
 
 
+@router.get("/notifications/history")
+async def get_notification_history(user: dict = Depends(get_current_user)):
+    """이때까지 받은 메시지 + 코멘트 전체 히스토리 (읽은 것 포함)."""
+    sb = get_supabase()
+    uid = user["id"]
+    role = user["role"]
+
+    items = []
+
+    # ── 1) 전체 수신 메시지 (읽은 것 포함) ──
+    msgs = sb.table("messages") \
+        .select("id, course_id, sender_id, content, created_at, is_read, courses(title), users!messages_sender_id_fkey(name, avatar_url)") \
+        .eq("receiver_id", uid) \
+        .order("created_at", desc=True) \
+        .limit(50) \
+        .execute()
+
+    for msg in (msgs.data or []):
+        sender = msg.pop("users", {}) or {}
+        course = msg.pop("courses", {}) or {}
+        items.append({
+            "type": "message",
+            "id": msg["id"],
+            "course_id": msg["course_id"],
+            "course_title": course.get("title", ""),
+            "sender_id": msg["sender_id"],
+            "sender_name": sender.get("name", ""),
+            "sender_avatar": sender.get("avatar_url"),
+            "preview": msg["content"][:80],
+            "created_at": msg["created_at"],
+            "is_read": msg.get("is_read", True),
+        })
+
+    # ── 2) 전체 코멘트 (해결된 것 포함) ──
+    if role == "professor":
+        courses = sb.table("courses").select("id").eq("professor_id", uid).execute()
+        course_ids = [c["id"] for c in (courses.data or [])]
+        if course_ids:
+            cmts = sb.table("note_comments") \
+                .select("id, note_id, content, created_at, block_index, is_resolved, users(name, avatar_url), notes!inner(title, course_id, student_id)") \
+                .in_("notes.course_id", course_ids) \
+                .neq("user_id", uid) \
+                .order("created_at", desc=True) \
+                .limit(50) \
+                .execute()
+        else:
+            cmts = type("R", (), {"data": []})()
+    else:
+        my_notes = sb.table("notes").select("id").eq("student_id", uid).execute()
+        note_ids = [n["id"] for n in (my_notes.data or [])]
+        if note_ids:
+            cmts = sb.table("note_comments") \
+                .select("id, note_id, content, created_at, block_index, is_resolved, users(name, avatar_url), notes!inner(title, course_id, student_id)") \
+                .in_("note_id", note_ids) \
+                .neq("user_id", uid) \
+                .order("created_at", desc=True) \
+                .limit(50) \
+                .execute()
+        else:
+            cmts = type("R", (), {"data": []})()
+
+    for cmt in (cmts.data or []):
+        commenter = cmt.pop("users", {}) or {}
+        note = cmt.pop("notes", {}) or {}
+        items.append({
+            "type": "comment",
+            "id": cmt["id"],
+            "note_id": cmt["note_id"],
+            "course_id": note.get("course_id", ""),
+            "student_id": note.get("student_id", ""),
+            "note_title": note.get("title", ""),
+            "commenter_name": commenter.get("name", ""),
+            "commenter_avatar": commenter.get("avatar_url"),
+            "block_index": cmt["block_index"],
+            "preview": cmt["content"][:80],
+            "created_at": cmt["created_at"],
+            "is_read": cmt.get("is_resolved", True),
+        })
+
+    # ── 3) 시스템 알림: 과제/자료 (최근 7일) ──
+    now = datetime.now(timezone.utc)
+    week_ago = (now - timedelta(days=7)).isoformat()
+
+    if role == "student":
+        enrollments = sb.table("enrollments").select("course_id").eq("student_id", uid).execute()
+        enrolled_ids = [e["course_id"] for e in (enrollments.data or [])]
+        if enrolled_ids:
+            # 새 과제
+            new_assigns = sb.table("assignments").select(
+                "id, title, course_id, created_at, due_date, courses(title)"
+            ).in_("course_id", enrolled_ids) \
+             .eq("status", "published") \
+             .gt("created_at", week_ago) \
+             .order("created_at", desc=True) \
+             .limit(30) \
+             .execute()
+            for a in (new_assigns.data or []):
+                ci = a.pop("courses", {}) or {}
+                items.append({
+                    "type": "system",
+                    "id": a["id"],
+                    "course_id": a["course_id"],
+                    "course_title": ci.get("title", ""),
+                    "preview": f"새 과제: '{a['title']}'",
+                    "created_at": a["created_at"],
+                    "is_read": True,
+                    "system_kind": "new_assignment",
+                })
+                # 마감 임박 알림
+                if a.get("due_date"):
+                    due = datetime.fromisoformat(a["due_date"].replace("Z", "+00:00"))
+                    if now < due < now + timedelta(hours=48):
+                        items.append({
+                            "type": "system",
+                            "id": f"deadline-{a['id']}",
+                            "course_id": a["course_id"],
+                            "course_title": ci.get("title", ""),
+                            "preview": f"'{a['title']}' 마감이 임박했습니다",
+                            "created_at": a["due_date"],
+                            "is_read": True,
+                            "system_kind": "deadline",
+                        })
+            # 새 자료
+            new_mats = sb.table("course_materials").select(
+                "id, title, course_id, created_at, courses(title)"
+            ).in_("course_id", enrolled_ids) \
+             .gt("created_at", week_ago) \
+             .order("created_at", desc=True) \
+             .limit(20) \
+             .execute()
+            for m in (new_mats.data or []):
+                ci = m.pop("courses", {}) or {}
+                items.append({
+                    "type": "system",
+                    "id": m["id"],
+                    "course_id": m["course_id"],
+                    "course_title": ci.get("title", ""),
+                    "preview": f"새 자료: '{m['title']}'",
+                    "created_at": m["created_at"],
+                    "is_read": True,
+                    "system_kind": "new_material",
+                })
+
+    items.sort(key=lambda x: x["created_at"], reverse=True)
+    return {"items": items[:100]}
+
+
 @router.post("/notifications/mark-read")
 async def mark_notifications_read(user: dict = Depends(get_current_user)):
     """알림 패널을 열었을 때 메시지 읽음 처리 + 코멘트 해결 처리."""

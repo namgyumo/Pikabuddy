@@ -15,8 +15,7 @@ export default function Landing() {
   const [adminLoading, setAdminLoading] = useState(false);
 
   // Test accounts from backend
-  const [testAccounts, setTestAccounts] = useState<{role: string; label: string; username: string; password: string}[]>([]);
-  const [testLoading, setTestLoading] = useState<string | null>(null);
+  const [testAccounts, setTestAccounts] = useState<{role: string; label: string; username: string}[]>([]);
   useEffect(() => {
     api.get("/auth/test-accounts").then((r) => setTestAccounts(r.data.accounts || [])).catch(() => {});
   }, []);
@@ -38,20 +37,9 @@ export default function Landing() {
     }
   };
 
-  const handleTestLogin = async (username: string, password: string, role: string) => {
-    setTestLoading(role);
-    setAdminError("");
-    try {
-      await adminLogin(username, password);
-      const user = useAuthStore.getState().user;
-      if (user?.role === "professor") navigate("/professor");
-      else if (user?.role === "student") navigate("/student");
-      else navigate("/select-role");
-    } catch {
-      setAdminError("\uD14C\uC2A4\uD2B8 \uACC4\uC815 \uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
-    } finally {
-      setTestLoading(null);
-    }
+  const handleTestFill = (username: string) => {
+    setAdminId(username);
+    setAdminPw("");
   };
 
   const scrollTo = (id: string) => {
@@ -131,15 +119,14 @@ export default function Landing() {
         {testAccounts.length > 0 && (
           <div style={{ marginTop: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 12, color: "var(--on-surface-variant)", letterSpacing: 0.5 }}>
-              {"\uD14C\uC2A4\uD2B8 \uACC4\uC815\uC73C\uB85C \uBC14\uB85C \uCCB4\uD5D8"}
+              {"테스트 계정 아이디 자동 입력"}
             </span>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
               {testAccounts.map((acc) => (
                 <button
                   key={acc.role}
                   className="btn btn-ghost"
-                  disabled={testLoading !== null}
-                  onClick={() => handleTestLogin(acc.username, acc.password, acc.role)}
+                  onClick={() => handleTestFill(acc.username)}
                   style={{
                     padding: "8px 20px",
                     borderRadius: "var(--radius-full)",
@@ -149,7 +136,7 @@ export default function Landing() {
                     color: acc.role === "professor" ? "var(--primary)" : "var(--tertiary)",
                   }}
                 >
-                  {testLoading === acc.role ? "\uB85C\uADF8\uC778 \uC911..." : acc.label}
+                  {acc.label}
                 </button>
               ))}
             </div>

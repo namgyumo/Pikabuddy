@@ -1107,7 +1107,11 @@ export default function NoteEditor() {
 
           {sidebarTab === "history" && noteId && noteId !== "new" && noteTeamId && (
             <div className="sidebar-tab-content" style={{ padding: 0 }}>
-              <NoteSnapshotPanel noteId={noteId} />
+              <NoteSnapshotPanel noteId={noteId} onRestore={(content) => {
+                if (editor) {
+                  editor.commands.setContent(content);
+                }
+              }} />
             </div>
           )}
         </div>

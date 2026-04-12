@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useState, useCallback } from "react";
+import { customConfirm } from "../lib/confirm";
 import api from "../lib/api";
 import type { NoteSnapshot } from "../types";
 import {
@@ -18,6 +19,7 @@ import {
 
 interface Props {
   noteId: string;
+  onRestore?: (content: Record<string, unknown>) => void;
 }
 
 function relativeTime(dateStr: string): string {
@@ -47,7 +49,7 @@ function Avatar({ name, url, size = 20 }: { name: string; url?: string | null; s
   );
 }
 
-export default function NoteSnapshotPanel({ noteId }: Props) {
+export default function NoteSnapshotPanel({ noteId, onRestore }: Props) {
   const [snapshots, setSnapshots] = useState<NoteSnapshot[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
@@ -205,15 +207,35 @@ export default function NoteSnapshotPanel({ noteId }: Props) {
         {selectedIdx !== null && snapshots.length > 0 && (
           <div style={{ padding: "8px 0" }}>
             <div style={{ padding: "8px 12px", fontSize: 11, color: "var(--on-surface-variant)", borderBottom: "1px solid var(--outline-variant)", display: "flex", alignItems: "center", gap: 6 }}>
-              {selectedIdx + 1 < snapshots.length ? (
-                <>
-                  <Avatar name={snapshots[selectedIdx + 1].saved_by_name} url={snapshots[selectedIdx + 1].saved_by_avatar_url} size={16} />
-                  <span>{snapshots[selectedIdx + 1].saved_by_name}</span>
-                  <span style={{ opacity: 0.5 }}>→</span>
-                  <Avatar name={snapshots[selectedIdx].saved_by_name} url={snapshots[selectedIdx].saved_by_avatar_url} size={16} />
-                  <span>{snapshots[selectedIdx].saved_by_name}</span>
-                </>
-              ) : "첫 번째 저장 (전체 추가)"}
+              <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6 }}>
+                {selectedIdx + 1 < snapshots.length ? (
+                  <>
+                    <Avatar name={snapshots[selectedIdx + 1].saved_by_name} url={snapshots[selectedIdx + 1].saved_by_avatar_url} size={16} />
+                    <span>{snapshots[selectedIdx + 1].saved_by_name}</span>
+                    <span style={{ opacity: 0.5 }}>→</span>
+                    <Avatar name={snapshots[selectedIdx].saved_by_name} url={snapshots[selectedIdx].saved_by_avatar_url} size={16} />
+                    <span>{snapshots[selectedIdx].saved_by_name}</span>
+                  </>
+                ) : "첫 번째 저장 (전체 추가)"}
+              </div>
+              {onRestore && selectedIdx !== 0 && snapshotContents.has(snapshots[selectedIdx].id) && (
+                <button
+                  onClick={async () => {
+                    const ok = await customConfirm("이 버전으로 복원하시겠습니까? 현재 내용이 덮어씌워집니다.", { danger: true, confirmText: "복원" });
+                    if (ok) {
+                      const content = snapshotContents.get(snapshots[selectedIdx].id);
+                      if (content) onRestore(content);
+                    }
+                  }}
+                  style={{
+                    padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600,
+                    background: "var(--primary)", color: "var(--on-primary)",
+                    border: "none", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
+                  }}
+                >
+                  이 버전으로 복원
+                </button>
+              )}
             </div>
             {diffLines.map((line, i) => {
               const authorVersions = line.identityKey ? (lineHistory.get(line.identityKey) || []) : [];

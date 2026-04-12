@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, memo } from "react";
+import { useState, useEffect, useRef, useCallback, memo, lazy, Suspense } from "react";
 import {
   ALLOWED_CSS_VARIABLES,
   ALLOWED_CSS_SET,
@@ -850,12 +850,15 @@ const MASCOT_ACTIONS_HELP = [
   ["스프라이트", "addSprite, playSprite, setSpriteSheet, spawn, kill"],
 ];
 
+const ImageCropModal = lazy(() => import("../common/ImageCropModal"));
+
 function AssetPanel({ effectsState, onChange }: { effectsState: EffectsState; onChange: (s: EffectsState) => void }) {
   const [scriptText, setScriptText] = useState(
     () => String(effectsState.mascotSprite?.params?.script || "")
   );
   const [scriptError, setScriptError] = useState<string | null>(null);
   const [scriptApplied, setScriptApplied] = useState(false);
+  const [bgCropSrc, setBgCropSrc] = useState<string | null>(null);
 
   // Debounce effect application to prevent rapid mascot restarts during slider drags
   const applyTimerRef = useRef(0);
@@ -1009,7 +1012,15 @@ function AssetPanel({ effectsState, onChange }: { effectsState: EffectsState; on
                                 const file = e.target.files?.[0];
                                 if (!file) return;
                                 const reader = new FileReader();
-                                reader.onload = () => updateParam(section.id, field.key, reader.result as string);
+                                reader.onload = () => {
+                                  const dataUrl = reader.result as string;
+                                  // 배경 이미지 + 이미지 파일이면 크롭 모달
+                                  if (section.id === "backgroundImage" && field.key === "url" && file.type.startsWith("image/")) {
+                                    setBgCropSrc(dataUrl);
+                                  } else {
+                                    updateParam(section.id, field.key, dataUrl);
+                                  }
+                                };
                                 reader.readAsDataURL(file);
                                 e.target.value = "";
                               }}
@@ -1180,6 +1191,22 @@ function AssetPanel({ effectsState, onChange }: { effectsState: EffectsState; on
         <strong>배경 미디어:</strong> GIF/mp4/webm도 지원 (동영상은 자동 반복 재생)<br/>
         <strong>커서:</strong> 32x32px 투명 배경 PNG 권장 &middot; <strong>큰 파일:</strong> 외부 URL 사용 권장
       </div>
+
+      {bgCropSrc && (
+        <Suspense fallback={null}>
+          <ImageCropModal
+            src={bgCropSrc}
+            aspect={16 / 9}
+            outputWidth={1920}
+            title="배경 이미지 자르기"
+            onConfirm={(_blob, dataUrl) => {
+              updateParam("backgroundImage", "url", dataUrl);
+              setBgCropSrc(null);
+            }}
+            onCancel={() => setBgCropSrc(null)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

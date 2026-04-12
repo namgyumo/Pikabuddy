@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useCourseStore } from "../store/courseStore";
 import { useAuthStore } from "../store/authStore";
@@ -8,7 +8,8 @@ import api from "../lib/api";
 import AppShell from "../components/common/AppShell";
 import { toast } from "../lib/toast";
 import { SkeletonList } from "../components/common/Skeleton";
-import { BANNER_PRESETS, getBannerStyle, getEffectiveBanner } from "../lib/bannerPresets";
+import { getBannerStyle, getEffectiveBanner } from "../lib/bannerPresets";
+import BannerPicker from "../components/common/BannerPicker";
 
 interface CalendarItem {
   id: string;
@@ -95,6 +96,10 @@ export default function StudentHome() {
   // 배너 커스텀
   const [bannerEditId, setBannerEditId] = useState<string | null>(null);
   const [bannerPick, setBannerPick] = useState("");
+
+  // 강의 정보 모달
+  const [courseInfo, setCourseInfo] = useState<any>(null);
+  const infoCache = useRef<Record<string, any>>({}).current;
 
   const tutorialStart = useTutorialStore((s) => s.start);
   const tutorialCompleted = useTutorialStore((s) => s.isCompleted);
@@ -228,6 +233,18 @@ export default function StudentHome() {
                     <p>{course.description || "설명 없음"}</p>
                   </Link>
                   <button
+                    className="course-info-btn"
+                    title="강의 정보"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (infoCache[course.id]) { setCourseInfo(infoCache[course.id]); return; }
+                      setCourseInfo({ title: course.title, description: course.description, _loading: true });
+                      api.get(`/courses/${course.id}/info`).then(({ data }) => { infoCache[course.id] = data; setCourseInfo(data); }).catch(() => toast.error("정보 로드 실패"));
+                    }}
+                  >
+                    ···
+                  </button>
+                  <button
                     className="banner-edit-btn"
                     title="배너 변경"
                     onClick={(e) => { e.preventDefault(); setBannerEditId(course.id); setBannerPick(getEffectiveBanner(course) || ""); }}
@@ -235,48 +252,19 @@ export default function StudentHome() {
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                   </button>
                   {bannerEditId === course.id && (
-                    <>
-                      <div className="banner-picker-backdrop" onClick={() => setBannerEditId(null)} />
-                      <div className="banner-picker-dropdown">
-                        <div className="banner-picker-title">배너 선택</div>
-                        <div className="banner-preset-grid">
-                          {BANNER_PRESETS.map((p) => (
-                            <button
-                              key={p.id}
-                              type="button"
-                              className={`banner-preset-item${bannerPick === `gradient:${p.id}` ? " active" : ""}`}
-                              style={{ background: p.gradient }}
-                              onClick={() => setBannerPick(`gradient:${p.id}`)}
-                              title={p.label}
-                            />
-                          ))}
-                        </div>
-                        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                          <button className="btn btn-primary" style={{ flex: 1, fontSize: 13, padding: "6px 0" }}
-                            onClick={async () => {
-                              try {
-                                await api.patch(`/courses/${course.id}/my-banner`, { banner_url: bannerPick || null });
-                                const updated = courses.map((c) => c.id === course.id ? { ...c, custom_banner_url: bannerPick || null } : c);
-                                useCourseStore.setState({ courses: updated });
-                                setBannerEditId(null);
-                              } catch { toast.error("배너 변경 실패"); }
-                            }}>저장</button>
-                          {course.custom_banner_url && (
-                            <button className="btn btn-ghost" style={{ fontSize: 12, padding: "6px 8px", color: "var(--on-surface-variant)" }}
-                              onClick={async () => {
-                                try {
-                                  await api.patch(`/courses/${course.id}/my-banner`, { banner_url: null });
-                                  const updated = courses.map((c) => c.id === course.id ? { ...c, custom_banner_url: null } : c);
-                                  useCourseStore.setState({ courses: updated });
-                                  setBannerEditId(null);
-                                } catch { toast.error("초기화 실패"); }
-                              }}>기본값으로</button>
-                          )}
-                          <button className="btn btn-ghost" style={{ fontSize: 12, padding: "6px 8px" }}
-                            onClick={() => setBannerEditId(null)}>취소</button>
-                        </div>
-                      </div>
-                    </>
+                    <BannerPicker
+                      current={bannerPick}
+                      onChange={setBannerPick}
+                      onSave={async (value) => {
+                        try {
+                          await api.patch(`/courses/${course.id}/my-banner`, { banner_url: value });
+                          const updated = courses.map((c) => c.id === course.id ? { ...c, custom_banner_url: value } : c);
+                          useCourseStore.setState({ courses: updated, lastFetchedAt: Date.now() });
+                          setBannerEditId(null);
+                        } catch { toast.error("배너 변경 실패"); }
+                      }}
+                      onCancel={() => setBannerEditId(null)}
+                    />
                   )}
                 </div>
               );
@@ -529,6 +517,70 @@ export default function StudentHome() {
           </div>
         )}
       </main>
+
+      {/* 강의 정보 모달 */}
+      {courseInfo && (
+        <div className="course-info-modal-backdrop" onClick={() => setCourseInfo(null)}>
+          <div className="course-info-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="course-info-modal-header">
+              <h3>{courseInfo.title}</h3>
+              <button className="course-info-modal-close" onClick={() => setCourseInfo(null)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div className="course-info-modal-body">
+              {courseInfo._loading ? (
+                <div style={{ textAlign: "center", padding: "24px 0", color: "var(--on-surface-variant)", fontSize: 14 }}>
+                  <div className="page-loading-spinner" style={{ width: 28, height: 28, margin: "0 auto 12px" }} />
+                  불러오는 중...
+                </div>
+              ) : (<>
+              <div className="info-stats">
+                <div className="info-stat-card">
+                  <div className="info-stat-value">{courseInfo.student_count}</div>
+                  <div className="info-stat-label">수강생</div>
+                </div>
+                <div className="info-stat-card">
+                  <div className="info-stat-value">{courseInfo.assignment_count}</div>
+                  <div className="info-stat-label">과제</div>
+                </div>
+                <div className="info-stat-card">
+                  <div className="info-stat-value">{courseInfo.note_count}</div>
+                  <div className="info-stat-label">노트</div>
+                </div>
+              </div>
+              {courseInfo.description && (
+                <div className="info-section">
+                  <div className="info-section-label">설명</div>
+                  <div className="info-section-value">{courseInfo.description}</div>
+                </div>
+              )}
+              <div className="info-section">
+                <div className="info-section-label">교수</div>
+                <div className="info-section-value">{courseInfo.professor_name}</div>
+              </div>
+              <div className="info-section">
+                <div className="info-section-label">개설일</div>
+                <div className="info-section-value">{new Date(courseInfo.created_at).toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" })}</div>
+              </div>
+              {courseInfo.objectives && courseInfo.objectives.length > 0 && (
+                <>
+                  <div className="info-divider" />
+                  <div className="info-section">
+                    <div className="info-section-label">강의 목표</div>
+                    <ul className="info-objectives-list">
+                      {courseInfo.objectives.map((obj: string, i: number) => (
+                        <li key={i}>{obj}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </>
+              )}
+              </>)}
+            </div>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }

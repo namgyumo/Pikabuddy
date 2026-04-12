@@ -1,5 +1,6 @@
 import secrets
-from fastapi import APIRouter, Depends, HTTPException, status
+import uuid
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from pydantic import BaseModel
 from common.supabase_client import get_supabase
 from middleware.auth import get_current_user, require_professor_or_personal, require_student_or_personal
@@ -75,11 +76,14 @@ async def list_courses(user: dict = Depends(get_current_user)):
         if cid in all_courses and banner:
             all_courses[cid]["custom_banner_url"] = banner
 
-    # 3) 역할 기반 필터링 — 개인 모드만 개인 코스, 나머지는 전부 표시
+    # 3) 역할 기반 필터링
+    # 개인 모드: 본인 소유 개인 코스만
+    # 교수/학생 모드: 비개인 코스 + 타인의 개인 코스에 수강 등록된 경우도 표시
     if role == "personal":
         return [c for c in all_courses.values() if c.get("is_personal")]
     else:
-        return [c for c in all_courses.values() if not c.get("is_personal")]
+        return [c for c in all_courses.values()
+                if not c.get("is_personal") or c.get("_relation") == "enrolled"]
 
 
 @router.get("/by-invite/{invite_code}")
@@ -203,6 +207,53 @@ async def get_course(course_id: str, user: dict = Depends(get_current_user)):
     return data
 
 
+@router.get("/{course_id}/info")
+async def get_course_info(course_id: str, user: dict = Depends(get_current_user)):
+    """강의 정보 요약 (수강생 수, 교수 이름, 생성일 등) — 병렬 쿼리"""
+    import asyncio
+    from concurrent.futures import ThreadPoolExecutor
+
+    supabase = get_supabase()
+
+    def q_course():
+        return supabase.table("courses").select("*").eq("id", course_id).single().execute()
+    def q_enroll():
+        return supabase.table("enrollments").select("id", count="exact").eq("course_id", course_id).execute()
+    def q_assign():
+        return supabase.table("assignments").select("id", count="exact").eq("course_id", course_id).execute()
+    def q_notes():
+        return supabase.table("notes").select("id", count="exact").eq("course_id", course_id).execute()
+
+    loop = asyncio.get_running_loop()
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        course_f, enroll_f, assign_f, notes_f = await asyncio.gather(
+            loop.run_in_executor(pool, q_course),
+            loop.run_in_executor(pool, q_enroll),
+            loop.run_in_executor(pool, q_assign),
+            loop.run_in_executor(pool, q_notes),
+        )
+
+    if not course_f.data:
+        raise HTTPException(status_code=404, detail="강의를 찾을 수 없습니다.")
+
+    # 교수 이름 — 추가 1회 쿼리 (course 결과 필요)
+    prof = supabase.table("users").select("name").eq("id", course_f.data["professor_id"]).single().execute()
+    prof_name = (prof.data or {}).get("name", "알 수 없음")
+
+    return {
+        "id": course_f.data["id"],
+        "title": course_f.data["title"],
+        "description": course_f.data.get("description"),
+        "objectives": course_f.data.get("objectives"),
+        "invite_code": course_f.data.get("invite_code"),
+        "professor_name": prof_name,
+        "student_count": enroll_f.count or 0,
+        "assignment_count": assign_f.count or 0,
+        "note_count": notes_f.count or 0,
+        "created_at": course_f.data.get("created_at"),
+    }
+
+
 class CustomBannerRequest(BaseModel):
     banner_url: str | None = None
 
@@ -228,3 +279,32 @@ async def set_custom_banner(course_id: str, body: CustomBannerRequest, user: dic
         .execute()
 
     return {"custom_banner_url": body.banner_url}
+
+
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+ALLOWED_IMAGE_EXTS = {"jpg", "jpeg", "png", "gif", "webp"}
+MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB
+
+
+@router.post("/{course_id}/banner-image")
+async def upload_course_banner_image(
+    course_id: str,
+    file: UploadFile = File(...),
+    user: dict = Depends(get_current_user),
+):
+    """강의 배너 이미지 업로드 (유저 프로필은 변경하지 않음)"""
+    ext = (file.filename.split(".")[-1] if file.filename else "png").lower()
+    if ext not in ALLOWED_IMAGE_EXTS:
+        raise HTTPException(status_code=400, detail="허용되지 않는 파일 형식입니다. (jpg, png, gif, webp)")
+    if file.content_type and file.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=400, detail="허용되지 않는 이미지 형식입니다.")
+    content = await file.read()
+    if len(content) > MAX_IMAGE_SIZE:
+        raise HTTPException(status_code=400, detail="파일 크기가 5MB를 초과합니다.")
+
+    supabase = get_supabase()
+    path = f"banners/course_{course_id}/{uuid.uuid4().hex}.{ext}"
+    supabase.storage.from_("banners").upload(path, content, {"content-type": file.content_type or "image/png"})
+    url = supabase.storage.from_("banners").get_public_url(path)
+
+    return {"banner_url": url}

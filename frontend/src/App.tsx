@@ -32,6 +32,7 @@ const StudentNotes = lazy(() => import("./pages/StudentNotes"));
 const TeamManager = lazy(() => import("./pages/TeamManager"));
 const AllNotes = lazy(() => import("./pages/AllNotes"));
 const AllNotesGraph = lazy(() => import("./pages/AllNotesGraph"));
+const Notifications = lazy(() => import("./pages/Notifications"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 function PageLoader() {
@@ -293,6 +294,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <Settings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/notifications"
+              element={
+                <ProtectedRoute>
+                  <Notifications />
                 </ProtectedRoute>
               }
             />

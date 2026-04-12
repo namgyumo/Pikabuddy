@@ -344,7 +344,7 @@ export default function CodeEditor() {
     }
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     if (!assignmentId || submitting) return;
     setSubmitting(true);
     setFeedback("");
@@ -407,7 +407,7 @@ export default function CodeEditor() {
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [assignmentId, submitting, code, problemIdx]);
 
   const handleTutorChat = async () => {
     if (!chatInput.trim()) return;
@@ -484,12 +484,31 @@ export default function CodeEditor() {
     }
   };
 
+  // 키보드 단축키: Ctrl+S (저장), Ctrl+Enter (제출)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === "s") {
+        e.preventDefault();
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        saveSnapshot(code, problemIdx);
+      }
+      if (e.ctrlKey && e.key === "Enter") {
+        e.preventDefault();
+        handleSubmit();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [code, problemIdx, saveSnapshot, handleSubmit]);
+
   const policyLabels: Record<string, string> = {
     free: "자유",
     normal: "보통",
     strict: "엄격",
     exam: "시험",
   };
+
+  const isOverdue = assignment?.due_date && new Date(assignment.due_date) < new Date();
 
   // 시험 모드: 시작 전 오버레이
   if (assignment?.exam_mode && !examStarted && !examMode.examEnded) {
@@ -592,6 +611,11 @@ export default function CodeEditor() {
           <span className="badge badge-policy">
             AI 정책: {policyLabels[assignment?.ai_policy || ""] || "-"}
           </span>
+          {isOverdue && (
+            <span className="badge" style={{ background: "var(--error)", color: "var(--on-error)", fontWeight: 600 }}>
+              마감 지남
+            </span>
+          )}
           {/* 시험 모드 상태 + 끝내기 */}
           {assignment?.exam_mode && examStarted && (
             <>
@@ -1010,7 +1034,7 @@ export default function CodeEditor() {
           </div>
 
           <div className="sidebar-actions">
-            {assignment?.due_date && new Date(assignment.due_date) < new Date() ? (
+            {isOverdue ? (
               <div style={{
                 padding: "10px 16px", borderRadius: 10, fontSize: 13, fontWeight: 600,
                 background: "rgba(220,38,38,0.08)", color: "var(--error)", textAlign: "center",

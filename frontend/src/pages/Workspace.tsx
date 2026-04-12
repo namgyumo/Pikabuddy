@@ -54,6 +54,30 @@ function isLeaf(n: TreeNode): n is LeafNode {
 let nextId = 1;
 function uid() { return `p${nextId++}`; }
 
+const WS_LAYOUT_KEY = (courseId: string) => `ws_layout_${courseId}`;
+
+interface SavedLayout {
+  panes: [string, Pane][];
+  tree: TreeNode;
+  nextId: number;
+}
+
+function saveLayout(courseId: string, panes: Map<string, Pane>, tree: TreeNode | null) {
+  if (!tree) return;
+  try {
+    const data: SavedLayout = { panes: [...panes.entries()], tree, nextId };
+    localStorage.setItem(WS_LAYOUT_KEY(courseId), JSON.stringify(data));
+  } catch { /* quota exceeded etc */ }
+}
+
+function loadLayout(courseId: string): SavedLayout | null {
+  try {
+    const raw = localStorage.getItem(WS_LAYOUT_KEY(courseId));
+    if (!raw) return null;
+    return JSON.parse(raw) as SavedLayout;
+  } catch { return null; }
+}
+
 /* ── Document viewer helpers ── */
 function getFileExt(name: string) {
   return name.split(".").pop()?.toLowerCase() || "";
@@ -315,14 +339,25 @@ export default function Workspace() {
     });
   }, [courseId]);
 
-  // Initialize panes AFTER data is loaded
+  // Initialize panes AFTER data is loaded — restore from localStorage if available
   useEffect(() => {
-    if (!dataLoaded || initializedRef.current) return;
+    if (!dataLoaded || !courseId || initializedRef.current) return;
     initializedRef.current = true;
 
     const matId = searchParams.get("material");
-    const newPanes = new Map<string, Pane>();
 
+    // Try restore saved layout (skip if URL has explicit material param)
+    if (!matId) {
+      const saved = loadLayout(courseId);
+      if (saved) {
+        nextId = saved.nextId;
+        setPanes(new Map(saved.panes));
+        setTree(saved.tree);
+        return;
+      }
+    }
+
+    const newPanes = new Map<string, Pane>();
     const leftId = uid();
     const rightId = uid();
 
@@ -348,7 +383,16 @@ export default function Workspace() {
         { id: uid(), paneId: rightId },
       ],
     });
-  }, [dataLoaded, materials, searchParams]);
+  }, [dataLoaded, courseId, materials, searchParams]);
+
+  // Persist layout to localStorage on changes (debounced)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!courseId || !initializedRef.current || !tree) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => saveLayout(courseId, panes, tree), 500);
+    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+  }, [courseId, panes, tree]);
 
   // Replace pane content
   const replacePane = useCallback((paneId: string, newPane: Partial<Pane>) => {

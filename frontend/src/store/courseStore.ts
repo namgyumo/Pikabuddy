@@ -88,6 +88,7 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     set((state) => ({
       courses: state.courses.map((c) => (c.id === id ? data : c)),
       currentCourse: state.currentCourse?.id === id ? data : state.currentCourse,
+      lastFetchedAt: Date.now(),
     }));
     return data;
   },

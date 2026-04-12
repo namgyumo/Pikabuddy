@@ -1,7 +1,7 @@
 import json
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from common.supabase_client import get_supabase
 from common.gemini_client import get_gemini_model, MODEL_LIGHT
 from middleware.auth import require_professor_or_personal, verify_course_ownership
@@ -146,6 +146,9 @@ async def get_student_detail(
         loop.run_in_executor(_executor, q_paste_logs),
     )
 
+    if not student.data:
+        raise HTTPException(status_code=404, detail="학생을 찾을 수 없습니다.")
+
     paste_logs = [
         {
             "id": s["id"],
@@ -154,7 +157,7 @@ async def get_student_detail(
             "problem_index": (s.get("code_diff") or {}).get("problem_index", 0),
             "timestamp": s.get("created_at"),
         }
-        for s in pastes.data
+        for s in (pastes.data or [])
     ]
 
     return {

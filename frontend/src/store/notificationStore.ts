@@ -25,13 +25,28 @@ export interface NotificationItem {
   created_at: string;
 }
 
+// sessionStorage 키 — "모두 읽음" 시점 저장
+const DISMISS_KEY = "notif_dismissed_at";
+
+function getDismissedAt(): number {
+  const v = sessionStorage.getItem(DISMISS_KEY);
+  return v ? Number(v) : 0;
+}
+
+function setDismissedAt() {
+  sessionStorage.setItem(DISMISS_KEY, String(Date.now()));
+}
+
 interface NotificationState {
   unreadMessages: number;
   unresolvedComments: number;
+  upcomingDeadlines: number;
+  newMaterials: number;
   total: number;
   items: NotificationItem[];
   loading: boolean;
   open: boolean;
+  markedRead: boolean;
   messengerCourseId: string | null;
   totalUnreadMessages: number;
 
@@ -39,31 +54,51 @@ interface NotificationState {
   fetchTotalUnread: () => Promise<void>;
   fetchMessengerCourse: () => Promise<void>;
   markRead: () => Promise<void>;
+  clearAll: () => Promise<void>;
   setOpen: (open: boolean) => void;
   toggle: () => void;
 }
 
-export const useNotificationStore = create<NotificationState>((set) => ({
+export const useNotificationStore = create<NotificationState>((set, get) => ({
   unreadMessages: 0,
   unresolvedComments: 0,
+  upcomingDeadlines: 0,
+  newMaterials: 0,
   total: 0,
   items: [],
   loading: false,
   open: false,
+  markedRead: false,
   messengerCourseId: null,
   totalUnreadMessages: 0,
 
   fetchNotifications: async () => {
+    // 패널이 열려있으면 폴링 스킵 (깜빡임 방지)
+    if (get().open) return;
     set({ loading: true });
     try {
       const { data } = await api.get("/notifications");
+      // "모두 읽음" 이후의 아이템만 표시
+      const dismissedAt = getDismissedAt();
+      let filtered: NotificationItem[] = data.items;
+      if (dismissedAt > 0) {
+        filtered = filtered.filter((item: NotificationItem) => new Date(item.created_at).getTime() > dismissedAt);
+      }
+      const msgCount = filtered.filter((i: NotificationItem) => i.type === "message").length;
+      const cmtCount = filtered.filter((i: NotificationItem) => i.type === "comment").length;
+      const dlCount = filtered.filter((i: NotificationItem) => i.type === "deadline").length;
+      const matCount = filtered.filter((i: NotificationItem) => i.type === "new_material").length;
+      const total = msgCount + cmtCount + dlCount + matCount;
       set({
-        unreadMessages: data.unread_messages,
-        unresolvedComments: data.unresolved_comments,
-        total: data.total,
-        items: data.items,
+        unreadMessages: msgCount,
+        unresolvedComments: cmtCount,
+        upcomingDeadlines: dlCount,
+        newMaterials: matCount,
+        total,
+        items: filtered,
         loading: false,
-        totalUnreadMessages: data.unread_messages,
+        markedRead: false,
+        totalUnreadMessages: msgCount,
       });
     } catch {
       set({ loading: false });
@@ -89,9 +124,37 @@ export const useNotificationStore = create<NotificationState>((set) => ({
   },
 
   markRead: async () => {
+    if (get().markedRead) return;
+    set({ markedRead: true });
     try {
       await api.post("/notifications/mark-read");
-      set({ unreadMessages: 0, unresolvedComments: 0, total: 0, items: [], totalUnreadMessages: 0 });
+      const s = get();
+      const remainingTotal = s.upcomingDeadlines + s.newMaterials;
+      set({
+        unreadMessages: 0,
+        unresolvedComments: 0,
+        total: remainingTotal,
+        totalUnreadMessages: 0,
+      });
+    } catch {
+      // silent
+    }
+  },
+
+  clearAll: async () => {
+    try {
+      await api.post("/notifications/mark-read");
+      setDismissedAt();
+      set({
+        unreadMessages: 0,
+        unresolvedComments: 0,
+        upcomingDeadlines: 0,
+        newMaterials: 0,
+        total: 0,
+        items: [],
+        markedRead: true,
+        totalUnreadMessages: 0,
+      });
     } catch {
       // silent
     }

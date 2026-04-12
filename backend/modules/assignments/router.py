@@ -850,6 +850,7 @@ async def create_assignment(
     is_admin = user.get("email", "").endswith("@pikabuddy.admin")
     if user.get("role") not in ("professor", "personal") and not is_admin:
         raise HTTPException(status_code=403, detail="과제 생성 권한이 없습니다.")
+    verify_course_ownership(user, course_id)
     supabase = get_supabase()
 
     # 코딩/퀴즈 과제 여부에 따라 generation_status 설정

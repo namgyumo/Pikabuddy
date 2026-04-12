@@ -1,5 +1,6 @@
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from middleware.auth import get_current_user
 from config import get_settings
 
 from modules.auth.router import router as auth_router
@@ -75,12 +76,12 @@ async def health_check():
 from common.gemini_client import get_token_stats, reset_token_stats
 
 @app.get("/api/token-stats")
-async def token_stats():
-    """AI 토큰 사용량 통계 조회"""
+async def token_stats(user: dict = Depends(get_current_user)):
+    """AI 토큰 사용량 통계 조회 (인증 필요)"""
     return get_token_stats()
 
 @app.post("/api/token-stats/reset")
-async def token_stats_reset():
-    """AI 토큰 사용량 통계 초기화"""
+async def token_stats_reset(user: dict = Depends(get_current_user)):
+    """AI 토큰 사용량 통계 초기화 (인증 필요)"""
     reset_token_stats()
     return {"message": "Token stats reset"}

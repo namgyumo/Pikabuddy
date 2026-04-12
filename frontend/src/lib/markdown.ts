@@ -1,8 +1,9 @@
 import { marked } from "marked";
+import DOMPurify from "dompurify";
 
 marked.setOptions({ breaks: true });
 
-/** Strip wrapping code fences and render markdown to HTML */
+/** Strip wrapping code fences and render markdown to HTML (sanitized) */
 export function renderMarkdown(text: string): string {
   let s = text.trim();
   // Remove wrapping ```...``` block (Gemini sometimes wraps entire output)
@@ -16,5 +17,6 @@ export function renderMarkdown(text: string): string {
     }
     s = s.trim();
   }
-  return marked.parse(s) as string;
+  const html = marked.parse(s) as string;
+  return DOMPurify.sanitize(html);
 }

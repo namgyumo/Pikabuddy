@@ -75,6 +75,17 @@ async def create_note(
 async def list_notes(course_id: str, user: dict = Depends(get_current_user)):
     """노트 목록 조회. 학생은 본인 노트 + 소속 팀 공유 노트도 조회."""
     supabase = get_supabase()
+    uid = user["id"]
+
+    # 강의 접근 권한 확인: 소유자 또는 수강생만 허용
+    is_admin = user.get("email", "").endswith("@pikabuddy.admin")
+    if not is_admin:
+        owned = supabase.table("courses").select("id").eq("id", course_id).eq("professor_id", uid).execute()
+        if not owned.data:
+            enrolled = supabase.table("enrollments").select("id").eq("student_id", uid).eq("course_id", course_id).execute()
+            if not enrolled.data:
+                raise HTTPException(status_code=403, detail="강의 접근 권한이 없습니다.")
+
     query = supabase.table("notes").select("*").eq("course_id", course_id)
 
     if user["role"] == "student":
@@ -350,7 +361,7 @@ async def get_graph_data(course_id: str, user: dict = Depends(get_current_user))
     # 2) 캐시 없는 노트만 API 호출 (이벤트 루프 블로킹 방지)
     if uncached_texts:
         try:
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             new_embs = await loop.run_in_executor(None, get_embeddings, uncached_texts)
             for i, idx in enumerate(uncached_indices):
                 if new_embs[i]:
@@ -366,7 +377,7 @@ async def get_graph_data(course_id: str, user: dict = Depends(get_current_user))
                             }).eq("id", notes[idx]["id"]).execute()
                         except Exception:
                             pass
-            asyncio.get_event_loop().run_in_executor(None, _save_embeddings_sync)
+            asyncio.get_running_loop().run_in_executor(None, _save_embeddings_sync)
         except Exception:
             pass
 
@@ -565,7 +576,7 @@ async def get_unified_graph(user: dict = Depends(get_current_user)):
 
     if uncached_texts:
         try:
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             new_embs = await loop.run_in_executor(None, get_embeddings, uncached_texts)
             for i, idx in enumerate(uncached_indices):
                 if new_embs[i]:
@@ -580,7 +591,7 @@ async def get_unified_graph(user: dict = Depends(get_current_user)):
                             }).eq("id", all_notes[idx]["id"]).execute()
                         except Exception:
                             pass
-            asyncio.get_event_loop().run_in_executor(None, _save_embeddings_sync)
+            asyncio.get_running_loop().run_in_executor(None, _save_embeddings_sync)
         except Exception:
             pass
 

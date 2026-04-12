@@ -11,6 +11,7 @@ import {
   Legend,
 } from "recharts";
 import * as Diff from "diff";
+import DOMPurify from "dompurify";
 import { renderMarkdown } from "../lib/markdown";
 import api from "../lib/api";
 import AppShell from "../components/common/AppShell";
@@ -929,7 +930,7 @@ export default function StudentDetail() {
                     {selectedNote.content ? (
                       <div
                         dangerouslySetInnerHTML={{
-                          __html: tiptapToHtml(selectedNote.content as Record<string, unknown>),
+                          __html: DOMPurify.sanitize(tiptapToHtml(selectedNote.content as Record<string, unknown>)),
                         }}
                       />
                     ) : (

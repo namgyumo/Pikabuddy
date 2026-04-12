@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import * as Diff from "diff";
 import api from "../lib/api";
+import DOMPurify from "dompurify";
 import { renderMarkdown } from "../lib/markdown";
 import { computeNoteDiff, tiptapToLines, type NoteDiffLine } from "../lib/noteDiff";
 import { useAuthStore } from "../store/authStore";
@@ -556,7 +557,7 @@ export default function AssignmentDetail() {
                 isWritingSub ? (
                   /* Writing: render Tiptap HTML */
                   <div className="detail-note-body rendered-markdown"
-                    dangerouslySetInnerHTML={{ __html: tiptapToHtml(selectedSub.content as Record<string, unknown>) }} />
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(tiptapToHtml(selectedSub.content as Record<string, unknown>)) }} />
                 ) : (
                   /* Coding: code view with paste highlights */
                   <pre className="detail-code">
