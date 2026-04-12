@@ -345,7 +345,7 @@ async def get_graph_data(course_id: str, user: dict = Depends(get_current_user))
             cats = cat_map.get(n["id"], [])
             cat_str = ", ".join(cats[:5]) if cats else ""
             uncached_indices.append(idx)
-            uncached_texts.append(f"[{cat_str}] {n['title']}. {content_text[:500]}")
+            uncached_texts.append(f"[{cat_str}] {n['title']}. {content_text[:1200]}")
 
     # 2) 캐시 없는 노트만 API 호출 (이벤트 루프 블로킹 방지)
     if uncached_texts:
@@ -373,7 +373,7 @@ async def get_graph_data(course_id: str, user: dict = Depends(get_current_user))
     # 3) 유사도 계산 — 임베딩 + 카테고리 겹침으로 복합 가중치 산출
     has_embeddings = any(e for e in embeddings)
     if has_embeddings:
-        all_sims = pairwise_similarities(embeddings, threshold=0.65)
+        all_sims = pairwise_similarities(embeddings, threshold=0.72)
         for i, j, sim in all_sims:
             pair = tuple(sorted([notes[i]["id"], notes[j]["id"]]))
             if pair in existing_edges:
@@ -387,14 +387,22 @@ async def get_graph_data(course_id: str, user: dict = Depends(get_current_user))
             cat_overlap = len(shared_cats) / len(total_cats) if total_cats else 0
 
             # 최소 1개 이상의 카테고리가 겹쳐야 연결 (완전 무관 차단)
-            # 단, 임베딩 유사도가 매우 높으면(0.90+) 카테고리 무관해도 연결
-            if len(shared_cats) == 0 and sim < 0.90:
+            # 단, 임베딩 유사도가 매우 높으면(0.88+) 카테고리 무관해도 연결
+            if len(shared_cats) == 0 and sim < 0.88:
                 continue
 
-            # 가중치: 카테고리 겹침 비율(50%) + 임베딩 유사도(50%)
-            sim_norm = (sim - 0.65) / 0.35  # 0~1
-            combined = sim_norm * 0.5 + cat_overlap * 0.5
+            # 카테고리가 1개만 겹치면 임베딩 유사도가 높아야 함 (0.78+)
+            if len(shared_cats) == 1 and sim < 0.78:
+                continue
+
+            # 가중치: 임베딩 유사도(70%) + 카테고리 겹침(30%)
+            sim_norm = (sim - 0.72) / 0.28  # 0~1 범위로 정규화
+            combined = sim_norm * 0.7 + cat_overlap * 0.3
             weight = max(1, min(10, round(combined * 10)))
+
+            # 최소 가중치 2 미만이면 연결하지 않음 (너무 약한 연결 방지)
+            if weight < 2:
+                continue
 
             existing_edges.add(pair)
             edges.append({
@@ -416,11 +424,11 @@ async def get_graph_data(course_id: str, user: dict = Depends(get_current_user))
                 shared = cats_i & cats_j
                 total = cats_i | cats_j
                 overlap = len(shared) / len(total) if total else 0
-                if overlap >= 0.2:
+                if overlap >= 0.3 and len(shared) >= 2:
                     pair = tuple(sorted([notes[i]["id"], notes[j]["id"]]))
                     if pair not in existing_edges:
                         existing_edges.add(pair)
-                        weight = max(1, min(10, round(overlap * 10)))
+                        weight = max(2, min(10, round(overlap * 10)))
                         edges.append({
                             "source": notes[i]["id"],
                             "target": notes[j]["id"],
@@ -555,7 +563,7 @@ async def get_unified_graph(user: dict = Depends(get_current_user)):
             cats = cat_map.get(n["id"], [])
             cat_str = ", ".join(cats[:5]) if cats else ""
             uncached_indices.append(idx)
-            uncached_texts.append(f"[{cat_str}] {n['title']}. {content_text[:500]}")
+            uncached_texts.append(f"[{cat_str}] {n['title']}. {content_text[:1200]}")
 
     if uncached_texts:
         try:
@@ -580,7 +588,7 @@ async def get_unified_graph(user: dict = Depends(get_current_user)):
 
     has_embeddings = any(e for e in embeddings)
     if has_embeddings:
-        all_sims = pairwise_similarities(embeddings, threshold=0.65)
+        all_sims = pairwise_similarities(embeddings, threshold=0.72)
         for i, j, sim in all_sims:
             pair = tuple(sorted([all_notes[i]["id"], all_notes[j]["id"]]))
             if pair in existing_edges:
@@ -591,12 +599,18 @@ async def get_unified_graph(user: dict = Depends(get_current_user)):
             total_cats = cats_i | cats_j
             cat_overlap = len(shared_cats) / len(total_cats) if total_cats else 0
 
-            if len(shared_cats) == 0 and sim < 0.90:
+            if len(shared_cats) == 0 and sim < 0.88:
                 continue
 
-            sim_norm = (sim - 0.65) / 0.35
-            combined = sim_norm * 0.5 + cat_overlap * 0.5
+            if len(shared_cats) == 1 and sim < 0.78:
+                continue
+
+            sim_norm = (sim - 0.72) / 0.28
+            combined = sim_norm * 0.7 + cat_overlap * 0.3
             weight = max(1, min(10, round(combined * 10)))
+
+            if weight < 2:
+                continue
 
             existing_edges.add(pair)
             edges.append({
@@ -1109,6 +1123,54 @@ async def delete_manual_link(
     body: dict,
     user: dict = Depends(get_current_user),
 ):
+    supabase = get_supabase()
+    source_id = body.get("source_note_id")
+    target_id = body.get("target_note_id")
+    if not source_id or not target_id:
+        raise HTTPException(status_code=400, detail="source와 target이 필요합니다")
+    ids = sorted([source_id, target_id])
+    supabase.table("note_manual_links").delete().match({
+        "source_note_id": ids[0],
+        "target_note_id": ids[1],
+    }).execute()
+    return {"ok": True}
+
+
+@router.post("/notes/manual-link")
+async def create_cross_course_manual_link(
+    body: dict,
+    user: dict = Depends(get_current_user),
+):
+    """통합 노트 지도에서 코스 상관없이 수동 링크 생성."""
+    supabase = get_supabase()
+    source_id = body.get("source_note_id")
+    target_id = body.get("target_note_id")
+    if not source_id or not target_id or source_id == target_id:
+        raise HTTPException(status_code=400, detail="source와 target이 필요합니다")
+    # source 노트의 course_id 조회
+    note = supabase.table("notes").select("course_id").eq("id", source_id).single().execute()
+    course_id = note.data["course_id"] if note.data else None
+    if not course_id:
+        raise HTTPException(status_code=404, detail="노트를 찾을 수 없습니다")
+    ids = sorted([source_id, target_id])
+    try:
+        supabase.table("note_manual_links").insert({
+            "course_id": course_id,
+            "source_note_id": ids[0],
+            "target_note_id": ids[1],
+            "created_by": user["id"],
+        }).execute()
+    except Exception:
+        pass
+    return {"ok": True}
+
+
+@router.delete("/notes/manual-link")
+async def delete_cross_course_manual_link(
+    body: dict,
+    user: dict = Depends(get_current_user),
+):
+    """통합 노트 지도에서 수동 링크 삭제."""
     supabase = get_supabase()
     source_id = body.get("source_note_id")
     target_id = body.get("target_note_id")

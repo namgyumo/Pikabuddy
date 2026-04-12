@@ -260,234 +260,240 @@ export default function CourseDetail() {
         </div>
 
         {showCreate && (
-          <div className="card create-form">
-            <h3>새 과제 생성</h3>
+          <div className="modal-overlay" onClick={() => setShowCreate(false)}>
+            <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+              <h2>새 과제 생성</h2>
+              <div className="form-group">
+                {/* 과제 유형 선택 */}
+                <div>
+                  <label className="form-label">과제 유형</label>
+                  <div className="type-chips">
+                    {(["coding", "writing", "both", "quiz"] as const).map((t) => (
+                      <button
+                        key={t}
+                        className={`type-chip${assignType === t ? " active" : ""}`}
+                        onClick={() => setAssignType(t)}
+                        type="button"
+                      >
+                        {t === "coding" ? "코딩" : t === "writing" ? "글쓰기" : t === "both" ? "코딩+글쓰기" : "퀴즈"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-            {/* 과제 유형 선택 */}
-            <div className="type-chips">
-              {(["coding", "writing", "both", "quiz"] as const).map((t) => (
+                <div>
+                  <label className="form-label">과제명</label>
+                  <input
+                    className="form-input"
+                    placeholder="예: 포인터 실습"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="form-label">주제</label>
+                  <input
+                    className="form-input"
+                    placeholder={assignType === "writing" ? "예: 현대 사회와 AI의 역할" : "예: 포인터와 메모리"}
+                    value={topic}
+                    onChange={(e) => setTopic(e.target.value)}
+                  />
+                </div>
+
+                <div className="form-row">
+                  {assignType !== "writing" && (
+                    <div>
+                      <label className="form-label">언어</label>
+                      <select
+                        className="form-input"
+                        value={language}
+                        onChange={(e) => setLanguage(e.target.value)}
+                      >
+                        <option value="python">Python</option>
+                        <option value="c">C</option>
+                        <option value="cpp">C++</option>
+                        <option value="java">Java</option>
+                        <option value="javascript">JavaScript</option>
+                        <option value="csharp">C#</option>
+                        <option value="swift">Swift</option>
+                        <option value="rust">Rust</option>
+                        <option value="go">Go</option>
+                        <option value="asm">Assembly</option>
+                      </select>
+                    </div>
+                  )}
+                  <div>
+                    <label className="form-label">AI 정책</label>
+                    <select
+                      className="form-input"
+                      value={aiPolicy}
+                      onChange={(e) => setAiPolicy(e.target.value)}
+                    >
+                      <option value="free">자유 (AI 허용)</option>
+                      <option value="normal">보통 (복붙 감지)</option>
+                      <option value="strict">엄격 (AI 제한)</option>
+                      <option value="exam">시험 (전부 차단)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* 문제 구성 */}
+                {assignType !== "writing" && assignType !== "quiz" && (
+                  <div className="problem-counts-section">
+                    <label className="form-label">문제 구성</label>
+                    <div className="problem-counts-grid">
+                      <div className="problem-count-item">
+                        <label className="problem-count-label">일반 코딩</label>
+                        <input
+                          className="form-input"
+                          type="number"
+                          min={0}
+                          max={10}
+                          value={problemCount}
+                          onChange={(e) => setProblemCount(Number(e.target.value))}
+                        />
+                      </div>
+                      <div className="problem-count-item">
+                        <label className="problem-count-label">
+                          표준 입출력형
+                          <span className="problem-count-tag bj">stdin/stdout</span>
+                        </label>
+                        <input
+                          className="form-input"
+                          type="number"
+                          min={0}
+                          max={10}
+                          value={baekjoonCount}
+                          onChange={(e) => setBaekjoonCount(Number(e.target.value))}
+                        />
+                      </div>
+                      <div className="problem-count-item">
+                        <label className="problem-count-label">
+                          함수 구현형
+                          <span className="problem-count-tag pg">함수 기반</span>
+                        </label>
+                        <input
+                          className="form-input"
+                          type="number"
+                          min={0}
+                          max={10}
+                          value={programmersCount}
+                          onChange={(e) => setProgrammersCount(Number(e.target.value))}
+                        />
+                      </div>
+                      <div className="problem-count-item">
+                        <label className="problem-count-label">
+                          블록 코딩
+                          <span className="problem-count-tag" style={{ background: "rgba(245,158,11,0.12)", color: "#d97706" }}>Blockly</span>
+                        </label>
+                        <input
+                          className="form-input"
+                          type="number"
+                          min={0}
+                          max={10}
+                          value={blockCount}
+                          onChange={(e) => setBlockCount(Number(e.target.value))}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--on-surface-variant)", marginTop: 6 }}>
+                      총 {problemCount + baekjoonCount + programmersCount + blockCount}문제
+                    </div>
+                  </div>
+                )}
+                {/* 퀴즈 설정 */}
+                {assignType === "quiz" && (
+                  <div className="problem-counts-section">
+                    <label className="form-label">퀴즈 유형별 문제 수</label>
+                    <div className="problem-counts-grid">
+                      <div className="problem-count-item">
+                        <label className="problem-count-label">
+                          <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--primary)", marginRight: 6 }} />
+                          객관식
+                        </label>
+                        <input className="form-input" type="number" min={0} max={20}
+                          value={mcCount} onChange={(e) => setMcCount(Math.max(0, Number(e.target.value)))} />
+                      </div>
+                      <div className="problem-count-item">
+                        <label className="problem-count-label">
+                          <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--success)", marginRight: 6 }} />
+                          주관식
+                        </label>
+                        <input className="form-input" type="number" min={0} max={20}
+                          value={saCount} onChange={(e) => setSaCount(Math.max(0, Number(e.target.value)))} />
+                      </div>
+                      <div className="problem-count-item">
+                        <label className="problem-count-label">
+                          <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--tertiary)", marginRight: 6 }} />
+                          서술형
+                        </label>
+                        <input className="form-input" type="number" min={0} max={10}
+                          value={essayCount} onChange={(e) => setEssayCount(Math.max(0, Number(e.target.value)))} />
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--on-surface-variant)", marginTop: 6 }}>
+                      총 {mcCount + saCount + essayCount}문제
+                    </div>
+                  </div>
+                )}
+                {/* 채점 강도 */}
+                <div>
+                  <label className="form-label">AI 추천 점수 강도</label>
+                  <div className="grading-strictness-group">
+                    {([
+                      { value: "mild", label: "순한맛", desc: "관대하게" },
+                      { value: "normal", label: "보통맛", desc: "균형있게" },
+                      { value: "strict", label: "매운맛", desc: "엄격하게" },
+                    ] as const).map((opt, i) => (
+                      <button
+                        key={opt.value}
+                        className={`grading-strictness-btn${gradingStrictness === opt.value ? " active" : ""}`}
+                        style={{
+                          borderRadius: i === 0 ? "10px 0 0 10px" : i === 2 ? "0 10px 10px 0" : 0,
+                        }}
+                        onClick={() => setGradingStrictness(opt.value)}
+                        type="button"
+                      >
+                        <span className="grading-strictness-label">{opt.label}</span>
+                        <span className="grading-strictness-desc">{opt.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 교수 유의사항 */}
+                <div>
+                  <label className="form-label">AI 채점 유의사항 <span style={{ fontWeight: 400, color: "var(--on-surface-variant)" }}>(선택)</span></label>
+                  <textarea
+                    className="form-input"
+                    placeholder="예: 변수명 컨벤션 중시, 주제 벗어나면 큰 감점 등"
+                    value={gradingNote}
+                    onChange={(e) => setGradingNote(e.target.value)}
+                    rows={2}
+                    style={{ resize: "vertical", fontFamily: "inherit" }}
+                  />
+                </div>
+
+                <div>
+                  <label className="form-label">기한</label>
+                  <input
+                    className="form-input"
+                    type="datetime-local"
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="form-actions">
+                <button className="btn-ghost" onClick={() => setShowCreate(false)}>취소</button>
                 <button
-                  key={t}
-                  className={`type-chip${assignType === t ? " active" : ""}`}
-                  onClick={() => setAssignType(t)}
-                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleCreateAssignment}
+                  disabled={creating || !title.trim() || !topic.trim()}
                 >
-                  {t === "coding" ? "코딩" : t === "writing" ? "글쓰기" : t === "both" ? "코딩+글쓰기" : "퀴즈"}
+                  {creating ? "AI가 문제를 생성 중..." : "과제 생성"}
                 </button>
-              ))}
-            </div>
-
-            <input
-              className="input"
-              placeholder="과제명 (예: 포인터 실습)"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-            <input
-              className="input"
-              placeholder={assignType === "writing" ? "주제 (예: 현대 사회와 AI의 역할)" : "주제 (예: 포인터와 메모리)"}
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-            />
-
-            <div className="form-row">
-              {assignType !== "writing" && (
-                <select
-                  className="input"
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
-                >
-                  <option value="python">Python</option>
-                  <option value="c">C</option>
-                  <option value="cpp">C++</option>
-                  <option value="java">Java</option>
-                  <option value="javascript">JavaScript</option>
-                  <option value="csharp">C#</option>
-                  <option value="swift">Swift</option>
-                  <option value="rust">Rust</option>
-                  <option value="go">Go</option>
-                  <option value="asm">Assembly</option>
-                </select>
-              )}
-              <select
-                className="input"
-                value={aiPolicy}
-                onChange={(e) => setAiPolicy(e.target.value)}
-              >
-                <option value="free">자유 (AI 허용)</option>
-                <option value="normal">보통 (복붙 감지)</option>
-                <option value="strict">엄격 (AI 제한)</option>
-                <option value="exam">시험 (전부 차단)</option>
-              </select>
-            </div>
-
-            {/* 문제 구성 */}
-            {assignType !== "writing" && (
-              <div className="problem-counts-section">
-                <label style={{ fontSize: 13, color: "var(--on-surface-variant)", marginBottom: 8, display: "block" }}>
-                  문제 구성
-                </label>
-                <div className="problem-counts-grid">
-                  <div className="problem-count-item">
-                    <label className="problem-count-label">일반 코딩</label>
-                    <input
-                      className="input"
-                      type="number"
-                      min={0}
-                      max={10}
-                      value={problemCount}
-                      onChange={(e) => setProblemCount(Number(e.target.value))}
-                    />
-                  </div>
-                  <div className="problem-count-item">
-                    <label className="problem-count-label">
-                      표준 입출력형
-                      <span className="problem-count-tag bj">stdin/stdout</span>
-                    </label>
-                    <input
-                      className="input"
-                      type="number"
-                      min={0}
-                      max={10}
-                      value={baekjoonCount}
-                      onChange={(e) => setBaekjoonCount(Number(e.target.value))}
-                    />
-                  </div>
-                  <div className="problem-count-item">
-                    <label className="problem-count-label">
-                      함수 구현형
-                      <span className="problem-count-tag pg">함수 기반</span>
-                    </label>
-                    <input
-                      className="input"
-                      type="number"
-                      min={0}
-                      max={10}
-                      value={programmersCount}
-                      onChange={(e) => setProgrammersCount(Number(e.target.value))}
-                    />
-                  </div>
-                  <div className="problem-count-item">
-                    <label className="problem-count-label">
-                      블록 코딩
-                      <span className="problem-count-tag" style={{ background: "rgba(245,158,11,0.12)", color: "#d97706" }}>Blockly</span>
-                    </label>
-                    <input
-                      className="input"
-                      type="number"
-                      min={0}
-                      max={10}
-                      value={blockCount}
-                      onChange={(e) => setBlockCount(Number(e.target.value))}
-                    />
-                  </div>
-                </div>
-                <div style={{ fontSize: 12, color: "var(--on-surface-variant)", marginTop: 6 }}>
-                  총 {problemCount + baekjoonCount + programmersCount + blockCount}문제
-                </div>
               </div>
-            )}
-            {/* 퀴즈 설정 */}
-            {assignType === "quiz" && (
-              <div className="problem-counts-section">
-                <label style={{ fontSize: 13, color: "var(--on-surface-variant)", marginBottom: 8, display: "block" }}>
-                  퀴즈 유형별 문제 수
-                </label>
-                <div className="problem-counts-grid">
-                  <div className="problem-count-item">
-                    <label className="problem-count-label">
-                      <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--primary)", marginRight: 6 }} />
-                      객관식
-                    </label>
-                    <input className="input problem-count-input" type="number" min={0} max={20}
-                      value={mcCount} onChange={(e) => setMcCount(Math.max(0, Number(e.target.value)))} />
-                  </div>
-                  <div className="problem-count-item">
-                    <label className="problem-count-label">
-                      <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--success)", marginRight: 6 }} />
-                      주관식
-                    </label>
-                    <input className="input problem-count-input" type="number" min={0} max={20}
-                      value={saCount} onChange={(e) => setSaCount(Math.max(0, Number(e.target.value)))} />
-                  </div>
-                  <div className="problem-count-item">
-                    <label className="problem-count-label">
-                      <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--tertiary)", marginRight: 6 }} />
-                      서술형
-                    </label>
-                    <input className="input problem-count-input" type="number" min={0} max={10}
-                      value={essayCount} onChange={(e) => setEssayCount(Math.max(0, Number(e.target.value)))} />
-                  </div>
-                </div>
-                <div style={{ fontSize: 12, color: "var(--on-surface-variant)", marginTop: 6 }}>
-                  총 {mcCount + saCount + essayCount}문제
-                </div>
-              </div>
-            )}
-            {/* 채점 강도 */}
-            <div>
-              <label style={{ fontSize: 13, color: "var(--on-surface-variant)", marginBottom: 6, display: "block" }}>
-                AI 추천 점수 강도
-              </label>
-              <div className="form-row" style={{ gap: 0 }}>
-                {([
-                  { value: "mild", label: "순한맛", desc: "관대하게" },
-                  { value: "normal", label: "보통맛", desc: "균형있게" },
-                  { value: "strict", label: "매운맛", desc: "엄격하게" },
-                ] as const).map((opt, i) => (
-                  <button
-                    key={opt.value}
-                    className={`btn ${gradingStrictness === opt.value ? "btn-primary" : "btn-secondary"}`}
-                    style={{
-                      flex: 1,
-                      borderRadius: i === 0 ? "10px 0 0 10px" : i === 2 ? "0 10px 10px 0" : 0,
-                      fontSize: 13,
-                    }}
-                    onClick={() => setGradingStrictness(opt.value)}
-                    type="button"
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 교수 유의사항 */}
-            <textarea
-              className="input"
-              placeholder="AI 채점 시 유의사항 (선택) — 예: 변수명 컨벤션 중시, 주제 벗어나면 큰 감점 등"
-              value={gradingNote}
-              onChange={(e) => setGradingNote(e.target.value)}
-              rows={2}
-              style={{ resize: "vertical", fontFamily: "inherit" }}
-            />
-
-            <div className="form-row">
-              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "var(--on-surface-variant)" }}>
-                기한
-                <input
-                  className="input"
-                  type="datetime-local"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  style={{ flex: 1 }}
-                />
-              </label>
-            </div>
-            <div className="form-actions">
-              <button
-                className="btn btn-primary"
-                onClick={handleCreateAssignment}
-                disabled={creating}
-              >
-                {creating ? "AI가 문제를 생성 중..." : "과제 생성"}
-              </button>
-              <button
-                className="btn btn-secondary"
-                onClick={() => setShowCreate(false)}
-              >
-                취소
-              </button>
             </div>
           </div>
         )}

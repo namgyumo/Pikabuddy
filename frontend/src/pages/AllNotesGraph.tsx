@@ -167,6 +167,9 @@ export default function AllNotesGraph() {
   const [tagFilter, setTagFilter] = useState("");
   const [timeRange, setTimeRange] = useState(100);
 
+  // Linking mode
+  const [linkingFrom, setLinkingFrom] = useState<GNode | null>(null);
+
   // Context menu
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; node: GNode | null } | null>(null);
 
@@ -451,7 +454,10 @@ export default function AllNotesGraph() {
         .distance((link: GLink) => {
           if (link.type === "parent") return 10 + 110 * el;
           if (link.type === "link") return 15 + 130 * el;
-          return 40 + 160 * el;
+          // 유사도 간선: weight 높으면 짧고, weight 낮으면 길게
+          const w = (link as any).weight || 5;
+          const wNorm = (10 - w) / 8; // w=2→1, w=10→0
+          return (50 + 200 * wNorm) * el;
         })
         .strength((link: GLink) => {
           const sId = typeof link.source === "string" ? link.source : link.source.id;
@@ -905,6 +911,21 @@ export default function AllNotesGraph() {
                 }}
                 linkCanvasObject={paintLink}
                 onNodeClick={(node: GNode) => {
+                  if (linkingFrom) {
+                    if (node.id !== linkingFrom.id) {
+                      api.post("/notes/manual-link", {
+                        source_note_id: linkingFrom.id,
+                        target_note_id: node.id,
+                      }).then(() => {
+                        setMergedGraph((prev) => {
+                          if (!prev) return prev;
+                          return { ...prev, edges: [...prev.edges, { source: linkingFrom.id, target: node.id, type: "link" as const }] };
+                        });
+                      }).catch(() => {});
+                    }
+                    setLinkingFrom(null);
+                    return;
+                  }
                   navigate(`/courses/${node.courseId}/notes/${node.id}`);
                 }}
                 onNodeHover={(node: GNode | null) => setHovered(node)}
@@ -928,6 +949,15 @@ export default function AllNotesGraph() {
               />
             )}
           </GraphErrorBoundary>
+
+          {/* Linking indicator */}
+          {linkingFrom && (
+            <div className="graph-linking-banner">
+              <strong>{linkingFrom.title.length > 18 ? linkingFrom.title.slice(0, 18) + "..." : linkingFrom.title}</strong>
+              에서 연결할 노트를 클릭하세요
+              <button onClick={() => setLinkingFrom(null)} style={{ marginLeft: 8, padding: "2px 8px", borderRadius: 4, border: "1px solid var(--outline-variant)", background: "transparent", cursor: "pointer", color: "inherit" }}>취소</button>
+            </div>
+          )}
 
           {/* Tooltip */}
           {hovered && (
@@ -985,6 +1015,10 @@ export default function AllNotesGraph() {
                   <button className="graph-ctx-item" onClick={() => { navigate(`/courses/${ctxMenu.node!.courseId}/notes/${ctxMenu.node!.id}`); setCtxMenu(null); }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     노트 열기
+                  </button>
+                  <button className="graph-ctx-item" onClick={() => { setLinkingFrom(ctxMenu.node!); setCtxMenu(null); }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    링크 연결
                   </button>
                   <button className="graph-ctx-item" onClick={() => {
                     const n = ctxMenu.node!;

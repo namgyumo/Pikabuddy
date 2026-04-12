@@ -89,6 +89,31 @@ a {
   text-decoration: none;
 }
 
+/* ===== Global Scrollbar ===== */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,0,0,0.18) transparent;
+}
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 3px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.15);
+  border-radius: 3px;
+  transition: background 0.2s;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,0.28);
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 h1, h2, h3, h4 {
   font-family: var(--font-display);
   letter-spacing: -0.02em;
@@ -3729,8 +3754,8 @@ textarea.input {
   background: var(--surface-container-lowest);
   border-radius: var(--radius-lg);
   padding: 32px;
-  max-width: 520px;
-  width: 90%;
+  max-width: 560px;
+  width: 92%;
   box-shadow: var(--shadow-lg);
   animation: confirmSlideUp 0.2s ease-out;
   max-height: 85vh;
@@ -3773,6 +3798,10 @@ textarea.input {
 select.form-input {
   cursor: pointer;
   appearance: auto;
+}
+textarea.form-input {
+  resize: vertical;
+  min-height: 60px;
 }
 .form-row {
   display: grid;
@@ -3841,7 +3870,7 @@ select.form-input {
 }
 .problem-counts-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
   gap: 10px;
 }
 .problem-count-item {
@@ -3852,6 +3881,48 @@ select.form-input {
 .problem-count-item input {
   text-align: center;
   font-weight: 600;
+}
+
+/* ===== Grading Strictness Button Group ===== */
+.grading-strictness-group {
+  display: flex;
+}
+.grading-strictness-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 8px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-lowest);
+  color: var(--on-surface-variant);
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all 0.15s var(--ease);
+}
+.grading-strictness-btn:not(:first-child) {
+  border-left: none;
+}
+.grading-strictness-btn:hover {
+  background: var(--surface-container-low);
+  color: var(--on-surface);
+}
+.grading-strictness-btn.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+.grading-strictness-btn.active + .grading-strictness-btn {
+  border-left-color: var(--primary);
+}
+.grading-strictness-label {
+  font-size: 13px;
+  font-weight: 700;
+}
+.grading-strictness-desc {
+  font-size: 11px;
+  opacity: 0.75;
 }
 .problem-count-label {
   font-size: 12px;
@@ -4414,17 +4485,18 @@ select.form-input {
 /* Tooltip — follows mouse */
 .graph-tooltip {
   position: fixed;
-  background: var(--surface-container-high, rgba(15,23,42,0.92));
-  backdrop-filter: blur(12px);
+  background: var(--surface-container-high, rgba(15,23,42,0.75));
+  backdrop-filter: blur(8px);
   border: 1px solid var(--outline-variant, rgba(255,255,255,0.08));
   border-radius: 10px;
-  padding: 10px 14px;
-  min-width: 140px;
-  max-width: 260px;
+  padding: 8px 12px;
+  min-width: 120px;
+  max-width: 220px;
   pointer-events: none;
   z-index: 100;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
   animation: graphTipIn 0.12s ease-out;
+  opacity: 0.9;
 }
 @keyframes graphTipIn {
   from { opacity: 0; transform: translateY(4px); }

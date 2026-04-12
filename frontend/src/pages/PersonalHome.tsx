@@ -864,7 +864,7 @@ export default function PersonalHome() {
                         <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--primary)", marginRight: 6 }} />
                         객관식
                       </label>
-                      <input className="input problem-count-input" type="number" min={0} max={20}
+                      <input className="form-input" type="number" min={0} max={20}
                         value={mcCount} onChange={(e) => setMcCount(Math.max(0, Number(e.target.value)))} />
                     </div>
                     <div className="problem-count-item">
@@ -872,7 +872,7 @@ export default function PersonalHome() {
                         <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--success)", marginRight: 6 }} />
                         주관식
                       </label>
-                      <input className="input problem-count-input" type="number" min={0} max={20}
+                      <input className="form-input" type="number" min={0} max={20}
                         value={saCount} onChange={(e) => setSaCount(Math.max(0, Number(e.target.value)))} />
                     </div>
                     <div className="problem-count-item">
@@ -880,7 +880,7 @@ export default function PersonalHome() {
                         <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--tertiary)", marginRight: 6 }} />
                         서술형
                       </label>
-                      <input className="input problem-count-input" type="number" min={0} max={10}
+                      <input className="form-input" type="number" min={0} max={10}
                         value={essayCount} onChange={(e) => setEssayCount(Math.max(0, Number(e.target.value)))} />
                     </div>
                   </div>
