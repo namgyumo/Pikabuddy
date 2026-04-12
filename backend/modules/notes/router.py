@@ -435,19 +435,26 @@ async def get_unified_graph(user: dict = Depends(get_current_user)):
     """통합 노트 그래프 — 모든 코스의 노트를 합치고, 크로스-코스 유사도 간선도 생성."""
     supabase = get_supabase()
 
-    # 1) 유저가 속한 모든 코스 가져오기
-    if user["role"] == "professor":
-        courses_res = supabase.table("courses").select("id, title").eq("professor_id", user["id"]).execute()
-    elif user["role"] == "personal":
-        courses_res = supabase.table("courses").select("id, title").eq("professor_id", user["id"]).execute()
-    else:
-        enroll_res = supabase.table("enrollments").select("course_id").eq("student_id", user["id"]).execute()
-        cids = [e["course_id"] for e in (enroll_res.data or [])]
-        if not cids:
-            return {"nodes": [], "edges": []}
-        courses_res = supabase.table("courses").select("id, title").in_("id", cids).execute()
+    # 1) 유저가 관련된 모든 코스 가져오기 (역할 무관하게 합산)
+    uid = user["id"]
+    all_course_ids: set = set()
 
-    course_list = courses_res.data or []
+    # 소유 코스
+    owned = supabase.table("courses").select("id, title").eq("professor_id", uid).execute()
+    owned_map = {c["id"]: c for c in (owned.data or [])}
+    all_course_ids.update(owned_map.keys())
+
+    # 수강 등록 코스
+    enroll_res = supabase.table("enrollments").select("course_id").eq("student_id", uid).execute()
+    enrolled_ids = [e["course_id"] for e in (enroll_res.data or []) if e["course_id"] not in all_course_ids]
+    if enrolled_ids:
+        enrolled = supabase.table("courses").select("id, title").in_("id", enrolled_ids).execute()
+        for c in (enrolled.data or []):
+            owned_map[c["id"]] = c
+        all_course_ids.update(enrolled_ids)
+
+    # 개인 코스는 통합 그래프에서 제외할지 포함할지 — 포함
+    course_list = list(owned_map.values())
     if not course_list:
         return {"nodes": [], "edges": []}
 

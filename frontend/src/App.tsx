@@ -56,7 +56,11 @@ function ProtectedRoute({
 
   if (loading) return <div className="page-center">로딩 중...</div>;
   if (!user) return <Navigate to="/" />;
-  if (role && user.role !== role && !isAdmin) return <Navigate to="/" />;
+  if (role && user.role !== role && !isAdmin) {
+    // 역할 불일치 시 현재 역할의 홈으로 리다이렉트
+    const home = user.role === "professor" ? "/professor" : user.role === "personal" ? "/personal" : "/student";
+    return <Navigate to={home} />;
+  }
   return <>{children}</>;
 }
 

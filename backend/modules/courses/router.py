@@ -40,49 +40,52 @@ async def create_course(body: CourseCreateRequest, user: dict = Depends(require_
 
 @router.get("")
 async def list_courses(user: dict = Depends(get_current_user)):
-    """내 강의 목록 조회"""
+    """내 강의 목록 조회 — 역할과 관계없이 관련된 모든 강의를 반환"""
     supabase = get_supabase()
+    uid = user["id"]
+    role = user["role"]
 
-    if user["role"] == "personal":
-        result = (
-            supabase.table("courses")
-            .select("*")
-            .eq("professor_id", user["id"])
-            .eq("is_personal", True)
-            .execute()
-        )
-        return result.data
+    all_courses: dict = {}  # id → course dict
 
-    if user["role"] == "professor":
-        result = (
-            supabase.table("courses")
-            .select("*")
-            .eq("professor_id", user["id"])
-            .execute()
-        )
-    else:
-        enrollment_result = (
-            supabase.table("enrollments")
-            .select("course_id, custom_banner_url")
-            .eq("student_id", user["id"])
-            .execute()
-        )
-        if not enrollment_result.data:
-            return []
-        course_ids = [e["course_id"] for e in enrollment_result.data]
+    # 1) 교수로서 소유한 강의
+    owned = supabase.table("courses").select("*").eq("professor_id", uid).execute()
+    for c in (owned.data or []):
+        c["_relation"] = "owner"
+        all_courses[c["id"]] = c
+
+    # 2) 수강 등록된 강의
+    enrollment_result = (
+        supabase.table("enrollments")
+        .select("course_id, custom_banner_url")
+        .eq("student_id", uid)
+        .execute()
+    )
+    custom_banners = {}
+    if enrollment_result.data:
+        course_ids = [e["course_id"] for e in enrollment_result.data if e["course_id"] not in all_courses]
         custom_banners = {e["course_id"]: e.get("custom_banner_url") for e in enrollment_result.data}
-        result = (
-            supabase.table("courses")
-            .select("*")
-            .in_("id", course_ids)
-            .execute()
-        )
-        # 학생 커스텀 배너가 있으면 덮어쓰기
-        for course in result.data:
-            cb = custom_banners.get(course["id"])
-            course["custom_banner_url"] = cb
+        if course_ids:
+            enrolled = supabase.table("courses").select("*").in_("id", course_ids).execute()
+            for c in (enrolled.data or []):
+                c["_relation"] = "enrolled"
+                all_courses[c["id"]] = c
 
-    return result.data
+    # 커스텀 배너 적용
+    for cid, banner in custom_banners.items():
+        if cid in all_courses and banner:
+            all_courses[cid]["custom_banner_url"] = banner
+
+    # 3) 역할 기반 필터링
+    if role == "personal":
+        # 개인 모드: 개인 코스만
+        return [c for c in all_courses.values() if c.get("is_personal")]
+    elif role == "professor":
+        # 교수 모드: 소유 강의 (개인 코스 포함)
+        return [c for c in all_courses.values() if c.get("_relation") == "owner"]
+    else:
+        # 학생 모드: 수강 등록 강의 + 개인 코스 제외
+        return [c for c in all_courses.values()
+                if not c.get("is_personal") and (c.get("_relation") == "enrolled" or c["id"] in custom_banners)]
 
 
 @router.get("/by-invite/{invite_code}")
