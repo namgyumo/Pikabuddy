@@ -974,9 +974,9 @@ export default function NoteGraph() {
           </div>
           <div className="graph-filter">
             <label>{"\uB178\uB4DC"} {"\uAC04\uACA9"}</label>
-            <input type="range" min={10} max={100} value={nodeSpacing}
+            <input type="range" min={10} max={200} value={nodeSpacing}
               onChange={(e) => setNodeSpacing(+e.target.value)} />
-            <div className="graph-filter-hint">{nodeSpacing < 30 ? "\uBC00\uC9D1" : nodeSpacing < 70 ? "\uBCF4\uD1B5" : "\uB113\uAC8C"}</div>
+            <div className="graph-filter-hint">{nodeSpacing < 30 ? "\uBC00\uC9D1" : nodeSpacing < 80 ? "\uBCF4\uD1B5" : nodeSpacing < 140 ? "\uB113\uAC8C" : "\uB9E4\uC6B0 \uB113\uAC8C"}</div>
           </div>
           <div className="graph-filter">
             <label>{"\uAC04\uC120"} {"\uAC04\uACA9"}</label>
