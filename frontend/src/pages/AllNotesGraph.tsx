@@ -450,10 +450,10 @@ export default function AllNotesGraph() {
       fg.d3Force("center")?.strength(0.003);
       const vis = edgeVisRef.current;
       fg.d3Force("link")
-        ?.iterations(20)
+        ?.iterations(12)
         .distance((link: GLink) => {
-          if (link.type === "parent") return 10 + 110 * el;
-          if (link.type === "link") return 15 + 130 * el;
+          if (link.type === "parent") return 60 + 140 * el;
+          if (link.type === "link") return 80 + 180 * el;
           // 유사도 간선: weight 높으면 짧고, weight 낮으면 길게
           const w = (link as any).weight || 5;
           const wNorm = (10 - w) / 8; // w=2→1, w=10→0
@@ -465,8 +465,8 @@ export default function AllNotesGraph() {
           if (!visible.has(sId) || !visible.has(tId)) return 0;
           const k = link.type as keyof typeof vis;
           if (!vis[k]) return 0;
-          if (link.type === "parent") return 0.99;
-          if (link.type === "link") return 0.99;
+          if (link.type === "parent") return 0.3;
+          if (link.type === "link") return 0.25;
           return 0.03;
         });
       fg.d3ReheatSimulation();

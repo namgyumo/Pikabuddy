@@ -545,10 +545,10 @@ export default function NoteGraph() {
       // 간선 간격: link (str=0.99, iter=20 → charge 영향 차단)
       // link target 최소(10+110*0.2=32) — collision보다 짧을 수 있으나 link(str=0.99,iter=20)가 우선
       fg.d3Force("link")
-        ?.iterations(20)
+        ?.iterations(12)
         .distance((link: GLink) => {
-          if (link.type === "parent") return 10 + 110 * el;
-          if (link.type === "link") return 15 + 130 * el;
+          if (link.type === "parent") return 60 + 140 * el; // 최소60, 최대~340
+          if (link.type === "link") return 80 + 180 * el;   // 최소80, 최대~440
           // 유사도 간선: weight 높으면 짧고, weight 낮으면 길게
           const w = (link as any).weight || 5;
           const wNorm = (10 - w) / 8; // w=2→1, w=10→0
@@ -560,8 +560,9 @@ export default function NoteGraph() {
           if (!visible.has(sId) || !visible.has(tId)) return 0;
           const k = link.type as keyof typeof vis;
           if (!vis[k]) return 0;
-          if (link.type === "parent") return 0.99;
-          if (link.type === "link") return 0.99;
+          // 부모/링크: 유연하게 (목표 거리 중심으로 자유 배치)
+          if (link.type === "parent") return 0.3;
+          if (link.type === "link") return 0.25;
           return 0.03;
         });
 
