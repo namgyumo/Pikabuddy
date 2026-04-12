@@ -2,7 +2,6 @@ import { useEffect, lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "./store/authStore";
 import ErrorBoundary from "./components/common/ErrorBoundary";
-import TutorialProvider from "./components/common/TutorialProvider";
 import "./App.css";
 
 // Lazy-loaded pages
@@ -91,7 +90,6 @@ export default function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
-        <TutorialProvider />
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/" element={<Landing />} />

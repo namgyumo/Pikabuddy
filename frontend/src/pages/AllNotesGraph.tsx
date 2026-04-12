@@ -842,7 +842,7 @@ export default function AllNotesGraph() {
             </label>
           </div>
           <div className="graph-filter">
-            <label>점수: {scoreRange[0]}-{scoreRange[1]}%</label>
+            <label>이해도: {scoreRange[0]}-{scoreRange[1]}%</label>
             <input type="range" min={0} max={100} value={scoreRange[0]}
               onChange={(e) => setScoreRange([+e.target.value, scoreRange[1]])} />
             <input type="range" min={0} max={100} value={scoreRange[1]}

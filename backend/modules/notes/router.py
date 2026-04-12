@@ -68,6 +68,16 @@ async def create_note(
         row["team_id"] = body.team_id
 
     result = supabase.table("notes").insert(row).execute()
+
+    # EXP + 배지 체크: 노트 작성
+    try:
+        from modules.gamification.router import award_exp
+        from modules.gamification.badge_defs import check_badges
+        award_exp(user["id"], "note_create", result.data[0]["id"])
+        check_badges(user["id"], "note_create")
+    except Exception:
+        pass
+
     return result.data[0]
 
 
@@ -1219,7 +1229,7 @@ async def get_ai_comments(note_id: str, user: dict = Depends(get_current_user)):
 
 
 @router.post("/notes/ask")
-async def ask_ai_helper(body: AskRequest, user: dict = Depends(require_student_or_personal)):
+async def ask_ai_helper(body: AskRequest, user: dict = Depends(get_current_user)):
     """노트 작성 중 AI 도우미 — 특정 질문·개념에만 집중해서 답변"""
     note_context = ""
     if body.note_content:
@@ -1325,7 +1335,7 @@ def _tiptap_to_markdown(node: dict, _depth: int = 0) -> str:
 
 @router.post("/notes/{note_id}/polish")
 async def polish_note(
-    note_id: str, body: NotePolishRequest, user: dict = Depends(require_student_or_personal)
+    note_id: str, body: NotePolishRequest, user: dict = Depends(get_current_user)
 ):
     """노트 AI 다듬기 — 내용 보존, 구조·형식 정리 후 Markdown 반환"""
     supabase = get_supabase()
@@ -1550,6 +1560,15 @@ IMPORTANT: Write the entire output in Korean."""
         update_data["embedding"] = json.dumps(embedding_data)
     supabase.table("notes").update(update_data).eq("id", note_id).execute()
 
+    # EXP + 배지 체크: 노트 분석
+    try:
+        from modules.gamification.router import award_exp
+        from modules.gamification.badge_defs import check_badges
+        award_exp(user["id"], "note_analyze", note_id)
+        check_badges(user["id"], "note_analyze", {"score_after": score})
+    except Exception:
+        pass
+
     return {
         "understanding_score": score,
         "feedback": feedback_text,
@@ -1721,6 +1740,15 @@ IMPORTANT: Write the entire output in Korean."""
                     supabase.table("notes").update(update_data).eq("id", note_id).execute()
                 except Exception as db_err:
                     logger.error(f"[NoteAnalysis] DB 저장 실패 note_id={note_id}: {db_err}")
+
+                # EXP + 배지 체크: 노트 분석 (스트리밍)
+                try:
+                    from modules.gamification.router import award_exp as _award
+                    from modules.gamification.badge_defs import check_badges as _check
+                    _award(user["id"], "note_analyze", note_id)
+                    _check(user["id"], "note_analyze", {"score_after": score})
+                except Exception:
+                    pass
 
                 yield {"event": "message", "data": json.dumps({
                     "type": "done",

@@ -360,3 +360,138 @@ async def reset_exam_status(body: ExamResetRequest, user: dict = Depends(require
     }).execute()
 
     return {"message": "시험 상태가 리셋되었습니다. 학생이 재응시할 수 있습니다."}
+
+
+# ── 교수용: 시험 종료 + 통계 ──
+
+@router.post("/exam/end/{assignment_id}")
+async def end_exam(assignment_id: str, user: dict = Depends(require_professor_or_personal)):
+    """시험 모드를 종료하고 종합 통계를 반환한다 (교수 전용)."""
+    _verify_assignment_ownership(user, assignment_id)
+    sb = get_supabase()
+
+    # 시험 모드 비활성화
+    sb.table("assignments").update({"exam_mode": False}).eq("id", assignment_id).execute()
+
+    # 과제 정보
+    assignment = sb.table("assignments").select("course_id, title").eq(
+        "id", assignment_id
+    ).single().execute().data
+    if not assignment:
+        raise HTTPException(404, "과제를 찾을 수 없습니다.")
+
+    # 수강생
+    enrollments = sb.table("enrollments").select(
+        "student_id, users!enrollments_student_id_fkey(name, email)"
+    ).eq("course_id", assignment["course_id"]).execute().data or []
+    total_students = len(enrollments)
+
+    # 위반 기록
+    violations = sb.table("exam_violations").select(
+        "student_id, violation_type"
+    ).eq("assignment_id", assignment_id).execute().data or []
+
+    # forced_end = 응시 완료
+    ended_ids = {v["student_id"] for v in violations if v["violation_type"] == "forced_end"}
+    participants = len(ended_ids)
+
+    # 위반 유형별 집계
+    violation_breakdown = {}
+    total_violations = 0
+    for v in violations:
+        if v["violation_type"] == "forced_end":
+            continue
+        vtype = v["violation_type"]
+        violation_breakdown[vtype] = violation_breakdown.get(vtype, 0) + 1
+        total_violations += 1
+
+    # 학생별 위반 수 (forced_end 제외)
+    student_violations = {}
+    for v in violations:
+        if v["violation_type"] == "forced_end":
+            continue
+        sid = v["student_id"]
+        student_violations[sid] = student_violations.get(sid, 0) + 1
+
+    students_with_violations = sum(1 for c in student_violations.values() if c > 0)
+
+    # 스크린샷 수
+    screenshots = sb.table("exam_screenshots").select("id").eq(
+        "assignment_id", assignment_id
+    ).execute().data or []
+
+    # 제출물 + 점수
+    submissions = sb.table("submissions").select(
+        "id, student_id, status"
+    ).eq("assignment_id", assignment_id).execute().data or []
+
+    scores = []
+    submitted_ids = set()
+    for s in submissions:
+        submitted_ids.add(s["student_id"])
+        analyses = sb.table("ai_analyses").select("score").eq(
+            "submission_id", s["id"]
+        ).execute().data or []
+        for a in analyses:
+            if a.get("score") is not None:
+                scores.append(a["score"])
+
+    avg_score = round(sum(scores) / len(scores), 1) if scores else None
+    max_score = max(scores) if scores else None
+    min_score = min(scores) if scores else None
+
+    # 점수대 분포
+    score_distribution = {"90+": 0, "80-89": 0, "70-79": 0, "60-69": 0, "<60": 0}
+    for sc in scores:
+        if sc >= 90:
+            score_distribution["90+"] += 1
+        elif sc >= 80:
+            score_distribution["80-89"] += 1
+        elif sc >= 70:
+            score_distribution["70-79"] += 1
+        elif sc >= 60:
+            score_distribution["60-69"] += 1
+        else:
+            score_distribution["<60"] += 1
+
+    # 학생별 상세
+    student_details = []
+    for e in enrollments:
+        sid = e["student_id"]
+        info = e.get("users", {})
+        # 해당 학생 점수
+        student_scores = []
+        for s in submissions:
+            if s["student_id"] == sid:
+                analyses = sb.table("ai_analyses").select("score").eq(
+                    "submission_id", s["id"]
+                ).execute().data or []
+                for a in analyses:
+                    if a.get("score") is not None:
+                        student_scores.append(a["score"])
+
+        student_details.append({
+            "student_id": sid,
+            "name": info.get("name", ""),
+            "exam_ended": sid in ended_ids,
+            "submitted": sid in submitted_ids,
+            "violations": student_violations.get(sid, 0),
+            "avg_score": round(sum(student_scores) / len(student_scores), 1) if student_scores else None,
+        })
+
+    return {
+        "assignment_title": assignment["title"],
+        "total_students": total_students,
+        "participants": participants,
+        "submitted_count": len(submitted_ids),
+        "not_participated": total_students - participants,
+        "avg_score": avg_score,
+        "max_score": max_score,
+        "min_score": min_score,
+        "score_distribution": score_distribution,
+        "total_violations": total_violations,
+        "violation_breakdown": violation_breakdown,
+        "students_with_violations": students_with_violations,
+        "total_screenshots": len(screenshots),
+        "students": sorted(student_details, key=lambda x: -(x["avg_score"] or 0)),
+    }

@@ -9,6 +9,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 export class SupabaseYjsProvider {
   doc: Y.Doc;
   awareness: Awareness;
+  onSynced: ((hasPeers: boolean) => void) | null = null;
   private channel: RealtimeChannel | null = null;
   private _synced = false;
   private _destroyed = false;
@@ -22,7 +23,10 @@ export class SupabaseYjsProvider {
 
   get synced() { return this._synced; }
 
-  /** Connect to a Supabase Realtime channel and start syncing. */
+  /**
+   * Register broadcast listeners on a channel.
+   * MUST be called BEFORE channel.subscribe() so no messages are missed.
+   */
   connect(channel: RealtimeChannel) {
     if (this._destroyed) return;
     this.channel = channel;
@@ -55,21 +59,35 @@ export class SupabaseYjsProvider {
       try {
         Y.applyUpdate(this.doc, new Uint8Array(payload.d), "remote");
       } catch { /* ignore */ }
-      this._synced = true;
-    });
-
-    // After subscribe, request state from peers
-    setTimeout(() => {
-      if (this.channel) {
-        this.channel.send({
-          type: "broadcast", event: "yjs-req",
-          payload: { cid: this.doc.clientID },
-        });
+      if (!this._synced) {
+        this._synced = true;
+        this.onSynced?.(true); // has peers
       }
-    }, 200);
+    });
+  }
 
-    // If no peers respond within 2s, mark as synced (we are the first)
-    setTimeout(() => { if (!this._synced) this._synced = true; }, 2000);
+  /**
+   * Request sync from peers. Call AFTER channel.subscribe() completes.
+   */
+  requestSync() {
+    if (!this.channel || this._destroyed) return;
+    const sendReq = () => {
+      if (!this.channel || this._destroyed || this._synced) return;
+      this.channel.send({
+        type: "broadcast", event: "yjs-req",
+        payload: { cid: this.doc.clientID },
+      });
+    };
+    // Send immediately + retry after 500ms in case first was missed
+    sendReq();
+    setTimeout(sendReq, 500);
+    // If no peers respond within 1.5s, mark as synced (we are the first client)
+    setTimeout(() => {
+      if (!this._synced && !this._destroyed) {
+        this._synced = true;
+        this.onSynced?.(false); // no peers
+      }
+    }, 1500);
   }
 
   disconnect() {

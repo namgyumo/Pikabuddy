@@ -308,3 +308,41 @@ async def upload_course_banner_image(
     url = supabase.storage.from_("banners").get_public_url(path)
 
     return {"banner_url": url}
+
+
+@router.delete("/{course_id}/leave")
+async def leave_course(course_id: str, user: dict = Depends(get_current_user)):
+    """수강���이 강의에서 나가기. 교수(강의 소유자)는 나갈 수 없음."""
+    supabase = get_supabase()
+
+    # 교수인지 확인 — 교수는 자기 ���의를 떠날 수 없음
+    course = supabase.table("courses").select("professor_id").eq("id", course_id).single().execute()
+    if course.data and course.data["professor_id"] == user["id"]:
+        raise HTTPException(status_code=400, detail="강의 소유자는 강의를 나갈 수 없습니다.")
+
+    # 수강 기록 삭제
+    result = supabase.table("enrollments").delete() \
+        .eq("course_id", course_id).eq("student_id", user["id"]).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="해당 강의에 수강 등록되어 있지 않습니다.")
+
+    return {"message": "강의��서 나갔습니다."}
+
+
+@router.delete("/{course_id}/students/{student_id}")
+async def kick_student(course_id: str, student_id: str, user: dict = Depends(get_current_user)):
+    """교수가 학생을 강의에서 추방."""
+    supabase = get_supabase()
+
+    # 교수 권한 확인
+    course = supabase.table("courses").select("professor_id").eq("id", course_id).single().execute()
+    if not course.data or course.data["professor_id"] != user["id"]:
+        raise HTTPException(status_code=403, detail="본인 강의가 아닙니다.")
+
+    # 학생 수강 기록 삭제
+    result = supabase.table("enrollments").delete() \
+        .eq("course_id", course_id).eq("student_id", student_id).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="해당 학생이 수강 등록되어 있지 않습니다.")
+
+    return {"message": "학생을 추방했습니다."}

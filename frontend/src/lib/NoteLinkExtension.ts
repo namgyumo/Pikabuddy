@@ -33,7 +33,12 @@ export const NoteLinkExtension = Node.create({
 
   addNodeView() {
     return ReactNodeViewRenderer(NoteLinkNodeView, {
-      stopEvent: () => true,
+      stopEvent: ({ event }) => {
+        // Allow keyboard events to pass through for node selection/deletion
+        if (event instanceof KeyboardEvent) return false;
+        // Block mouse events so React handles clicks (navigation)
+        return true;
+      },
     });
   },
 });

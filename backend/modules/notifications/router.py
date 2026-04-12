@@ -129,7 +129,52 @@ async def get_notifications(user: dict = Depends(get_current_user)):
             except Exception as e:
                 logger.warning(f"[Notifications] 마감 알림 조회 실패: {e}")
 
-    # ── 4) 새 과제/자료 알림 (학생용, 최근 24시간 이내 등록된 것) ──
+    # ── 4) 미제출 과제 알림 (학생용 — 마감 전인데 아직 미제출) ──
+    unsubmitted_items = []
+    if role == "student" and enrolled_course_ids:
+        try:
+            # 마감 전이고 published 상태인 과제
+            all_assignments = sb.table("assignments").select(
+                "id, title, course_id, due_date, courses(title)"
+            ).in_("course_id", enrolled_course_ids) \
+             .eq("status", "published") \
+             .not_.is_("due_date", "null") \
+             .gt("due_date", now.isoformat()) \
+             .order("due_date") \
+             .limit(20) \
+             .execute()
+
+            if all_assignments.data:
+                a_ids = [a["id"] for a in all_assignments.data]
+                my_subs = sb.table("submissions").select("assignment_id").eq(
+                    "student_id", uid
+                ).in_("assignment_id", a_ids).execute()
+                submitted_ids = {s["assignment_id"] for s in (my_subs.data or [])}
+
+                for a in all_assignments.data:
+                    if a["id"] not in submitted_ids:
+                        course_info = a.get("courses") or {}
+                        due = datetime.fromisoformat(a["due_date"].replace("Z", "+00:00"))
+                        remaining = due - now
+                        if remaining.days > 0:
+                            time_label = f"{remaining.days}일 남음"
+                        else:
+                            hours_left = remaining.seconds // 3600
+                            time_label = f"{hours_left}시간 남음" if hours_left > 0 else "곧 마감"
+                        unsubmitted_items.append({
+                            "type": "unsubmitted",
+                            "id": a["id"],
+                            "course_id": a["course_id"],
+                            "course_title": course_info.get("title", ""),
+                            "assignment_title": a["title"],
+                            "due_date": a["due_date"],
+                            "preview": f"'{a['title']}' 미제출 ({time_label})",
+                            "created_at": a["due_date"],
+                        })
+        except Exception as e:
+            logger.warning(f"[Notifications] 미제출 과제 조회 실패: {e}")
+
+    # ── 5) 새 과제/자료 알림 (학생용, 최근 24시간 이내 등록된 것) ──
     new_material_items = []
     if role == "student":
         recent_cutoff = (now - timedelta(hours=24)).isoformat()
@@ -212,6 +257,8 @@ async def get_notifications(user: dict = Depends(get_current_user)):
 
     # 마감 알림 추가
     items.extend(deadline_items)
+    # 미제출 과제 알림 추가
+    items.extend(unsubmitted_items)
     # 새 과제/자료 알림 추가
     items.extend(new_material_items)
 
@@ -219,13 +266,15 @@ async def get_notifications(user: dict = Depends(get_current_user)):
     items.sort(key=lambda x: x.get("created_at") or "", reverse=True)
 
     deadline_count = len(deadline_items)
+    unsubmitted_count = len(unsubmitted_items)
     new_material_count = len(new_material_items)
     return {
         "unread_messages": unread_msgs.count or 0,
         "unresolved_comments": getattr(comment_result, "count", None) or len(comment_result.data or []),
         "upcoming_deadlines": deadline_count,
+        "unsubmitted_assignments": unsubmitted_count,
         "new_materials": new_material_count,
-        "total": (unread_msgs.count or 0) + (getattr(comment_result, "count", None) or len(comment_result.data or [])) + deadline_count + new_material_count,
+        "total": (unread_msgs.count or 0) + (getattr(comment_result, "count", None) or len(comment_result.data or [])) + deadline_count + unsubmitted_count + new_material_count,
         "items": items[:20],
     }
 

@@ -22,6 +22,17 @@ class TutorChatRequest(BaseModel):
 async def tutor_chat(body: TutorChatRequest, user: dict = Depends(require_student_or_personal)):
     """AI 소크라테스 튜터 - SSE 스트리밍"""
 
+    # EXP + 배지 체크: 하루 첫 튜터 질문
+    try:
+        from datetime import date
+        from modules.gamification.router import award_exp
+        from modules.gamification.badge_defs import check_badges
+        today = date.today().isoformat()
+        award_exp(user["id"], "tutor_chat", f"daily_{today}")
+        check_badges(user["id"], "tutor_chat")
+    except Exception:
+        pass
+
     history_text = ""
     if body.history:
         for h in body.history[-10:]:

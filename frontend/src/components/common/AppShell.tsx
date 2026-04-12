@@ -5,8 +5,10 @@ import { useMessengerStore } from "../../store/messengerStore";
 import { useNotificationStore } from "../../store/notificationStore";
 import { useCourseStore } from "../../store/courseStore";
 import TierBadge from "./TierBadge";
+import BadgeToast from "./BadgeToast";
 import ThemeBackground from "./ThemeBackground";
 import NotificationBell from "./NotificationBell";
+import ServiceGuide from "./ServiceGuide";
 import GlobalContextMenu from "./GlobalContextMenu";
 import { useRealtimeNotifications } from "../../lib/useRealtimeNotifications";
 
@@ -85,6 +87,7 @@ export default function AppShell({ children, courseTitle }: Props) {
 
   return (
     <div className="app-shell">
+      <BadgeToast />
       {/* Mobile hamburger */}
       <button className="mobile-menu-btn" onClick={() => setSidebarOpen(!sidebarOpen)}>
         {sidebarOpen ? "\u2715" : "\u2630"}
@@ -94,7 +97,7 @@ export default function AppShell({ children, courseTitle }: Props) {
       <div className={`sidebar-overlay${sidebarOpen ? " open" : ""}`} onClick={() => setSidebarOpen(false)} />
       {/* Sidebar */}
       <aside className={`sidebar${sidebarOpen ? " open" : ""}`}>
-        <div className="sidebar-brand" data-tutorial="sidebar-brand">
+        <div className="sidebar-brand">
           <Link to={homeLink}>
             <div className="sidebar-brand-name">pikabuddy</div>
           </Link>
@@ -138,8 +141,7 @@ export default function AppShell({ children, courseTitle }: Props) {
                   <Link
                     to={`/courses/${courseId}/dashboard`}
                     className={`sidebar-link ${isActive("dashboard") ? "active" : ""}`}
-                    data-tutorial="sidebar-dashboard"
-                  >
+                                     >
                     <span className="sidebar-link-icon">&#x1F4CA;</span>
                     Dashboard
                   </Link>
@@ -182,8 +184,7 @@ export default function AppShell({ children, courseTitle }: Props) {
                   <Link
                     to={`/courses/${courseId}/notes`}
                     className={`sidebar-link ${isActive("notes") ? "active" : ""}`}
-                    data-tutorial="sidebar-notes"
-                  >
+                                     >
                     <span className="sidebar-link-icon">&#x1F4DD;</span>
                     Notes
                   </Link>
@@ -246,8 +247,7 @@ export default function AppShell({ children, courseTitle }: Props) {
                   <Link
                     to={`/courses/${courseId}/notes`}
                     className={`sidebar-link ${isActive("notes") ? "active" : ""}`}
-                    data-tutorial="sidebar-notes"
-                  >
+                                     >
                     <span className="sidebar-link-icon">&#x1F4DD;</span>
                     Notes
                   </Link>
@@ -267,15 +267,14 @@ export default function AppShell({ children, courseTitle }: Props) {
 
         <div className="sidebar-bottom">
           {!isProfessor && (
-            <div style={{ padding: "8px 16px" }} data-tutorial="sidebar-tier">
+            <div style={{ padding: "8px 16px" }}>
               <TierBadge compact />
             </div>
           )}
           <Link
             to="/settings"
             className={`sidebar-link ${location.pathname === "/settings" ? "active" : ""}`}
-            data-tutorial="sidebar-settings"
-          >
+                     >
             <span className="sidebar-link-icon">&#x2699;</span>
             Settings
           </Link>
@@ -297,6 +296,7 @@ export default function AppShell({ children, courseTitle }: Props) {
             )}
           </div>
           <div className="topnav-right">
+            <ServiceGuide />
             <NotificationBell />
             <div className="topnav-avatar">
               {user?.name?.charAt(0)?.toUpperCase() || "U"}

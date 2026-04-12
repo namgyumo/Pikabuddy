@@ -275,4 +275,12 @@ async def send_message(
         "content": body.content.strip(),
     }
     result = sb.table("messages").insert(row).execute()
+
+    # 배지 체크: 메시지 전송
+    try:
+        from modules.gamification.badge_defs import check_badges
+        check_badges(user["id"], "message_send")
+    except Exception:
+        pass
+
     return result.data[0]

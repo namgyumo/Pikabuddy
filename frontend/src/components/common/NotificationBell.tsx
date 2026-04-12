@@ -52,7 +52,7 @@ export default function NotificationBell() {
           state: { fromNotification: true, commentBlockIndex: item.block_index },
         });
       }
-    } else if (item.type === "deadline" && item.course_id) {
+    } else if ((item.type === "deadline" || item.type === "unsubmitted") && item.course_id) {
       navigate(`/courses/${item.course_id}/assignments/${item.id}`);
     } else if (item.type === "new_material" && item.course_id) {
       navigate(`/courses/${item.course_id}`);
@@ -116,9 +116,11 @@ export default function NotificationBell() {
                       <span>{item.sender_name?.charAt(0)?.toUpperCase() || "?"}</span>
                     )
                   ) : item.type === "deadline" ? (
-                    <span className="notification-deadline-icon">⏰</span>
+                    <span className="notification-deadline-icon">&#x23F0;</span>
+                  ) : item.type === "unsubmitted" ? (
+                    <span className="notification-unsubmitted-icon">&#x1F4E2;</span>
                   ) : item.type === "new_material" ? (
-                    <span className="notification-material-icon">📄</span>
+                    <span className="notification-material-icon">&#x1F4C4;</span>
                   ) : (
                     item.commenter_avatar ? (
                       <img src={item.commenter_avatar} alt="" />
@@ -138,6 +140,11 @@ export default function NotificationBell() {
                       <>
                         <strong>{item.assignment_title}</strong>
                         <span className="notification-item-tag deadline">마감 임박</span>
+                      </>
+                    ) : item.type === "unsubmitted" ? (
+                      <>
+                        <strong>{item.assignment_title}</strong>
+                        <span className="notification-item-tag unsubmitted">미제출</span>
                       </>
                     ) : item.type === "new_material" ? (
                       <>
@@ -159,7 +166,7 @@ export default function NotificationBell() {
                     {item.type === "comment" && item.note_title && (
                       <span>{item.note_title}{item.block_index != null ? ` > 블록 ${item.block_index + 1}` : ""}</span>
                     )}
-                    {item.type === "deadline" && item.course_title && (
+                    {(item.type === "deadline" || item.type === "unsubmitted") && item.course_title && (
                       <span>{item.course_title}</span>
                     )}
                     {item.type === "new_material" && item.course_title && (

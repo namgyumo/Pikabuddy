@@ -28,13 +28,16 @@ class VoteRespondRequest(BaseModel):
 
 def _get_team_for_assignment(supabase, user_id: str, assignment_id: str) -> tuple[dict, str]:
     """과제의 course_id를 가져오고, 해당 과목에서 유저의 팀 ID를 반환."""
-    assignment = (
-        supabase.table("assignments")
-        .select("course_id, is_team_assignment")
-        .eq("id", assignment_id)
-        .single()
-        .execute()
-    )
+    try:
+        assignment = (
+            supabase.table("assignments")
+            .select("course_id, is_team_assignment")
+            .eq("id", assignment_id)
+            .single()
+            .execute()
+        )
+    except Exception:
+        raise HTTPException(status_code=404, detail="과제를 찾을 수 없습니다.")
     if not assignment.data:
         raise HTTPException(status_code=404, detail="과제를 찾을 수 없습니다.")
     if not assignment.data.get("is_team_assignment"):
@@ -205,7 +208,19 @@ async def initiate_vote(
     if body.content:
         payload["content"] = body.content
 
-    # 투표 생성 (unique index가 중복 방지)
+    # 이미 pending 투표가 있는지 먼저 확인
+    existing = (
+        supabase.table("team_submission_votes")
+        .select("id")
+        .eq("assignment_id", assignment_id)
+        .eq("team_id", team_id)
+        .eq("status", "pending")
+        .execute()
+    )
+    if existing.data:
+        raise HTTPException(status_code=409, detail="이미 진행 중인 투표가 있습니다.")
+
+    # 투표 생성
     try:
         vote_result = supabase.table("team_submission_votes").insert({
             "assignment_id": assignment_id,
@@ -215,17 +230,24 @@ async def initiate_vote(
             "submission_payload": payload,
             "deadline": deadline.isoformat(),
         }).execute()
-    except Exception:
-        raise HTTPException(status_code=409, detail="이미 진행 중인 투표가 있습니다.")
+    except Exception as e:
+        logger.error(f"[Vote] 투표 생성 실패: {e}")
+        raise HTTPException(status_code=500, detail="투표 생성 중 오류가 발생했습니다.")
+
+    if not vote_result.data:
+        raise HTTPException(status_code=500, detail="투표 생성 실패")
 
     vote = vote_result.data[0]
 
     # 발의자 자동 approve
-    supabase.table("team_vote_responses").insert({
-        "vote_id": vote["id"],
-        "student_id": user["id"],
-        "response": "approve",
-    }).execute()
+    try:
+        supabase.table("team_vote_responses").insert({
+            "vote_id": vote["id"],
+            "student_id": user["id"],
+            "response": "approve",
+        }).execute()
+    except Exception as e:
+        logger.warning(f"[Vote] 발의자 자동 승인 실패: {e}")
 
     # 1인 팀이면 즉시 resolve
     total = _get_team_member_count(supabase, team_id)
@@ -250,14 +272,17 @@ async def respond_to_vote(
     _, team_id = _get_team_for_assignment(supabase, user["id"], assignment_id)
 
     # 투표 존재 확인
-    vote = (
-        supabase.table("team_submission_votes")
-        .select("*")
-        .eq("id", vote_id)
-        .eq("team_id", team_id)
-        .single()
-        .execute()
-    ).data
+    try:
+        vote = (
+            supabase.table("team_submission_votes")
+            .select("*")
+            .eq("id", vote_id)
+            .eq("team_id", team_id)
+            .single()
+            .execute()
+        ).data
+    except Exception:
+        vote = None
     if not vote:
         raise HTTPException(status_code=404, detail="투표를 찾을 수 없습니다.")
 
@@ -279,14 +304,18 @@ async def respond_to_vote(
             "student_id": user["id"],
             "response": body.response,
         }, on_conflict="vote_id,student_id").execute()
-    except Exception:
-        # upsert 실패 시 delete + insert 폴백
-        supabase.table("team_vote_responses").delete().eq("vote_id", vote_id).eq("student_id", user["id"]).execute()
-        supabase.table("team_vote_responses").insert({
-            "vote_id": vote_id,
-            "student_id": user["id"],
-            "response": body.response,
-        }).execute()
+    except Exception as e:
+        logger.warning(f"[Vote] upsert 실패, delete+insert 폴백: {e}")
+        try:
+            supabase.table("team_vote_responses").delete().eq("vote_id", vote_id).eq("student_id", user["id"]).execute()
+            supabase.table("team_vote_responses").insert({
+                "vote_id": vote_id,
+                "student_id": user["id"],
+                "response": body.response,
+            }).execute()
+        except Exception as e2:
+            logger.error(f"[Vote] 응답 저장 실패: {e2}")
+            raise HTTPException(status_code=500, detail="투표 응답 저장 중 오류가 발생했습니다.")
 
     # resolve 체크
     vote = _check_and_resolve(supabase, vote["id"])

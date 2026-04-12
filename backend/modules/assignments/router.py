@@ -36,8 +36,15 @@ def _extract_json(text: str) -> dict | list:
     raise json.JSONDecodeError("No valid JSON found", text[:200], 0)
 
 
+def _is_retriable_error(err_str: str) -> bool:
+    """폴백 대상이 되는 에러인지 판별한다."""
+    retriable = ["503", "429", "overloaded", "quota", "rate limit", "resource exhausted", "unavailable"]
+    lower = err_str.lower()
+    return any(code in lower for code in retriable)
+
+
 def _generate_with_retry(generate_fn, *args, max_retries: int = 3) -> dict:
-    """Gemini 생성 함수를 재시도 로직으로 감싼다. 503 시 폴백 모델 순차 시도."""
+    """Gemini 생성 함수를 재시도 로직으로 감싼다. 실패 시 폴백 모델 순차 시도."""
     fn_name = generate_fn.__name__
     last_error = None
 
@@ -54,23 +61,29 @@ def _generate_with_retry(generate_fn, *args, max_retries: int = 3) -> dict:
                 last_error = e
                 err_str = str(e)
                 print(f"  ✗ {fn_name} [{model_name}] 시도 {attempt + 1}/{max_retries} 실패 ({elapsed:.1f}초): {e}")
-                # 504/서버 타임아웃은 재시도해도 같은 결과 → 즉시 실패
+                # 504/서버 타임아웃은 재시도해도 같은 결과 → 즉시 다음 모델로
                 if "504" in err_str or "timed out" in err_str.lower():
-                    print(f"  ⏹ 서버 타임아웃 — 재시도 건너뜀")
+                    print(f"  ⏹ 서버 타임아웃 — 다음 모델로 전환...")
                     break
                 if attempt < max_retries - 1:
-                    if "503" in err_str:
+                    if _is_retriable_error(err_str):
                         wait = 2 * (attempt + 1)
-                        print(f"  ⏳ 과부하 — {wait}초 대기...")
+                        print(f"  ⏳ 재시도 가능 에러 — {wait}초 대기...")
                         time.sleep(wait)
                     else:
                         time.sleep(1)
-        # 이 모델 전부 실패 → 다음 폴백 모델로
-        if last_error and "503" in str(last_error):
-            print(f"  🔄 {model_name} 과부하 → 다음 모델로 전환...")
+        # 이 모델 전부 실패 → retriable 에러면 다음 폴백 모델로
+        if last_error and _is_retriable_error(str(last_error)):
+            print(f"  🔄 {model_name} 실패 → 다음 모델로 전환...")
             continue
-        else:
+        # non-retriable도 다음 모델 시도 (모델 이름 오류 등 대비)
+        if last_error:
+            err_lower = str(last_error).lower()
+            if "not found" in err_lower or "invalid" in err_lower or "404" in err_lower:
+                print(f"  🔄 {model_name} 모델 사용 불가 → 다음 모델로 전환...")
+                continue
             break
+        break
 
     raise last_error
 
@@ -807,9 +820,9 @@ async def _background_generate_problems(
         for i, p in enumerate(all_problems):
             p["id"] = i + 1
 
-        # 실패 원인 수집 (503 등)
+        # 실패 원인 수집 (503, 429 등)
         fail_reasons = [str(r) for r in results if isinstance(r, Exception)]
-        has_503 = any("503" in r for r in fail_reasons)
+        has_overload = any(_is_retriable_error(r) for r in fail_reasons)
 
         elapsed = time.time() - t_start
         if all_problems:
@@ -818,7 +831,7 @@ async def _background_generate_problems(
             })
             print(f"\n✅ 생성 완료 [{short_id}] — {len(all_problems)}개 문제, {elapsed:.1f}초")
         else:
-            fail_detail = "ai_overloaded" if has_503 else "generation_error"
+            fail_detail = "ai_overloaded" if has_overload else "generation_error"
             _safe_update_status(supabase, assignment_id, "failed", {
                 "rubric": {"fail_reason": fail_detail},
             })
@@ -831,7 +844,7 @@ async def _background_generate_problems(
         print(f"{'='*50}\n")
         traceback.print_exc()
         try:
-            fail_detail = "ai_overloaded" if "503" in str(e) else "generation_error"
+            fail_detail = "ai_overloaded" if _is_retriable_error(str(e)) else "generation_error"
             _safe_update_status(get_supabase(), assignment_id, "failed", {
                 "rubric": {"fail_reason": fail_detail},
             })

@@ -152,6 +152,13 @@ export default function SubNoteNodeView({ node, updateAttributes, deleteNode, se
         <span className="sub-note-arrow">
           {creating ? "..." : "\u203A"}
         </span>
+        <button
+          className="sub-note-delete"
+          title="하위 페이지 블록 삭제"
+          onClick={(e) => { e.stopPropagation(); deleteNode(); }}
+        >
+          ✕
+        </button>
       </div>
       {toast && (
         <div className="sub-note-toast">

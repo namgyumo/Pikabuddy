@@ -2,8 +2,6 @@ import { useEffect, useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useCourseStore } from "../store/courseStore";
 import { useAuthStore } from "../store/authStore";
-import { useTutorialStore } from "../store/tutorialStore";
-import { getTutorialKey } from "../lib/tutorials";
 import api from "../lib/api";
 import { toast } from "../lib/toast";
 import AppShell from "../components/common/AppShell";
@@ -90,9 +88,6 @@ export default function ProfessorHome() {
   const [addingEvent, setAddingEvent] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarItem | null>(null);
 
-  const tutorialStart = useTutorialStore((s) => s.start);
-  const tutorialCompleted = useTutorialStore((s) => s.isCompleted);
-
   useEffect(() => {
     fetchCourses();
     api.get("/calendar").then(({ data }) => {
@@ -103,13 +98,6 @@ export default function ProfessorHome() {
       setCalItems(items);
     }).catch(() => {});
   }, [fetchCourses]);
-
-  useEffect(() => {
-    if (user && !tutorialCompleted(getTutorialKey("professor", user.id))) {
-      const timer = setTimeout(() => tutorialStart(), 500);
-      return () => clearTimeout(timer);
-    }
-  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCreate = async () => {
     if (!title.trim()) return;
@@ -141,8 +129,7 @@ export default function ProfessorHome() {
           <button
             className="btn btn-primary"
             onClick={() => setShowCreate(true)}
-            data-tutorial="create-course"
-          >
+                     >
             + 새 강의 개설
           </button>
         </div>
@@ -207,7 +194,7 @@ export default function ProfessorHome() {
             위의 "새 강의 개설" 버튼으로 시작하세요.
           </div>
         ) : (
-          <div className="course-grid" data-tutorial="course-list">
+          <div className="course-grid">
             {courses.map((course) => (
               <div key={course.id} className="card course-card" style={{ position: "relative" }}>
                 {course.banner_url && !hiddenBanners.includes(course.id) && (

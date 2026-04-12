@@ -204,6 +204,8 @@ export default function AssignmentDetail() {
   const [examStudentsLoaded, setExamStudentsLoaded] = useState(false);
   const [resetReason, setResetReason] = useState("");
   const [resettingStudent, setResettingStudent] = useState<string | null>(null);
+  const [examEndResult, setExamEndResult] = useState<any>(null);
+  const [examEnding, setExamEnding] = useState(false);
 
   // Confirm dialog
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -872,6 +874,32 @@ export default function AssignmentDetail() {
               style={{ width: 18, height: 18, accentColor: "var(--error)", cursor: "pointer" }} />
             시험 모드 (전체화면 강제 + 화면 캡쳐 + 이탈 감지)
           </label>
+
+          {/* 시험 종료 버튼 */}
+          {assignment.exam_mode && (
+            <button
+              className="btn"
+              style={{
+                marginTop: 10, fontSize: 13, padding: "8px 18px",
+                background: "var(--error)", color: "#fff",
+                opacity: examEnding ? 0.6 : 1,
+              }}
+              disabled={examEnding}
+              onClick={async () => {
+                if (!confirm("시험을 종료하시겠습니까?\n시험 모드가 비활성화되고 종합 결과가 표시됩니다.")) return;
+                setExamEnding(true);
+                try {
+                  const { data } = await api.post(`/exam/end/${assignmentId}`);
+                  setExamEndResult(data);
+                  setAssignment((prev) => prev ? { ...prev, exam_mode: false } : null);
+                } catch (err: any) {
+                  alert(err?.response?.data?.detail || "시험 종료 실패");
+                } finally { setExamEnding(false); }
+              }}
+            >
+              {examEnding ? "종료 중..." : "시험 종료"}
+            </button>
+          )}
 
           {/* 채점 강도 */}
           <div style={{ marginTop: 20 }}>
@@ -1805,6 +1833,168 @@ export default function AssignmentDetail() {
                 <button className="btn btn-secondary" onClick={() => setEditingProblem(null)}>취소</button>
                 <button className="btn btn-primary" onClick={handleSaveEdit} style={{ padding: "8px 28px" }}>저장</button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 시험 종료 결과 모달 */}
+      {examEndResult && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 1001,
+          background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center",
+          backdropFilter: "blur(4px)",
+        }} onClick={() => setExamEndResult(null)}>
+          <div style={{
+            background: "var(--surface-container-lowest)", borderRadius: 16, padding: 0,
+            maxWidth: 600, width: "92%", maxHeight: "85vh", overflow: "hidden",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.3)", display: "flex", flexDirection: "column",
+          }} onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div style={{
+              padding: "20px 24px", borderBottom: "1px solid var(--outline-variant)",
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>시험 종료 결과</h3>
+                <div style={{ fontSize: 13, color: "var(--on-surface-variant)", marginTop: 2 }}>{examEndResult.assignment_title}</div>
+              </div>
+              <button onClick={() => setExamEndResult(null)} style={{
+                background: "none", border: "none", fontSize: 20, cursor: "pointer",
+                color: "var(--on-surface-variant)", padding: 4,
+              }}>&times;</button>
+            </div>
+
+            {/* Content */}
+            <div style={{ padding: "20px 24px", overflowY: "auto", flex: 1 }}>
+              {/* 참여 통계 */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 20 }}>
+                {[
+                  { label: "전체 수강생", value: examEndResult.total_students, unit: "명" },
+                  { label: "응시 완료", value: examEndResult.participants, unit: "명" },
+                  { label: "미응시", value: examEndResult.not_participated, unit: "명", warn: true },
+                ].map((s, i) => (
+                  <div key={i} style={{
+                    padding: "12px 14px", borderRadius: 10,
+                    background: s.warn && s.value > 0 ? "rgba(245,158,11,0.08)" : "var(--surface-container-low)",
+                    textAlign: "center",
+                  }}>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: s.warn && s.value > 0 ? "#d97706" : "var(--on-surface)" }}>{s.value}{s.unit}</div>
+                    <div style={{ fontSize: 11, color: "var(--on-surface-variant)", marginTop: 2 }}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* 점수 통계 */}
+              {examEndResult.avg_score != null && (
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8 }}>점수 통계</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 12 }}>
+                    <div style={{ padding: "10px", borderRadius: 10, background: "var(--surface-container-low)", textAlign: "center" }}>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: "var(--primary)" }}>{examEndResult.avg_score}</div>
+                      <div style={{ fontSize: 11, color: "var(--on-surface-variant)" }}>평균</div>
+                    </div>
+                    <div style={{ padding: "10px", borderRadius: 10, background: "var(--surface-container-low)", textAlign: "center" }}>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: "#16a34a" }}>{examEndResult.max_score}</div>
+                      <div style={{ fontSize: 11, color: "var(--on-surface-variant)" }}>최고</div>
+                    </div>
+                    <div style={{ padding: "10px", borderRadius: 10, background: "var(--surface-container-low)", textAlign: "center" }}>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: "#dc2626" }}>{examEndResult.min_score}</div>
+                      <div style={{ fontSize: 11, color: "var(--on-surface-variant)" }}>최저</div>
+                    </div>
+                  </div>
+                  {/* 점수대 분포 */}
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {Object.entries(examEndResult.score_distribution as Record<string, number>).map(([range, count]) => (
+                      <div key={range} style={{
+                        flex: 1, textAlign: "center", padding: "8px 4px", borderRadius: 8,
+                        background: count > 0 ? "var(--surface-container)" : "var(--surface-container-low)",
+                        fontSize: 12,
+                      }}>
+                        <div style={{ fontWeight: 700 }}>{count}</div>
+                        <div style={{ fontSize: 10, color: "var(--on-surface-variant)", marginTop: 2 }}>{range}점</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 위반 통계 */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8 }}>위반 통계</div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+                  <div style={{ padding: "10px", borderRadius: 10, background: examEndResult.total_violations > 0 ? "rgba(220,38,38,0.06)" : "var(--surface-container-low)", textAlign: "center" }}>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: examEndResult.total_violations > 0 ? "#dc2626" : "var(--on-surface)" }}>{examEndResult.total_violations}</div>
+                    <div style={{ fontSize: 11, color: "var(--on-surface-variant)" }}>총 위반</div>
+                  </div>
+                  <div style={{ padding: "10px", borderRadius: 10, background: "var(--surface-container-low)", textAlign: "center" }}>
+                    <div style={{ fontSize: 20, fontWeight: 700 }}>{examEndResult.students_with_violations}</div>
+                    <div style={{ fontSize: 11, color: "var(--on-surface-variant)" }}>위반 학생</div>
+                  </div>
+                  <div style={{ padding: "10px", borderRadius: 10, background: "var(--surface-container-low)", textAlign: "center" }}>
+                    <div style={{ fontSize: 20, fontWeight: 700 }}>{examEndResult.total_screenshots}</div>
+                    <div style={{ fontSize: 11, color: "var(--on-surface-variant)" }}>캡처 수</div>
+                  </div>
+                </div>
+                {examEndResult.total_violations > 0 && (
+                  <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+                    {Object.entries(examEndResult.violation_breakdown as Record<string, number>).map(([type, count]) => (
+                      <span key={type} style={{
+                        padding: "4px 10px", borderRadius: 20, fontSize: 11, fontWeight: 600,
+                        background: "rgba(220,38,38,0.08)", color: "#dc2626",
+                      }}>
+                        {{fullscreen_exit: "전체화면 해제", tab_switch: "탭 전환", window_blur: "창 이탈"}[type] || type} {count}회
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 학생별 상세 */}
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8 }}>학생별 결과</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {(examEndResult.students as any[]).map((st, i) => (
+                    <div key={st.student_id} style={{
+                      display: "flex", alignItems: "center", gap: 10, padding: "8px 12px",
+                      borderRadius: 8, background: i % 2 === 0 ? "var(--surface-container-low)" : "transparent",
+                      fontSize: 13,
+                    }}>
+                      <span style={{ fontWeight: 600, minWidth: 70 }}>{st.name}</span>
+                      <span className="badge" style={{
+                        background: st.exam_ended ? "rgba(34,197,94,0.12)" : "rgba(245,158,11,0.12)",
+                        color: st.exam_ended ? "#16a34a" : "#d97706", fontSize: 11,
+                      }}>
+                        {st.exam_ended ? "응시" : "미응시"}
+                      </span>
+                      <span className="badge" style={{
+                        background: st.submitted ? "rgba(34,197,94,0.12)" : "rgba(156,163,175,0.12)",
+                        color: st.submitted ? "#16a34a" : "#9ca3af", fontSize: 11,
+                      }}>
+                        {st.submitted ? "제출" : "미제출"}
+                      </span>
+                      {st.avg_score != null && (
+                        <span style={{ fontWeight: 700, color: st.avg_score >= 80 ? "#16a34a" : st.avg_score >= 60 ? "#d97706" : "#dc2626" }}>
+                          {st.avg_score}점
+                        </span>
+                      )}
+                      {st.violations > 0 && (
+                        <span style={{ color: "#dc2626", fontSize: 11, fontWeight: 600 }}>
+                          위반 {st.violations}회
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              padding: "14px 24px", borderTop: "1px solid var(--outline-variant)",
+              display: "flex", justifyContent: "flex-end",
+            }}>
+              <button className="btn btn-primary" onClick={() => setExamEndResult(null)}>확인</button>
             </div>
           </div>
         </div>

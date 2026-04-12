@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 from common.supabase_client import get_supabase
 from middleware.auth import get_current_user
@@ -162,7 +162,76 @@ async def submit_assignment(
 
     if not result.data:
         raise HTTPException(status_code=500, detail="제출 저장 실패")
+
+    # EXP + 배지 체크: 과제 제출
+    try:
+        from modules.gamification.router import award_exp
+        from modules.gamification.badge_defs import check_badges
+        award_exp(user["id"], "assignment_submit", assignment_id)
+        check_badges(user["id"], "assignment_submit")
+    except Exception:
+        pass
+
     return result.data[0]
+
+
+class SubmitAllProblem(BaseModel):
+    problem_index: int = 0
+    code: str = ""
+    content: dict | None = None
+    char_count: int | None = None
+
+
+class SubmitAllRequest(BaseModel):
+    problems: list[SubmitAllProblem]
+
+
+@router.post("/assignments/{assignment_id}/submit-all", status_code=201)
+async def submit_all(
+    assignment_id: str,
+    body: SubmitAllRequest,
+    background_tasks: BackgroundTasks,
+    user: dict = Depends(get_current_user),
+):
+    """전체 문제 일괄 제출 + 비동기 AI 분석"""
+    supabase = get_supabase()
+
+    submissions = []
+    for p in body.problems:
+        insert_data = {
+            "assignment_id": assignment_id,
+            "student_id": user["id"],
+            "code": p.code or "",
+            "status": "submitted",
+            "problem_index": p.problem_index,
+        }
+        if p.content:
+            insert_data["content"] = p.content
+        if p.char_count is not None:
+            insert_data["char_count"] = p.char_count
+
+        result = supabase.table("submissions").insert(insert_data).execute()
+        if result.data:
+            submissions.append(result.data[0])
+
+    # EXP + 배지 체크 (한 번만)
+    try:
+        from modules.gamification.router import award_exp
+        from modules.gamification.badge_defs import check_badges
+        award_exp(user["id"], "assignment_submit", assignment_id)
+        check_badges(user["id"], "assignment_submit")
+    except Exception:
+        pass
+
+    # 비동기 AI 분석 트리거
+    from modules.analysis.router import run_ai_analysis_sync
+    for sub in submissions:
+        background_tasks.add_task(run_ai_analysis_sync, sub["id"])
+
+    return {
+        "submitted": len(submissions),
+        "submission_ids": [s["id"] for s in submissions],
+    }
 
 
 class QuizGradeRequest(BaseModel):
@@ -273,6 +342,15 @@ async def grade_quiz(
         "problem_index": 0,
     }
     sub_result = supabase.table("submissions").insert(submission_data).execute()
+
+    # EXP + 배지 체크: 퀴즈 제출
+    try:
+        from modules.gamification.router import award_exp
+        from modules.gamification.badge_defs import check_badges
+        award_exp(user["id"], "assignment_submit", assignment_id)
+        check_badges(user["id"], "assignment_submit")
+    except Exception:
+        pass
 
     # AI 분석 테이블에도 점수 저장
     if sub_result.data:

@@ -51,6 +51,8 @@ export default function CourseDetail() {
 
   const [courseInfo, setCourseInfo] = useState<any>(null);
   const infoCacheRef = useRef<any>(null);
+  const [leaveConfirm, setLeaveConfirm] = useState(false);
+  const [leaving, setLeaving] = useState(false);
 
   // 배너 편집 + 표시/숨기기
   const [bannerEditOpen, setBannerEditOpen] = useState(false);
@@ -1246,6 +1248,70 @@ export default function CourseDetail() {
                       ))}
                     </ul>
                   </div>
+                </>
+              )}
+              {/* 강의 나가기 (학생���) */}
+              {!isProfessor && !isPersonal && (
+                <>
+                  <div className="info-divider" />
+                  {!leaveConfirm ? (
+                    <button
+                      onClick={() => setLeaveConfirm(true)}
+                      style={{
+                        width: "100%", padding: "10px 0", borderRadius: 8,
+                        border: "1px solid var(--error, #dc2626)", background: "none",
+                        color: "var(--error, #dc2626)", fontSize: 13, fontWeight: 600,
+                        cursor: "pointer", marginTop: 8,
+                      }}
+                    >
+                      강의 나가기
+                    </button>
+                  ) : (
+                    <div style={{
+                      marginTop: 8, padding: 14, borderRadius: 8,
+                      background: "rgba(220,38,38,0.08)", border: "1px solid var(--error, #dc2626)",
+                    }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--error, #dc2626)", marginBottom: 6 }}>
+                        정말 이 강의에서 나가시겠습니까?
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--on-surface-variant)", marginBottom: 12 }}>
+                        나가면 이 강의의 과제, 노트 등에 접근할 수 없게 됩니다. �� 작업은 되돌릴 수 없습니다.
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button
+                          onClick={() => setLeaveConfirm(false)}
+                          style={{
+                            flex: 1, padding: "8px 0", borderRadius: 6,
+                            border: "1px solid var(--outline-variant)", background: "var(--surface)",
+                            color: "var(--on-surface)", fontSize: 12, cursor: "pointer",
+                          }}
+                        >
+                          취소
+                        </button>
+                        <button
+                          disabled={leaving}
+                          onClick={async () => {
+                            setLeaving(true);
+                            try {
+                              await api.delete(`/courses/${courseId}/leave`);
+                              navigate("/");
+                            } catch {
+                              setLeaving(false);
+                              setLeaveConfirm(false);
+                            }
+                          }}
+                          style={{
+                            flex: 1, padding: "8px 0", borderRadius: 6,
+                            border: "none", background: "var(--error, #dc2626)",
+                            color: "#fff", fontSize: 12, fontWeight: 600,
+                            cursor: leaving ? "not-allowed" : "pointer", opacity: leaving ? 0.6 : 1,
+                          }}
+                        >
+                          {leaving ? "처리 중..." : "나가기"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
               </>)}

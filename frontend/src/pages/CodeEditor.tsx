@@ -131,6 +131,43 @@ export default function CodeEditor() {
   // Keep ref in sync so mount-time callbacks get the latest value
   useEffect(() => { problemIdxRef.current = problemIdx; }, [problemIdx]);
 
+  // ── 뒤로가기 / 새로고침 방지 ──
+  useEffect(() => {
+    let isLeaving = false;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    // Push extra history entry so browser back hits us first
+    window.history.pushState({ codeEditor: true }, "");
+    const handlePopState = () => {
+      if (isLeaving) return;
+      // Re-push to stay on page
+      window.history.pushState({ codeEditor: true }, "");
+      customConfirm("작성 중인 코드가 저장되지 않을 수 있습니다. 나가시겠습니까?", {
+        confirmText: "나가기",
+        cancelText: "계속 작성",
+        danger: true,
+      }).then((yes) => {
+        if (yes) {
+          isLeaving = true;
+          window.removeEventListener("popstate", handlePopState);
+          window.removeEventListener("beforeunload", handleBeforeUnload);
+          navigate(-1);
+        }
+      });
+    };
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [navigate]);
+
   useEffect(() => {
     if (!assignmentId) return;
     let assignmentData: Assignment | null = null;
@@ -309,11 +346,11 @@ export default function CodeEditor() {
   const problemFormat = (currentProblem?.format as string) || "regular";
   const isAlgorithm = problemFormat === "baekjoon" || problemFormat === "programmers" || assignment?.type === "algorithm";
   const isBlockProblem = problemFormat === "block";
-  const showBlockToggle = isBlockProblem || (assignment?.language === "python" || assignment?.language === "javascript");
+  const showBlockToggle = isBlockProblem;
 
-  // Auto-switch to block mode for block problems
+  // Auto-switch editor mode based on problem format
   useEffect(() => {
-    if (isBlockProblem) setEditorMode("block");
+    setEditorMode(isBlockProblem ? "block" : "code");
   }, [isBlockProblem]);
 
   const handleJudge = async () => {
@@ -408,6 +445,34 @@ export default function CodeEditor() {
       setSubmitting(false);
     }
   }, [assignmentId, submitting, code, problemIdx]);
+
+  const [submitAllLoading, setSubmitAllLoading] = useState(false);
+
+  const handleSubmitAll = useCallback(async (silent = false) => {
+    if (!assignmentId || !assignment?.problems) return;
+    // Save current problem code
+    codeMapRef.current[problemIdx] = code;
+
+    const problems = assignment.problems.map((_: unknown, i: number) => ({
+      problem_index: i,
+      code: codeMapRef.current[i] || "",
+    })).filter((p: { code: string }) => p.code.trim());
+
+    if (problems.length === 0) {
+      if (!silent) toast.warning("작성된 코드가 없습니다.");
+      return;
+    }
+
+    setSubmitAllLoading(true);
+    try {
+      await api.post(`/assignments/${assignmentId}/submit-all`, { problems });
+      if (!silent) toast.success(`${problems.length}개 문제가 제출되었습니다. AI 분석이 백그라운드에서 진행됩니다.`);
+    } catch {
+      if (!silent) toast.error("전체 제출 중 오류가 발생했습니다.");
+    } finally {
+      setSubmitAllLoading(false);
+    }
+  }, [assignmentId, assignment, code, problemIdx]);
 
   const handleTutorChat = async () => {
     if (!chatInput.trim()) return;
@@ -627,8 +692,11 @@ export default function CodeEditor() {
               </div>
               <button
                 onClick={() => {
-                  customConfirm("시험을 종료하시겠습니까? 종료 후에는 다시 입장할 수 없습니다.", { danger: true, confirmText: "종료" }).then((ok) => {
-                    if (ok) examMode.endExam("학생이 직접 종료", true);
+                  customConfirm("시험을 종료하시겠습니까? 작성한 모든 코드가 자동 제출됩니다. 종료 후에는 다시 입장할 수 없습니다.", { danger: true, confirmText: "종료" }).then(async (ok) => {
+                    if (ok) {
+                      await handleSubmitAll(true);
+                      examMode.endExam("학생이 직접 종료", true);
+                    }
                   });
                 }}
                 style={{
@@ -679,10 +747,13 @@ export default function CodeEditor() {
             {editorMode === "block" ? (
               <Suspense fallback={<div style={{ padding: 20, color: "#aaa" }}>블록 에디터 로딩 중...</div>}>
                 <BlockEditorLazy
+                  key={problemIdx}
                   language={assignment?.language || "python"}
                   onCodeChange={(generated) => {
                     setCode(generated);
                     codeMapRef.current[problemIdx] = generated;
+                    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+                    saveTimerRef.current = setTimeout(() => saveSnapshot(generated, problemIdx), 2500);
                   }}
                 />
               </Suspense>
@@ -1057,6 +1128,29 @@ export default function CodeEditor() {
                 >
                   {submitting ? "AI 분석 중..." : "제출하기"}
                 </button>
+                {assignment?.problems && assignment.problems.length > 1 && (
+                  <button
+                    className="btn"
+                    style={{
+                      marginTop: 6, width: "100%",
+                      background: "var(--tertiary)", color: "var(--on-tertiary, #fff)",
+                      fontWeight: 600,
+                    }}
+                    onClick={async () => {
+                      const ok = await customConfirm(
+                        `${assignment.problems.length}개 문제를 모두 제출하시겠습니까? AI 분석은 백그라운드에서 진행됩니다.`,
+                        { confirmText: "전체 제출", cancelText: "취소" }
+                      );
+                      if (ok) {
+                        await handleSubmitAll();
+                        navigate(-1);
+                      }
+                    }}
+                    disabled={submitAllLoading}
+                  >
+                    {submitAllLoading ? "제출 중..." : "전체 제출"}
+                  </button>
+                )}
                 {assignment?.due_date && (
                   <div style={{ marginTop: 6 }}>
                     <DeadlineTimer dueDate={assignment.due_date} compact />

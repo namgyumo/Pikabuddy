@@ -1,11 +1,11 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Cropper from "react-easy-crop";
 import type { Area } from "react-easy-crop";
 import { useAuthStore } from "../store/authStore";
-import { useTutorialStore } from "../store/tutorialStore";
 import AppShell from "../components/common/AppShell";
 import ThemePicker from "../components/settings/ThemePicker";
+import { getBadgeToastEnabled, setBadgeToastEnabled } from "../components/common/BadgeToast";
 import api from "../lib/api";
 
 export default function Settings() {
@@ -28,10 +28,27 @@ export default function Settings() {
   const [roleConfirm, setRoleConfirm] = useState<"professor" | "student" | "personal" | null>(null);
   const [recoverMsg, setRecoverMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // Test account reset
-  const isTestAccount = (user?.email || "").endsWith("@pikabuddy.admin");
+  // Test account management (accessible to all roles)
   const [resetting, setResetting] = useState(false);
   const [resetResult, setResetResult] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [testStatus, setTestStatus] = useState<any>(null);
+  const [snapshots, setSnapshots] = useState<any[]>([]);
+  const [snapshotName, setSnapshotName] = useState("");
+  const [snapshotLoading, setSnapshotLoading] = useState(false);
+  const [hasDefault, setHasDefault] = useState<{ exists: boolean; saved_at: string | null }>({ exists: false, saved_at: null });
+  const [partialTargets, setPartialTargets] = useState<Set<string>>(new Set());
+  const [teacherExp, setTeacherExp] = useState("");
+  const [studentExp, setStudentExp] = useState("");
+
+  const refreshStatus = () => {
+    api.get("/seed/status").then(r => setTestStatus(r.data)).catch(() => {});
+  };
+
+  useEffect(() => {
+    refreshStatus();
+    api.get("/seed/snapshots").then(r => setSnapshots(r.data)).catch(() => {});
+    api.get("/seed/has-default").then(r => setHasDefault(r.data)).catch(() => {});
+  }, []);
 
   // Avatar crop state
   const [cropSrc, setCropSrc] = useState<string | null>(null);
@@ -134,20 +151,9 @@ export default function Settings() {
           프로필 정보와 앱 외관을 설정할 수 있습니다.
         </p>
 
-        {/* ── 튜토리얼 ── */}
-        <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12, color: "var(--on-surface)" }}>튜토리얼</h2>
+        {/* ── 가이드 ── */}
+        <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12, color: "var(--on-surface)" }}>가이드</h2>
         <div style={{ display: "flex", gap: 8, marginBottom: 28, flexWrap: "wrap" }}>
-          <button
-            className="btn btn-secondary"
-            onClick={() => {
-              useTutorialStore.getState().resetAll();
-              const home = user?.role === "professor" ? "/professor" : user?.role === "personal" ? "/personal" : "/student";
-              navigate(home);
-              setTimeout(() => useTutorialStore.getState().start(), 600);
-            }}
-          >
-            튜토리얼 다시 보기
-          </button>
           <a
             href="/guide.html"
             target="_blank"
@@ -167,6 +173,25 @@ export default function Settings() {
         <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12, color: "var(--on-surface)" }}>외관</h2>
         <ThemePicker />
         <div style={{ height: 28 }} />
+
+        {/* ── 알림 설정 ── */}
+        <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12, color: "var(--on-surface)" }}>알림</h2>
+        <div className="card" style={{ padding: "14px 18px", marginBottom: 28 }}>
+          <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 14 }}>배지 획득 알림</div>
+              <div style={{ fontSize: 12, color: "var(--on-surface-variant)", marginTop: 2 }}>
+                도전과제 달성 시 화면 상단에 알림을 표시합니다.
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              defaultChecked={getBadgeToastEnabled()}
+              onChange={(e) => setBadgeToastEnabled(e.target.checked)}
+              style={{ width: 18, height: 18, accentColor: "var(--primary)", cursor: "pointer" }}
+            />
+          </label>
+        </div>
 
         {/* ── 프로필 설정 ── */}
         <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12, color: "var(--on-surface)" }}>프로필</h2>
@@ -382,85 +407,380 @@ export default function Settings() {
         </button>
       </div>
 
-      {/* ── 테스트 계정 관리 (테스트 계정만 표시) ── */}
-      {isTestAccount && (
+      {/* ── 테스트 계정 관리 ── */}
         <div style={{ marginTop: 32, paddingTop: 24, borderTop: "2px solid var(--outline-variant)" }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, color: "var(--error)", display: "flex", alignItems: "center", gap: 8 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12, color: "var(--error)", display: "flex", alignItems: "center", gap: 8 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
               <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
             </svg>
             테스트 계정 관리
+            <span style={{ fontSize: 11, fontWeight: 400, color: "var(--on-surface-variant)" }}>({user?.email})</span>
           </h2>
-          <p style={{ fontSize: 13, color: "var(--on-surface-variant)", marginBottom: 16, lineHeight: 1.6 }}>
-            테스트 데이터를 초기 상태로 되돌립니다. 교수/학생 두 테스트 계정의 모든 강의, 과제, 노트,
-            제출물, AI 분석 데이터가 삭제된 후 미리 준비된 데모 데이터로 다시 채워집니다.
-          </p>
-          <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+
+          {/* 현재 상태 */}
+          {testStatus && (
+            <div style={{ marginBottom: 16, padding: 14, borderRadius: "var(--radius-sm)", background: "var(--surface-container-low)", fontSize: 13 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <span style={{ fontWeight: 600 }}>현재 데이터 상태</span>
+                <button onClick={refreshStatus} className="btn btn-ghost" style={{ fontSize: 11, padding: "2px 8px" }}>새로고침</button>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8 }}>
+                {testStatus.teacher && <div>강의 <b>{testStatus.teacher.courses}</b>개</div>}
+                {testStatus.counts?.assignments != null && <div>과제 <b>{testStatus.counts.assignments}</b>개</div>}
+                {testStatus.counts?.notes != null && <div>노트 <b>{testStatus.counts.notes}</b>개</div>}
+                {testStatus.counts?.submissions != null && <div>제출물 <b>{testStatus.counts.submissions}</b>개</div>}
+                {testStatus.counts?.messages != null && <div>메시지 <b>{testStatus.counts.messages}</b>개</div>}
+                {testStatus.student && <div>수강 <b>{testStatus.student.enrollments}</b>개</div>}
+              </div>
+              {/* EXP 정보 */}
+              {testStatus.exp && (
+                <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid var(--outline-variant)" }}>
+                  <div style={{ display: "flex", gap: 20 }}>
+                    {testStatus.exp.teacher && (
+                      <div>교수 EXP: <b>{testStatus.exp.teacher.total_exp}</b> ({testStatus.exp.teacher.tier})</div>
+                    )}
+                    {testStatus.exp.student && (
+                      <div>학생 EXP: <b>{testStatus.exp.student.total_exp}</b> ({testStatus.exp.student.tier})</div>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", gap: 20, marginTop: 4 }}>
+                    <div>교수 배지: <b>{testStatus.counts?.badges?.teacher ?? 0}</b>개</div>
+                    <div>학생 배지: <b>{testStatus.counts?.badges?.student ?? 0}</b>개</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── 초기화 섹션 ── */}
+          <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>초기화</div>
+
+          {/* 기본 상태 저장 */}
+          <div style={{ marginBottom: 12, padding: "10px 14px", borderRadius: "var(--radius-sm)", background: "var(--surface-container-lowest)", border: "1px solid var(--outline-variant)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>기본 초기화 상태</div>
+                <div style={{ fontSize: 11, color: "var(--on-surface-variant)", marginTop: 2 }}>
+                  {hasDefault.exists
+                    ? `저장됨 (${new Date(hasDefault.saved_at!).toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })})`
+                    : "저장된 상태 없음"}
+                </div>
+              </div>
+              <button
+                onClick={async () => {
+                  if (!confirm("현재 상태를 기본 초기화 상태로 저장하시겠습니까?\n이후 '초기화' 버튼을 누르면 이 상태로 돌아옵니다.")) return;
+                  setResetting(true); setResetResult(null);
+                  try {
+                    await api.post("/seed/save-default");
+                    setResetResult({ type: "success", text: "현재 상태가 기본 초기화 상태로 저장되었습니다." });
+                    const r = await api.get("/seed/has-default");
+                    setHasDefault(r.data);
+                  } catch (err: any) {
+                    setResetResult({ type: "error", text: err?.response?.data?.detail || "저장 실패" });
+                  } finally { setResetting(false); }
+                }}
+                disabled={resetting}
+                className="btn btn-primary" style={{ fontSize: 12, padding: "6px 14px", whiteSpace: "nowrap" }}
+              >
+                현재 상태 저장
+              </button>
+            </div>
+          </div>
+
+          {/* 3개 초기화 버튼 */}
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
             <button
               onClick={async () => {
-                if (!confirm("정말 테스트 계정을 초기화하시겠습니까?\n모든 데이터가 삭제되고 시드 데이터로 재설정됩니다.")) return;
-                setResetting(true);
-                setResetResult(null);
+                if (!hasDefault.exists) { setResetResult({ type: "error", text: "먼저 '현재 상태 저장'을 해주세요." }); return; }
+                if (!confirm("저장된 기본 상태로 초기화하시겠습니까?\n현재 데이터가 모두 삭제되고 저장된 상태로 복원됩니다.")) return;
+                setResetting(true); setResetResult(null);
                 try {
-                  const res = await api.post("/seed/reset");
-                  setResetResult({
-                    type: "success",
-                    text: `초기화 완료! 강의 ${res.data.data.courses}개, 과제 ${res.data.data.assignments}개, 노트 ${res.data.data.notes}개, 제출물 ${res.data.data.submissions}개, 메시지 ${res.data.data.messages}개, 코멘트 ${res.data.data.note_comments}개, 뱃지 ${res.data.data.badges}개 생성됨`,
-                  });
+                  await api.post("/seed/reset-to-default");
+                  setResetResult({ type: "success", text: "저장된 기본 상태로 초기화 완료!" });
+                  refreshStatus();
                 } catch (err: any) {
-                  setResetResult({
-                    type: "error",
-                    text: err?.response?.data?.detail || "초기화에 실패했습니다.",
-                  });
-                } finally {
-                  setResetting(false);
-                }
+                  setResetResult({ type: "error", text: err?.response?.data?.detail || "초기화 실패" });
+                } finally { setResetting(false); }
               }}
               disabled={resetting}
-              style={{
-                padding: "10px 24px",
-                background: resetting ? "var(--on-surface-variant)" : "var(--error)",
-                color: "#fff",
-                border: "none",
-                borderRadius: "var(--radius-sm)",
-                fontSize: 14,
-                fontWeight: 700,
-                cursor: resetting ? "not-allowed" : "pointer",
-                opacity: resetting ? 0.7 : 1,
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
+              className="btn btn-primary" style={{ fontSize: 13, padding: "8px 16px", opacity: resetting ? 0.6 : 1 }}
             >
-              {resetting ? (
-                <>
-                  <span style={{ display: "inline-block", width: 14, height: 14, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} />
-                  초기화 중...
-                </>
-              ) : (
-                "테스트 계정 초기화"
-              )}
+              {resetting ? "처리 중..." : "초기화"}
             </button>
-            <span style={{ fontSize: 12, color: "var(--on-surface-variant)" }}>
-              현재 계정: {user?.email}
-            </span>
+            <button
+              onClick={async () => {
+                if (!confirm("시드 데이터(파워 초기화)로 되돌리시겠습니까?\n모든 데이터가 삭제되고 기본 데모 데이터로 재설정됩니다.")) return;
+                setResetting(true); setResetResult(null);
+                try {
+                  const res = await api.post("/seed/reset");
+                  setResetResult({ type: "success", text: `파워 초기화 완료! 강의 ${res.data.data.courses}, 과제 ${res.data.data.assignments}, 노트 ${res.data.data.notes}, 메시지 ${res.data.data.messages}개` });
+                  refreshStatus();
+                } catch (err: any) {
+                  setResetResult({ type: "error", text: err?.response?.data?.detail || "초기화 실패" });
+                } finally { setResetting(false); }
+              }}
+              disabled={resetting}
+              className="btn" style={{ background: "var(--error)", color: "#fff", fontSize: 13, padding: "8px 16px", opacity: resetting ? 0.6 : 1 }}
+            >
+              파워 초기화 (시드)
+            </button>
+            <button
+              onClick={async () => {
+                if (!confirm("모든 데이터를 완전히 삭제하시겠습니까?\n빈 상태가 됩니다.")) return;
+                setResetting(true); setResetResult(null);
+                try {
+                  await api.post("/seed/clean");
+                  setResetResult({ type: "success", text: "전체 삭제 완료. 빈 상태입니다." });
+                  refreshStatus();
+                } catch (err: any) {
+                  setResetResult({ type: "error", text: err?.response?.data?.detail || "삭제 실패" });
+                } finally { setResetting(false); }
+              }}
+              disabled={resetting}
+              className="btn btn-ghost" style={{ fontSize: 13, padding: "8px 16px", border: "1px solid var(--error)", color: "var(--error)" }}
+            >
+              전체 삭제
+            </button>
           </div>
+
+          {/* 초기화 설명 */}
+          <div style={{ fontSize: 11, color: "var(--on-surface-variant)", marginBottom: 16, lineHeight: 1.6, padding: "0 4px" }}>
+            <b>초기화</b> = 저장한 기본 상태로 복원 &nbsp;|&nbsp; <b>파워 초기화</b> = 코드에 정의된 시드 데이터로 완전 리셋 &nbsp;|&nbsp; <b>전체 삭제</b> = 데이터 전부 삭제 (빈 상태)
+          </div>
+
           {resetResult && (
             <div style={{
-              marginTop: 12,
-              padding: "10px 14px",
-              borderRadius: "var(--radius-sm)",
-              fontSize: 13,
+              marginBottom: 16, padding: "10px 14px", borderRadius: "var(--radius-sm)", fontSize: 13,
               background: resetResult.type === "success" ? "var(--success-light)" : "var(--error-light)",
-              color: resetResult.type === "success" ? "var(--success)" : "var(--error)",
-              lineHeight: 1.5,
+              color: resetResult.type === "success" ? "var(--success)" : "var(--error)", lineHeight: 1.5,
             }}>
               {resetResult.text}
             </div>
           )}
+
+          {/* ── 부분 초기화 ── */}
+          <div style={{ marginTop: 8, paddingTop: 16, borderTop: "1px solid var(--outline-variant)" }}>
+            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>부분 초기화</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+              {[
+                { key: "assignments", label: "과제" },
+                { key: "submissions", label: "제출물" },
+                { key: "notes", label: "노트" },
+                { key: "messages", label: "메시지" },
+                { key: "exp", label: "EXP" },
+                { key: "badges", label: "배지" },
+                { key: "enrollments", label: "수강" },
+              ].map(({ key, label }) => (
+                <label key={key} style={{
+                  display: "flex", alignItems: "center", gap: 6, padding: "6px 12px",
+                  borderRadius: "var(--radius-sm)", cursor: "pointer", fontSize: 13,
+                  border: `1px solid ${partialTargets.has(key) ? "var(--primary)" : "var(--outline-variant)"}`,
+                  background: partialTargets.has(key) ? "var(--primary-light, rgba(0,74,198,0.08))" : "var(--surface-container-lowest)",
+                  color: partialTargets.has(key) ? "var(--primary)" : "var(--on-surface)",
+                  fontWeight: partialTargets.has(key) ? 600 : 400,
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={partialTargets.has(key)}
+                    onChange={() => setPartialTargets(prev => {
+                      const next = new Set(prev);
+                      if (next.has(key)) next.delete(key); else next.add(key);
+                      return next;
+                    })}
+                    style={{ display: "none" }}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <button
+                onClick={async () => {
+                  if (partialTargets.size === 0) return;
+                  const targets = [...partialTargets];
+                  if (!confirm(`선택 항목 초기화: ${targets.join(", ")}\n해당 데이터가 삭제됩니다.`)) return;
+                  setResetting(true); setResetResult(null);
+                  try {
+                    const res = await api.post("/seed/partial-reset", { targets });
+                    setResetResult({ type: "success", text: res.data.message });
+                    setPartialTargets(new Set());
+                    refreshStatus();
+                  } catch (err: any) {
+                    setResetResult({ type: "error", text: err?.response?.data?.detail || "부분 초기화 실패" });
+                  } finally { setResetting(false); }
+                }}
+                disabled={resetting || partialTargets.size === 0}
+                className="btn" style={{
+                  fontSize: 13, padding: "8px 16px",
+                  background: partialTargets.size > 0 ? "var(--warning, #f59e0b)" : "var(--surface-container)",
+                  color: partialTargets.size > 0 ? "#fff" : "var(--on-surface-variant)",
+                  opacity: resetting ? 0.6 : 1,
+                }}
+              >
+                선택 항목 초기화 ({partialTargets.size})
+              </button>
+              {partialTargets.size > 0 && (
+                <button onClick={() => setPartialTargets(new Set())} className="btn btn-ghost" style={{ fontSize: 12, padding: "6px 10px" }}>
+                  선택 해제
+                </button>
+              )}
+            </div>
+            <div style={{ fontSize: 11, color: "var(--on-surface-variant)", marginTop: 8 }}>
+              과제를 초기화하면 제출물도 함께 삭제됩니다.
+            </div>
+          </div>
+
+          {/* ── EXP 설정 ── */}
+          <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--outline-variant)" }}>
+            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>EXP / 티어 직접 설정</div>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
+              <div style={{ flex: 1, minWidth: 140 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 4 }}>교수 EXP</label>
+                <input
+                  type="number"
+                  min={0}
+                  placeholder={testStatus?.exp?.teacher?.total_exp?.toString() || "0"}
+                  value={teacherExp}
+                  onChange={(e) => setTeacherExp(e.target.value)}
+                  className="input"
+                  style={{ width: "100%", padding: "8px 12px", fontSize: 13 }}
+                />
+                {testStatus?.exp?.teacher && (
+                  <div style={{ fontSize: 11, color: "var(--on-surface-variant)", marginTop: 2 }}>
+                    현재: {testStatus.exp.teacher.total_exp} ({testStatus.exp.teacher.tier})
+                  </div>
+                )}
+              </div>
+              <div style={{ flex: 1, minWidth: 140 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 4 }}>학생 EXP</label>
+                <input
+                  type="number"
+                  min={0}
+                  placeholder={testStatus?.exp?.student?.total_exp?.toString() || "0"}
+                  value={studentExp}
+                  onChange={(e) => setStudentExp(e.target.value)}
+                  className="input"
+                  style={{ width: "100%", padding: "8px 12px", fontSize: 13 }}
+                />
+                {testStatus?.exp?.student && (
+                  <div style={{ fontSize: 11, color: "var(--on-surface-variant)", marginTop: 2 }}>
+                    현재: {testStatus.exp.student.total_exp} ({testStatus.exp.student.tier})
+                  </div>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={async () => {
+                const tExp = teacherExp ? parseInt(teacherExp) : undefined;
+                const sExp = studentExp ? parseInt(studentExp) : undefined;
+                if (tExp === undefined && sExp === undefined) return;
+                setResetting(true); setResetResult(null);
+                try {
+                  const payload: any = {};
+                  if (tExp !== undefined) payload.teacher_exp = tExp;
+                  if (sExp !== undefined) payload.student_exp = sExp;
+                  const res = await api.post("/seed/set-exp", payload);
+                  setResetResult({ type: "success", text: "EXP 설정 완료!" });
+                  setTeacherExp(""); setStudentExp("");
+                  refreshStatus();
+                } catch (err: any) {
+                  setResetResult({ type: "error", text: err?.response?.data?.detail || "EXP 설정 실패" });
+                } finally { setResetting(false); }
+              }}
+              disabled={resetting || (!teacherExp && !studentExp)}
+              className="btn btn-primary" style={{ fontSize: 13, padding: "8px 16px" }}
+            >
+              EXP 적용
+            </button>
+            <div style={{ fontSize: 11, color: "var(--on-surface-variant)", marginTop: 6 }}>
+              티어는 EXP에 따라 자동 계산됩니다. (Bronze 0 ~ Diamond 5000+)
+            </div>
+          </div>
+
+          {/* ── 스냅샷 관리 ── */}
+          <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--outline-variant)" }}>
+            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>스냅샷 (상태 저장/복원)</div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+              <input
+                type="text"
+                placeholder="스냅샷 이름 (예: 발표용 데이터)"
+                value={snapshotName}
+                onChange={(e) => setSnapshotName(e.target.value)}
+                className="input"
+                style={{ flex: 1, padding: "8px 12px", fontSize: 13 }}
+              />
+              <button
+                onClick={async () => {
+                  if (!snapshotName.trim()) return;
+                  setSnapshotLoading(true);
+                  try {
+                    await api.post("/seed/snapshot", { name: snapshotName.trim() });
+                    setSnapshotName("");
+                    const r = await api.get("/seed/snapshots");
+                    setSnapshots(r.data);
+                    setResetResult({ type: "success", text: "스냅샷 저장 완료!" });
+                  } catch (err: any) {
+                    setResetResult({ type: "error", text: err?.response?.data?.detail || "저장 실패" });
+                  } finally { setSnapshotLoading(false); }
+                }}
+                disabled={snapshotLoading || !snapshotName.trim()}
+                className="btn btn-primary" style={{ fontSize: 13, padding: "8px 16px", whiteSpace: "nowrap" }}
+              >
+                {snapshotLoading ? "저장 중..." : "스냅샷 저장"}
+              </button>
+            </div>
+
+            {snapshots.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {snapshots.map((s) => (
+                  <div key={s.id} style={{
+                    display: "flex", alignItems: "center", gap: 10, padding: "8px 12px",
+                    background: "var(--surface-container-lowest)", borderRadius: "var(--radius-sm)",
+                    border: "1px solid var(--outline-variant)",
+                  }}>
+                    <span style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{s.name}</span>
+                    <span style={{ fontSize: 11, color: "var(--on-surface-variant)" }}>
+                      {new Date(s.created_at).toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                    <button
+                      onClick={async () => {
+                        if (!confirm(`'${s.name}' 스냅샷으로 복원하시겠습니까?\n현재 데이터가 모두 삭제됩니다.`)) return;
+                        setSnapshotLoading(true);
+                        try {
+                          await api.post(`/seed/snapshot/${s.id}/restore`);
+                          setResetResult({ type: "success", text: `'${s.name}' 스냅샷으로 복원 완료!` });
+                          refreshStatus();
+                        } catch (err: any) {
+                          setResetResult({ type: "error", text: err?.response?.data?.detail || "복원 실패" });
+                        } finally { setSnapshotLoading(false); }
+                      }}
+                      className="btn btn-ghost" style={{ fontSize: 12, padding: "4px 10px" }}
+                    >
+                      복원
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!confirm(`'${s.name}' 스냅샷을 삭제하시겠습니까?`)) return;
+                        try {
+                          await api.delete(`/seed/snapshot/${s.id}`);
+                          setSnapshots(prev => prev.filter(x => x.id !== s.id));
+                        } catch { /* ignore */ }
+                      }}
+                      className="btn btn-ghost" style={{ fontSize: 12, padding: "4px 8px", color: "var(--error)" }}
+                    >
+                      삭제
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ fontSize: 12, color: "var(--on-surface-variant)", padding: "8px 0" }}>
+                저장된 스냅샷이 없습니다.
+              </div>
+            )}
+          </div>
         </div>
-      )}
 
       {/* 아바타 크롭 모달 */}
       {cropSrc && (

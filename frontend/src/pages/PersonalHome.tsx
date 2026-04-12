@@ -8,8 +8,6 @@ import AppShell from "../components/common/AppShell";
 import { toast } from "../lib/toast";
 import { customConfirm } from "../lib/confirm";
 import { useAuthStore } from "../store/authStore";
-import { useTutorialStore } from "../store/tutorialStore";
-import { getTutorialKey } from "../lib/tutorials";
 import api from "../lib/api";
 import type { Course, Assignment } from "../types";
 
@@ -130,9 +128,6 @@ export default function PersonalHome() {
   const [newEventColor, setNewEventColor] = useState("primary");
   const [addingEvent, setAddingEvent] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarItem | null>(null);
-
-  const tutorialStart = useTutorialStore((s) => s.start);
-  const tutorialCompleted = useTutorialStore((s) => s.isCompleted);
 
   // Load data + calendar
   useEffect(() => {
@@ -312,13 +307,6 @@ export default function PersonalHome() {
     } catch { toast.error("삭제에 실패했습니다."); }
   };
 
-  useEffect(() => {
-    if (!loading && user && !tutorialCompleted(getTutorialKey("personal", user.id))) {
-      const timer = setTimeout(() => tutorialStart(), 500);
-      return () => clearTimeout(timer);
-    }
-  }, [loading, user]); // eslint-disable-line react-hooks/exhaustive-deps
-
   if (loading) return <AppShell><div className="page-center">로딩 중...</div></AppShell>;
 
   const typeLabel = (t: string) => {
@@ -340,7 +328,7 @@ export default function PersonalHome() {
           <h1 className="page-title" style={{ marginBottom: 0 }}>내 학습 공간</h1>
           <div style={{ display: "flex", gap: 8 }}>
             <button className="btn btn-secondary" onClick={() => setShowUpload(true)}>+ 자료</button>
-            <button className="btn btn-primary" onClick={() => setShowModal(true)} data-tutorial="create-assignment">+ 챌린지 만들기</button>
+            <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ 챌린지 만들기</button>
           </div>
         </div>
 
@@ -520,7 +508,7 @@ export default function PersonalHome() {
                 </p>
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }} data-tutorial="assignment-list">
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {assignments.map((a) => {
                   const totalP = a.problems?.length || 0;
                   return (

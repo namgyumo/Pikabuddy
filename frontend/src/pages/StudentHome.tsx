@@ -2,8 +2,6 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useCourseStore } from "../store/courseStore";
 import { useAuthStore } from "../store/authStore";
-import { useTutorialStore } from "../store/tutorialStore";
-import { getTutorialKey } from "../lib/tutorials";
 import api from "../lib/api";
 import AppShell from "../components/common/AppShell";
 import { toast } from "../lib/toast";
@@ -111,9 +109,6 @@ export default function StudentHome() {
   const [courseInfo, setCourseInfo] = useState<any>(null);
   const infoCache = useRef<Record<string, any>>({}).current;
 
-  const tutorialStart = useTutorialStore((s) => s.start);
-  const tutorialCompleted = useTutorialStore((s) => s.isCompleted);
-
   useEffect(() => {
     // Fire all independent requests in parallel
     fetchCourses();
@@ -151,13 +146,6 @@ export default function StudentHome() {
     });
   }, [fetchCourses]);
 
-  useEffect(() => {
-    if (user && !tutorialCompleted(getTutorialKey("student", user.id))) {
-      const timer = setTimeout(() => tutorialStart(), 500);
-      return () => clearTimeout(timer);
-    }
-  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const handleJoin = async () => {
     if (!inviteCode.trim()) return;
     setJoining(true);
@@ -188,8 +176,7 @@ export default function StudentHome() {
           <button
             className="btn btn-primary"
             onClick={() => setShowJoin(true)}
-            data-tutorial="join-course"
-          >
+                     >
             + 초대코드로 참여
           </button>
         </div>
@@ -230,7 +217,7 @@ export default function StudentHome() {
             교수에게 초대 코드를 받아 참여하세요.
           </div>
         ) : (
-          <div className="course-grid" data-tutorial="course-list">
+          <div className="course-grid">
             {courses.map((course) => {
               const effectiveBanner = getEffectiveBanner(course);
               return (

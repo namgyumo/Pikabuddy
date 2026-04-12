@@ -230,6 +230,29 @@ export default function WritingEditor() {
     }
   };
 
+  const handleSubmitAll = useCallback(async (silent = false) => {
+    if (!assignmentId || !editor) return;
+    const content = editor.getJSON();
+    const text = editor.getText();
+    if (!text.trim()) {
+      if (!silent) toast.warning("작성된 글��� 없습니다.");
+      return;
+    }
+    try {
+      await api.post(`/assignments/${assignmentId}/submit-all`, {
+        problems: [{
+          problem_index: 0,
+          code: text,
+          content,
+          char_count: text.replace(/\s/g, "").length,
+        }],
+      });
+      if (!silent) toast.success("글이 제출되었습니다. AI ��석이 ���그라운드에서 진행됩니다.");
+    } catch {
+      if (!silent) toast.error("제출 중 오류가 발생했습니���.");
+    }
+  }, [assignmentId, editor]);
+
   const handleImageUpload = () => {
     const input = document.createElement("input");
     input.type = "file";
@@ -373,8 +396,11 @@ export default function WritingEditor() {
               </div>
               <button
                 onClick={() => {
-                  customConfirm("시험을 종료하시겠습니까? 종료 후에는 다시 입장할 수 없습니다.", { danger: true, confirmText: "종료" }).then((ok) => {
-                    if (ok) examMode.endExam("학생이 직접 종료", true);
+                  customConfirm("시험을 종료하시겠습니까? 작성한 글이 자동 제출됩니다. 종료 후에는 다시 입장할 수 없습니다.", { danger: true, confirmText: "종��" }).then(async (ok) => {
+                    if (ok) {
+                      await handleSubmitAll(true);
+                      examMode.endExam("학생이 직접 종료", true);
+                    }
                   });
                 }}
                 style={{

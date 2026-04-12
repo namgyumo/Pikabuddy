@@ -26,6 +26,8 @@ export default function Dashboard() {
     common_struggles: string[];
     recommendations: string[];
   } | null>(null);
+  const [kickTarget, setKickTarget] = useState<{ id: string; name: string } | null>(null);
+  const [kicking, setKicking] = useState(false);
 
   useEffect(() => {
     if (!courseId) return;
@@ -44,6 +46,28 @@ export default function Dashboard() {
       .then(({ data }) => setInsights(data))
       .catch(() => {});
   }, [courseId]);
+
+  const handleKick = async () => {
+    if (!kickTarget || !courseId) return;
+    setKicking(true);
+    try {
+      await api.delete(`/courses/${courseId}/students/${kickTarget.id}`);
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              students: prev.students.filter((s) => s.student.id !== kickTarget.id),
+              student_count: prev.student_count - 1,
+            }
+          : prev
+      );
+      setKickTarget(null);
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || "추방에 실패했습니다.");
+    } finally {
+      setKicking(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -172,6 +196,7 @@ export default function Dashboard() {
                   <th>복붙</th>
                   <th>갭</th>
                   <th>상태</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -201,12 +226,62 @@ export default function Dashboard() {
                     <td style={{ fontSize: 18 }}>
                       {s.status === "warning" ? "⚠️" : "✅"}
                     </td>
+                    <td>
+                      <button
+                        className="btn btn-sm"
+                        style={{
+                          background: "var(--danger, #ef4444)",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: 6,
+                          padding: "4px 10px",
+                          fontSize: 12,
+                          cursor: "pointer",
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setKickTarget({ id: s.student.id, name: s.student.name });
+                        }}
+                      >
+                        추방
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
         </div>
+        {kickTarget && (
+          <div className="modal-overlay" onClick={() => !kicking && setKickTarget(null)}>
+            <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400 }}>
+              <h3 style={{ margin: "0 0 12px" }}>학생 추방</h3>
+              <p style={{ margin: "0 0 8px", color: "var(--text-secondary, #64748b)" }}>
+                <strong>{kickTarget.name}</strong> 학생을 이 강의에서 추방하시겠습니까?
+              </p>
+              <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--danger, #ef4444)" }}>
+                추방된 학생은 이 강의의 과제, 노트 등에 접근할 수 없게 됩니다.
+              </p>
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setKickTarget(null)}
+                  disabled={kicking}
+                >
+                  취소
+                </button>
+                <button
+                  className="btn"
+                  style={{ background: "var(--danger, #ef4444)", color: "#fff", border: "none" }}
+                  onClick={handleKick}
+                  disabled={kicking}
+                >
+                  {kicking ? "처리 중..." : "추방"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </AppShell>
   );

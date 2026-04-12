@@ -33,7 +33,14 @@ export const SubNoteExtension = Node.create({
 
   addNodeView() {
     return ReactNodeViewRenderer(SubNoteNodeView, {
-      stopEvent: () => true,   // Let React handle all DOM events inside the NodeView
+      stopEvent: ({ event }) => {
+        // Allow Backspace/Delete to reach ProseMirror for node deletion
+        if (event instanceof KeyboardEvent) {
+          if (event.key === "Backspace" || event.key === "Delete") return false;
+        }
+        // Block other events so React handles clicks, inputs, etc.
+        return true;
+      },
     });
   },
 });

@@ -112,6 +112,15 @@ async def create_comment(
     }
     result = sb.table("note_comments").insert(row).execute()
 
+    # EXP + 배지 체크: 코멘트 작성
+    try:
+        from modules.gamification.router import award_exp
+        from modules.gamification.badge_defs import check_badges
+        award_exp(user["id"], "comment", result.data[0]["id"])
+        check_badges(user["id"], "comment_create")
+    except Exception:
+        pass
+
     # user info 붙여서 반환
     comment = result.data[0]
     comment["user_name"] = user.get("name", "")

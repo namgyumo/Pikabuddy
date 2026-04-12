@@ -112,10 +112,23 @@ async def admin_login(body: AdminLoginRequest):
 
     user_data = supabase.table("users").select("*").eq("supabase_uid", supabase_uid).single().execute()
 
+    # 일일 로그인 EXP + 배지 체크
+    earned_badges = []
+    try:
+        from datetime import date as _date
+        from modules.gamification.router import award_exp
+        from modules.gamification.badge_defs import check_badges
+        uid = user_data.data["id"]
+        award_exp(uid, "daily_login", f"login_{_date.today().isoformat()}", 5)
+        earned_badges = check_badges(uid, "login")
+    except Exception:
+        pass
+
     return {
         "access_token": access_token,
         "refresh_token": data.get("refresh_token", ""),
         "user": user_data.data,
+        "earned_badges": [{"id": b["id"], "name": b["name"], "icon": b["icon"], "desc": b["desc"], "rarity": b["rarity"]} for b in earned_badges],
     }
 
 
@@ -173,6 +186,17 @@ async def auth_callback(body: AuthCallbackRequest):
                 .single()
                 .execute()
             )
+
+        # 일일 로그인 EXP + 배지 체크
+        try:
+            from datetime import date as _date
+            from modules.gamification.router import award_exp
+            from modules.gamification.badge_defs import check_badges
+            uid = user_data.data["id"]
+            award_exp(uid, "daily_login", f"login_{_date.today().isoformat()}", 5)
+            check_badges(uid, "login")
+        except Exception:
+            pass
 
         return {
             "user_id": user_data.data["id"],

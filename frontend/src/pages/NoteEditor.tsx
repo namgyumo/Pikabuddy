@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback, useLayoutEffect } from "react";
 import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useEditor, EditorContent } from "@tiptap/react";
+import { Extension } from "@tiptap/core";
 import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -224,6 +225,31 @@ export default function NoteEditor() {
   const [teamPresence, setTeamPresence] = useState<{ userId: string; name: string; avatarUrl: string | null }[]>([]);
   const [remoteUpdatePending, setRemoteUpdatePending] = useState(false);
 
+  // Heading Backspace fix: convert heading to paragraph when pressing Backspace at position 0
+  const HeadingBackspaceFix = Extension.create({
+    name: "headingBackspaceFix",
+    addKeyboardShortcuts() {
+      return {
+        Backspace: ({ editor: ed }) => {
+          const { $from, empty } = ed.state.selection;
+          // Only handle when cursor is at the very start of a heading block
+          if (!empty || $from.parentOffset !== 0 || !$from.parent.type.name.startsWith("heading")) {
+            return false; // let default handler run
+          }
+          // If heading is empty, convert to paragraph
+          if ($from.parent.textContent === "") {
+            return ed.commands.setParagraph();
+          }
+          // If at start of heading with content, convert to paragraph (remove heading formatting)
+          if ($from.index(0) === 0 || $from.nodeBefore === null) {
+            return ed.commands.setParagraph();
+          }
+          return false;
+        },
+      };
+    },
+  });
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -242,7 +268,10 @@ export default function NoteEditor() {
       Subscript,
       TaskList,
       TaskItem.configure({ nested: true }),
-      Link.configure({ openOnClick: false, HTMLAttributes: { class: "note-link" } }),
+      Link.configure({
+        openOnClick: false,
+        HTMLAttributes: { class: "note-link" },
+      }),
       Image.configure({ inline: false, HTMLAttributes: { class: "note-image" } }),
       Table.configure({ resizable: true }),
       TableRow,
@@ -259,6 +288,7 @@ export default function NoteEditor() {
       ToggleExtension,
       CalloutExtension,
       CitationExtension,
+      HeadingBackspaceFix,
     ],
     content: "",
   });
@@ -326,22 +356,32 @@ export default function NoteEditor() {
     yjsProviderRef.current = provider;
 
     const fragment = ydoc.getXmlFragment("default");
-
-    // 현재 에디터 내용으로 Y.Doc 초기화
-    const currentContent = editor.getJSON();
-    if (currentContent?.content?.length) {
-      prosemirrorJSONToYXmlFragment(editor.schema, currentContent, fragment);
-    }
-
-    // ── 2. ProseMirror 플러그인 등록 (실시간 동기화 + 커서) ──
-    editor.registerPlugin(ySyncPlugin(fragment));
-    editor.registerPlugin(yUndoPlugin());
+    const savedContent = editor.getJSON();
 
     provider.awareness.setLocalStateField("user", {
       name: user.name || "Anonymous",
       color: getCollabColor(user.id),
     });
-    editor.registerPlugin(yCursorPlugin(provider.awareness));
+
+    // ── 2. 동기화 완료 후 플러그인 등록 (콘텐츠 중복 방지) ──
+    let pluginsRegistered = false;
+    provider.onSynced = (hasPeers: boolean) => {
+      if (pluginsRegistered || !editor || editor.isDestroyed) return;
+      pluginsRegistered = true;
+
+      if (!hasPeers && savedContent?.content?.length) {
+        // 첫 번째 클라이언트 — 저장된 내용으로 Y.Doc 초기화
+        prosemirrorJSONToYXmlFragment(editor.schema, savedContent, fragment);
+      }
+      // ProseMirror ↔ Y.Doc 동기화 플러그인 등록
+      try {
+        editor.registerPlugin(ySyncPlugin(fragment));
+        editor.registerPlugin(yUndoPlugin());
+        editor.registerPlugin(yCursorPlugin(provider.awareness));
+      } catch (e) {
+        console.warn("[Collab] Plugin registration error:", e);
+      }
+    };
 
     // ── 3. Supabase 채널 구독 (Presence + Yjs 동기화) ──
     const channelName = `team-collab:${noteId}`;
@@ -361,6 +401,9 @@ export default function NoteEditor() {
       setTeamPresence(members);
     });
 
+    // 브로드캐스트 리스너를 subscribe 전에 등록 (메시지 유실 방지)
+    provider.connect(channel);
+
     channel.subscribe(async (status) => {
       if (status === "SUBSCRIBED") {
         await channel.track({
@@ -368,8 +411,8 @@ export default function NoteEditor() {
           name: user.name || "Unknown",
           avatarUrl: user.avatar_url || null,
         });
-        // Yjs 프로바이더를 채널에 연결 (구독 후)
-        provider.connect(channel);
+        // 구독 완료 후 피어에게 동기화 요청
+        provider.requestSync();
       }
     });
 
@@ -578,6 +621,23 @@ export default function NoteEditor() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [handleSave, handleAnalyze]);
+
+  // ── Ctrl+클릭으로 링크 열기 ──────────────────────────────
+  useEffect(() => {
+    if (!editor) return;
+    const dom = editor.view.dom;
+    const onClick = (e: MouseEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      const target = e.target as HTMLElement;
+      const link = target.closest("a.note-link") as HTMLAnchorElement;
+      if (link?.href) {
+        e.preventDefault();
+        window.open(link.href, "_blank");
+      }
+    };
+    dom.addEventListener("click", onClick);
+    return () => dom.removeEventListener("click", onClick);
+  }, [editor]);
 
   // ── [[ 노트 링크 ─────────────────────────────────────
   const openNoteLinkPopup = useCallback(() => {
@@ -830,12 +890,22 @@ export default function NoteEditor() {
               {isInTable && (
                 <>
                   <div className="toolbar-divider" />
-                  <DropMenu label="표">
-                    <DRow icon="+→" label="열 추가" onClick={() => editor.chain().focus().addColumnAfter().run()} />
-                    <DRow icon="+↓" label="행 추가" onClick={() => editor.chain().focus().addRowAfter().run()} />
+                  <Btn onClick={() => editor.chain().focus().addColumnBefore().run()} title="왼쪽에 열 추가">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="3" width="15" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="1" y1="12" x2="5" y2="12"/><line x1="3" y1="10" x2="3" y2="14"/></svg>
+                  </Btn>
+                  <Btn onClick={() => editor.chain().focus().addColumnAfter().run()} title="오른쪽에 열 추가">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="15" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="19" y1="12" x2="23" y2="12"/><line x1="21" y1="10" x2="21" y2="14"/></svg>
+                  </Btn>
+                  <Btn onClick={() => editor.chain().focus().addRowBefore().run()} title="위에 행 추가">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="6" width="18" height="15" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="1" x2="12" y2="5"/><line x1="10" y1="3" x2="14" y2="3"/></svg>
+                  </Btn>
+                  <Btn onClick={() => editor.chain().focus().addRowAfter().run()} title="아래에 행 추가">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="15" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="10" y1="21" x2="14" y2="21"/></svg>
+                  </Btn>
+                  <DropMenu label="표 편집">
                     <DRow icon="-→" label="열 삭제" onClick={() => editor.chain().focus().deleteColumn().run()} />
                     <DRow icon="-↓" label="행 삭제" onClick={() => editor.chain().focus().deleteRow().run()} />
-                    <DRow icon="⊟" label="병합/분리" onClick={() => editor.chain().focus().mergeOrSplit().run()} />
+                    <DRow icon="⊟" label="셀 병합/분리" onClick={() => editor.chain().focus().mergeOrSplit().run()} />
                     <DRow icon="🗑" label="표 삭제" onClick={() => editor.chain().focus().deleteTable().run()} />
                   </DropMenu>
                 </>

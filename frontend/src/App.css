@@ -3844,6 +3844,7 @@ textarea.input {
   cursor: pointer;
   transition: all 0.15s;
   background: var(--surface-container-lowest);
+  position: relative;
 }
 .sub-note-inner:hover {
   border-color: var(--primary);
@@ -3891,6 +3892,29 @@ textarea.input {
 .sub-note-inner:hover .sub-note-arrow {
   transform: translateX(3px);
   color: var(--primary);
+}
+.sub-note-delete {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--on-surface-variant);
+  opacity: 0;
+  transition: opacity 0.15s;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1;
+}
+.sub-note-inner:hover .sub-note-delete {
+  opacity: 0.6;
+}
+.sub-note-delete:hover {
+  opacity: 1 !important;
+  color: var(--error);
+  background: rgba(220, 38, 38, 0.08);
 }
 .sub-note-toast {
   display: flex;
@@ -6950,7 +6974,12 @@ textarea.form-input {
   background: rgba(16,185,129,0.1);
   color: var(--success, #10b981);
 }
+.notification-item-tag.unsubmitted {
+  background: rgba(249,115,22,0.12);
+  color: #ea580c;
+}
 .notification-deadline-icon,
+.notification-unsubmitted-icon,
 .notification-material-icon {
   font-size: 18px;
   display: flex;

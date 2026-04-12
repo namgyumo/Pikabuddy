@@ -2,7 +2,7 @@ import { create } from "zustand";
 import api from "../lib/api";
 
 export interface NotificationItem {
-  type: "message" | "comment" | "deadline" | "new_material";
+  type: "message" | "comment" | "deadline" | "new_material" | "unsubmitted";
   id: string;
   // message fields
   course_id?: string;
@@ -17,7 +17,7 @@ export interface NotificationItem {
   commenter_name?: string;
   commenter_avatar?: string | null;
   block_index?: number | null;
-  // deadline fields
+  // deadline / unsubmitted fields
   assignment_title?: string;
   due_date?: string;
   // common
@@ -41,6 +41,7 @@ interface NotificationState {
   unreadMessages: number;
   unresolvedComments: number;
   upcomingDeadlines: number;
+  unsubmittedAssignments: number;
   newMaterials: number;
   total: number;
   items: NotificationItem[];
@@ -63,6 +64,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   unreadMessages: 0,
   unresolvedComments: 0,
   upcomingDeadlines: 0,
+  unsubmittedAssignments: 0,
   newMaterials: 0,
   total: 0,
   items: [],
@@ -87,12 +89,14 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       const msgCount = filtered.filter((i: NotificationItem) => i.type === "message").length;
       const cmtCount = filtered.filter((i: NotificationItem) => i.type === "comment").length;
       const dlCount = filtered.filter((i: NotificationItem) => i.type === "deadline").length;
+      const unsubCount = filtered.filter((i: NotificationItem) => i.type === "unsubmitted").length;
       const matCount = filtered.filter((i: NotificationItem) => i.type === "new_material").length;
-      const total = msgCount + cmtCount + dlCount + matCount;
+      const total = msgCount + cmtCount + dlCount + unsubCount + matCount;
       set({
         unreadMessages: msgCount,
         unresolvedComments: cmtCount,
         upcomingDeadlines: dlCount,
+        unsubmittedAssignments: unsubCount,
         newMaterials: matCount,
         total,
         items: filtered,
@@ -129,7 +133,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     try {
       await api.post("/notifications/mark-read");
       const s = get();
-      const remainingTotal = s.upcomingDeadlines + s.newMaterials;
+      const remainingTotal = s.upcomingDeadlines + s.unsubmittedAssignments + s.newMaterials;
       set({
         unreadMessages: 0,
         unresolvedComments: 0,
@@ -149,6 +153,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         unreadMessages: 0,
         unresolvedComments: 0,
         upcomingDeadlines: 0,
+        unsubmittedAssignments: 0,
         newMaterials: 0,
         total: 0,
         items: [],

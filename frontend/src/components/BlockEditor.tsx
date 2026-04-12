@@ -64,6 +64,27 @@ function registerCustomBlocks() {
 
   const Blockly = blocklyCore;
 
+  // ── 시작하기 (Start / Hat block) ──
+  Blockly.Blocks["event_start"] = {
+    init(this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField("▶  시작하기");
+      this.setNextStatement(true, null);
+      this.setColour("#22c55e");
+      this.setTooltip("프로그램이 여기서 시작됩니다. 아래에 블록을 연결하세요!");
+      this.setDeletable(false);
+      this.setMovable(true);
+      // Zelos hat style
+      (this as unknown as Record<string, unknown>).hat = "cap";
+    },
+  };
+  pyGen.pythonGenerator.forBlock["event_start"] = function () {
+    return "";
+  };
+  jsGen.javascriptGenerator.forBlock["event_start"] = function () {
+    return "";
+  };
+
   // ── 출력하기 (print) ──
   Blockly.Blocks["io_print"] = {
     init(this: Blockly.Block) {
@@ -141,29 +162,6 @@ function registerCustomBlocks() {
     return `console.log(${val});\n`;
   };
 }
-
-// ── Category icon SVGs (inline, colorless - colored by CSS) ──
-const CAT_ICONS: Record<string, string> = {
-  입출력: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>`,
-  반복: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>`,
-  조건: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3l6 6-6 6"/><path d="M18 3l-6 6 6 6"/></svg>`,
-  계산: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>`,
-  글자: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9.5" y1="4" x2="9.5" y2="20"/><line x1="14.5" y1="4" x2="14.5" y2="20"/><line x1="7" y1="20" x2="17" y2="20"/></svg>`,
-  리스트: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>`,
-  변수: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 16l2.5-8h3L16 16"/><line x1="9" y1="13" x2="15" y2="13"/></svg>`,
-  함수: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3c-1.5 0-3 1-3 3.5S6.5 10 8 10c-1.5 0-3 1.5-3 3.5S6.5 21 8 21"/><path d="M16 3c1.5 0 3 1 3 3.5S17.5 10 16 10c1.5 0 3 1.5 3 3.5S17.5 21 16 21"/><line x1="10" y1="12" x2="14" y2="12"/></svg>`,
-};
-
-const CAT_COLORS: Record<string, string> = {
-  입출력: "#4C97FF",
-  반복: "#9966FF",
-  조건: "#FF8C1A",
-  계산: "#40BF4A",
-  글자: "#CF63CF",
-  리스트: "#FF6680",
-  변수: "#FF8C1A",
-  함수: "#FF4D6A",
-};
 
 // ── Toolbox definition ──
 const TOOLBOX = {
@@ -251,6 +249,29 @@ const TOOLBOX = {
   ],
 };
 
+// ── Category config ──
+const CAT_ICONS: Record<string, string> = {
+  입출력: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>`,
+  반복: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>`,
+  조건: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3l6 6-6 6"/><path d="M18 3l-6 6 6 6"/></svg>`,
+  계산: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>`,
+  글자: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9.5" y1="4" x2="9.5" y2="20"/><line x1="14.5" y1="4" x2="14.5" y2="20"/><line x1="7" y1="20" x2="17" y2="20"/></svg>`,
+  리스트: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>`,
+  변수: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 16l2.5-8h3L16 16"/><line x1="9" y1="13" x2="15" y2="13"/></svg>`,
+  함수: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3c-1.5 0-3 1-3 3.5S6.5 10 8 10c-1.5 0-3 1.5-3 3.5S6.5 21 8 21"/><path d="M16 3c1.5 0 3 1 3 3.5S17.5 10 16 10c1.5 0 3 1.5 3 3.5S17.5 21 16 21"/><line x1="10" y1="12" x2="14" y2="12"/></svg>`,
+};
+
+const CAT_COLORS: Record<string, string> = {
+  입출력: "#4C97FF",
+  반복: "#9966FF",
+  조건: "#FF8C1A",
+  계산: "#40BF4A",
+  글자: "#CF63CF",
+  리스트: "#FF6680",
+  변수: "#FF8C1A",
+  함수: "#FF4D6A",
+};
+
 // ── Injected CSS ──
 let styleInjected = false;
 function injectBlocklyStyles() {
@@ -258,33 +279,35 @@ function injectBlocklyStyles() {
   styleInjected = true;
   const s = document.createElement("style");
   s.textContent = `
-    /* ═══ PikaBuddy Block Editor — Scratch/Entry Inspired ═══ */
-    .blocklySvg { background: #F8F9FB !important; }
+    /* ═══ PikaBuddy Block Editor ═══ */
+    .blocklySvg { background: #F9FAFB !important; }
     .blocklyMainBackground { stroke: none !important; }
 
     /* ── Toolbox Sidebar ── */
     .blocklyToolboxDiv {
-      background: linear-gradient(180deg, #FAFBFF 0%, #F3F4FA 100%) !important;
-      border-right: 1.5px solid #E8EAF0 !important;
-      box-shadow: none !important;
-      padding: 8px 0 !important;
+      background: #fff !important;
+      border-right: 1px solid #E5E7EB !important;
+      box-shadow: 2px 0 12px rgba(0,0,0,0.04) !important;
+      padding: 0 !important;
       overflow-y: auto !important;
       overflow-x: hidden !important;
       width: auto !important;
       min-width: 0 !important;
     }
-    .blocklyToolboxDiv::-webkit-scrollbar { width: 4px; }
-    .blocklyToolboxDiv::-webkit-scrollbar-thumb { background: #D0D0D0; border-radius: 4px; }
+    .blocklyToolboxDiv::-webkit-scrollbar { width: 3px; }
+    .blocklyToolboxDiv::-webkit-scrollbar-track { background: transparent; }
+    .blocklyToolboxDiv::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 3px; }
+
     .blocklyToolboxContents {
       display: flex !important;
       flex-direction: column !important;
       gap: 2px !important;
-      padding: 4px 8px !important;
+      padding: 6px !important;
     }
 
     /* ── Category Row ── */
     .blocklyTreeRow {
-      padding: 9px 14px 9px 12px !important;
+      padding: 0 !important;
       margin: 0 !important;
       border-radius: 10px !important;
       height: auto !important;
@@ -292,54 +315,57 @@ function injectBlocklyStyles() {
       display: flex !important;
       flex-direction: row !important;
       align-items: center !important;
-      gap: 9px !important;
+      gap: 10px !important;
       cursor: pointer !important;
-      transition: all 0.15s ease !important;
+      transition: background 0.15s ease !important;
       min-height: 0 !important;
       white-space: nowrap !important;
-      border-left: 3px solid transparent !important;
+      border-left: none !important;
+      padding: 7px 12px 7px 8px !important;
     }
     .blocklyTreeRow:hover {
-      background: rgba(0,0,0,0.04) !important;
+      background: #F3F4F6 !important;
     }
     .blocklyTreeSelected {
-      background: rgba(76,151,255,0.10) !important;
-      border-left-color: var(--blockly-cat-color, #4C97FF) !important;
+      background: var(--blockly-cat-bg, rgba(76,151,255,0.08)) !important;
+    }
+    .blocklyTreeSelected:hover {
+      background: var(--blockly-cat-bg, rgba(76,151,255,0.12)) !important;
     }
 
-    /* ── Category Icon (colored circle) ── */
+    /* ── Category Icon ── */
     .blocklyTreeIcon {
       display: inline-flex !important;
       align-items: center !important;
       justify-content: center !important;
-      width: 26px !important;
-      height: 26px !important;
-      border-radius: 8px !important;
+      width: 30px !important;
+      height: 30px !important;
+      border-radius: 9px !important;
       flex-shrink: 0 !important;
       margin: 0 !important;
       background: var(--blockly-cat-color, #4C97FF) !important;
       color: #fff !important;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1) !important;
     }
     .blocklyTreeIcon svg {
-      width: 15px !important;
-      height: 15px !important;
+      width: 16px !important;
+      height: 16px !important;
     }
 
     /* ── Category Label ── */
     .blocklyTreeLabel {
       font-size: 13px !important;
-      font-weight: 700 !important;
+      font-weight: 600 !important;
       font-family: "Pretendard", "Noto Sans KR", -apple-system, sans-serif !important;
-      color: #37474F !important;
+      color: #374151 !important;
       letter-spacing: -0.2px !important;
     }
     .blocklyTreeSelected .blocklyTreeLabel {
-      color: #1565C0 !important;
+      color: var(--blockly-cat-color, #4C97FF) !important;
+      font-weight: 700 !important;
     }
 
     /* ── Flyout ── */
-    .blocklyFlyoutBackground { fill: #F5F6FA !important; fill-opacity: 0.98 !important; }
+    .blocklyFlyoutBackground { fill: #F9FAFB !important; fill-opacity: 0.98 !important; }
 
     /* ── Block text ── */
     .blocklyText {
@@ -352,33 +378,32 @@ function injectBlocklyStyles() {
       stroke-width: 1.5 !important;
     }
 
-    /* ── Trashcan ── */
+    /* ── Trashcan — never touch transform (Blockly uses it for positioning) ── */
     .blocklyTrash {
-      opacity: 0.35 !important;
-      transition: all 0.25s ease !important;
-      transform-origin: center bottom !important;
+      opacity: 0.3 !important;
+      transition: opacity 0.2s ease, filter 0.2s ease !important;
     }
-    .blocklyTrash:hover { opacity: 0.8 !important; transform: scale(1.1) !important; }
+    .blocklyTrash:hover { opacity: 0.6 !important; }
 
     /* ── Scrollbar ── */
-    .blocklyScrollbarHandle { rx: 5 !important; ry: 5 !important; fill: #CBD5E1 !important; }
-    .blocklyScrollbarHandle:hover { fill: #94A3B8 !important; }
+    .blocklyScrollbarHandle { rx: 5 !important; ry: 5 !important; fill: #D1D5DB !important; }
+    .blocklyScrollbarHandle:hover { fill: #9CA3AF !important; }
     .blocklyScrollbarBackground { fill: transparent !important; }
 
     /* ── Zoom controls ── */
-    .blocklyZoom > image { opacity: 0.3 !important; transition: opacity 0.15s !important; }
-    .blocklyZoom > image:hover { opacity: 0.8 !important; }
+    .blocklyZoom > image { opacity: 0.25 !important; transition: opacity 0.15s !important; }
+    .blocklyZoom > image:hover { opacity: 0.7 !important; }
 
     /* ── Grid ── */
-    .blocklyGridLine { stroke: #EBEDF0 !important; }
+    .blocklyGridLine { stroke: #F3F4F6 !important; }
 
     /* ── Connections ── */
-    .blocklyHighlightedConnectionPath { stroke: #FFCA28 !important; stroke-width: 4px !important; }
-    .blocklySelected > .blocklyPath { filter: brightness(1.06) drop-shadow(0 0 4px rgba(0,0,0,0.12)) !important; }
-    .blocklyDragging > .blocklyPath { filter: drop-shadow(0 8px 20px rgba(0,0,0,0.18)) !important; }
+    .blocklyHighlightedConnectionPath { stroke: #FBBF24 !important; stroke-width: 4px !important; }
+    .blocklySelected > .blocklyPath { filter: brightness(1.05) drop-shadow(0 0 3px rgba(0,0,0,0.10)) !important; }
+    .blocklyDragging > .blocklyPath { filter: drop-shadow(0 6px 16px rgba(0,0,0,0.15)) !important; }
     .blocklyInsertionMarker > .blocklyPath {
-      fill: #FFCA28 !important; fill-opacity: 0.35 !important;
-      stroke: #FFB300 !important; stroke-width: 2px !important;
+      fill: #FBBF24 !important; fill-opacity: 0.3 !important;
+      stroke: #F59E0B !important; stroke-width: 2px !important;
     }
   `;
   document.head.appendChild(s);
@@ -396,7 +421,11 @@ function applyToolboxIcons(container: HTMLElement) {
     const svgHtml = CAT_ICONS[name];
     if (color) {
       (row as HTMLElement).style.setProperty("--blockly-cat-color", color);
-      (icon as HTMLElement).style.setProperty("--blockly-cat-color", color);
+      // Lighter tinted background for selected state
+      const r = parseInt(color.slice(1, 3), 16);
+      const g = parseInt(color.slice(3, 5), 16);
+      const b = parseInt(color.slice(5, 7), 16);
+      (row as HTMLElement).style.setProperty("--blockly-cat-bg", `rgba(${r},${g},${b},0.08)`);
       (icon as HTMLElement).style.background = color;
     }
     if (svgHtml) {
@@ -443,7 +472,7 @@ function BlockEditorInner({ language, onCodeChange }: BlockEditorProps) {
         const workspace = Blockly.inject(el, {
           toolbox: TOOLBOX as Blockly.utils.toolbox.ToolboxDefinition,
           renderer: "zelos",
-          grid: { spacing: 40, length: 2, colour: "#E8E8E8", snap: true },
+          grid: { spacing: 40, length: 2, colour: "#F3F4F6", snap: true },
           zoom: { controls: true, wheel: true, startScale: 0.9, maxScale: 2.5, minScale: 0.3, scaleSpeed: 1.15, pinch: true },
           trashcan: true,
           sounds: false,
@@ -452,6 +481,22 @@ function BlockEditorInner({ language, onCodeChange }: BlockEditorProps) {
 
         workspaceRef.current = workspace;
         setLoading(false);
+
+        // Auto-place the start block
+        try {
+          const startBlock = workspace.newBlock("event_start");
+          startBlock.initSvg();
+          startBlock.render();
+          startBlock.moveBy(80, 40);
+        } catch (e) {
+          console.warn("Failed to create start block:", e);
+        }
+
+        // Disable Blockly's context menu (doesn't work properly, confusing for beginners)
+        el.addEventListener("contextmenu", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }, true);
 
         // Inject category icons after toolbox renders
         requestAnimationFrame(() => applyToolboxIcons(el));
@@ -471,7 +516,7 @@ function BlockEditorInner({ language, onCodeChange }: BlockEditorProps) {
             zIndex: "100", transition: "opacity 0.2s, transform 0.2s",
             transform: "translateY(4px)", opacity: "0",
           });
-          trashWarning.textContent = "🗑️ 놓으면 삭제됩니다";
+          trashWarning.textContent = "놓으면 삭제됩니다";
           el.appendChild(trashWarning);
           requestAnimationFrame(() => { if (trashWarning) { trashWarning.style.opacity = "1"; trashWarning.style.transform = "translateY(0)"; } });
         };
@@ -482,35 +527,58 @@ function BlockEditorInner({ language, onCodeChange }: BlockEditorProps) {
           trashWarning = null;
         };
 
-        workspace.addChangeListener((e: Blockly.Events.Abstract) => {
-          if (e.type === Blockly.Events.BLOCK_CHANGE || e.type === Blockly.Events.BLOCK_CREATE ||
-            e.type === Blockly.Events.BLOCK_DELETE || e.type === Blockly.Events.BLOCK_MOVE) {
-            try {
+        // Generate code only from blocks connected to the start block
+        const generateCode = () => {
+          try {
+            const topBlocks = workspace.getTopBlocks(true);
+            const startBlock = topBlocks.find(
+              (b: Blockly.Block) => b.type === "event_start"
+            );
+            if (startBlock) {
+              // Only generate code from the chain under the start block
+              const gen = languageRef.current === "javascript"
+                ? jsGen!.javascriptGenerator
+                : pyGen!.pythonGenerator;
+              const code = gen.blockToCode(startBlock) as string;
+              onCodeChangeRef.current(code);
+            } else {
+              // Fallback: no start block found — generate all
               const code = languageRef.current === "javascript"
                 ? jsGen!.javascriptGenerator.workspaceToCode(workspace)
                 : pyGen!.pythonGenerator.workspaceToCode(workspace);
               onCodeChangeRef.current(code);
-            } catch { /* */ }
+            }
+          } catch { /* */ }
+        };
+
+        workspace.addChangeListener((e: Blockly.Events.Abstract) => {
+          if (e.type === Blockly.Events.BLOCK_CHANGE || e.type === Blockly.Events.BLOCK_CREATE ||
+            e.type === Blockly.Events.BLOCK_DELETE || e.type === Blockly.Events.BLOCK_MOVE) {
+            generateCode();
           }
           if (e.type === Blockly.Events.BLOCK_DRAG) {
             if (!(e as Blockly.Events.BlockDrag).isStart) hideTrashWarning();
           }
         });
 
-        // Poll trashcan lid
+        // Poll trashcan lid — only change opacity/filter, NEVER touch transform
         let pollId: ReturnType<typeof setInterval> | null = null;
         const tc = (workspace as unknown as { trashcan?: { isLidOpen?: boolean } }).trashcan;
         if (tc) {
+          let wasOpen = false;
           pollId = setInterval(() => {
+            const isOpen = !!tc.isLidOpen;
+            if (isOpen === wasOpen) return;
+            wasOpen = isOpen;
             const trashSvg = el.querySelector(".blocklyTrash") as SVGElement | null;
-            if (tc.isLidOpen) {
+            if (isOpen) {
               showTrashWarning();
-              if (trashSvg) { trashSvg.style.opacity = "1"; trashSvg.style.transform = "scale(1.3)"; trashSvg.style.filter = "drop-shadow(0 0 10px rgba(239,68,68,0.5))"; }
+              if (trashSvg) { trashSvg.style.opacity = "1"; trashSvg.style.filter = "drop-shadow(0 0 8px rgba(239,68,68,0.4))"; }
             } else {
               hideTrashWarning();
-              if (trashSvg) { trashSvg.style.opacity = ""; trashSvg.style.transform = ""; trashSvg.style.filter = ""; }
+              if (trashSvg) { trashSvg.style.opacity = ""; trashSvg.style.filter = ""; }
             }
-          }, 100);
+          }, 80);
         }
 
         const origDispose = workspace.dispose.bind(workspace);
@@ -538,10 +606,10 @@ function BlockEditorInner({ language, onCodeChange }: BlockEditorProps) {
   }
 
   return (
-    <div ref={containerRef} style={{ width: "100%", height: "100%", flex: 1, minHeight: 0, overflow: "hidden", background: loading ? "#F8F9FB" : undefined }}>
+    <div ref={containerRef} style={{ width: "100%", height: "100%", flex: 1, minHeight: 0, overflow: "hidden", background: loading ? "#F9FAFB" : undefined }}>
       {loading && (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", minHeight: 200, gap: 12, color: "#575E75" }}>
-          <div style={{ width: 36, height: 36, border: "3px solid #E0E0E0", borderTopColor: "#4C97FF", borderRadius: "50%", animation: "blockly-spin 0.7s linear infinite" }} />
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", minHeight: 200, gap: 12, color: "#6B7280" }}>
+          <div style={{ width: 36, height: 36, border: "3px solid #E5E7EB", borderTopColor: "#4C97FF", borderRadius: "50%", animation: "blockly-spin 0.7s linear infinite" }} />
           <span style={{ fontSize: 14, fontWeight: 600, fontFamily: `"Pretendard","Noto Sans KR",sans-serif` }}>블록 에디터 준비 중...</span>
           <style>{`@keyframes blockly-spin { to { transform: rotate(360deg); } }`}</style>
         </div>
