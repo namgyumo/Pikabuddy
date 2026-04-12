@@ -457,7 +457,7 @@ export default function AllNotesGraph() {
           // 유사도 간선: weight 높으면 짧고, weight 낮으면 길게
           const w = (link as any).weight || 5;
           const wNorm = (10 - w) / 8; // w=2→1, w=10→0
-          return (50 + 200 * wNorm) * el;
+          return (120 + 380 * wNorm) * el;
         })
         .strength((link: GLink) => {
           const sId = typeof link.source === "string" ? link.source : link.source.id;
