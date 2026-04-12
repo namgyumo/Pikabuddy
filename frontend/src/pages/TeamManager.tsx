@@ -292,6 +292,7 @@ export default function TeamManager() {
                       <option value="java">Java</option>
                       <option value="javascript">JavaScript</option>
                       <option value="csharp">C#</option>
+                      <option value="swift">Swift</option>
                       <option value="rust">Rust</option>
                       <option value="go">Go</option>
                       <option value="asm">Assembly</option>

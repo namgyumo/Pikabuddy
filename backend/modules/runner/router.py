@@ -24,6 +24,7 @@ _TIME_MULTIPLIER = {
     "js": 2.0,
     "python": 3.0,
     "csharp": 2.0,
+    "swift": 1.5,
     "rust": 1.0,
     "go": 1.5,
     "asm": 1.0,
@@ -162,6 +163,8 @@ def _judge_single(code: str, language: str, stdin_data: str, expected: str,
             result = _run_java_judge(code, stdin_data, time_limit)
         elif language == "csharp":
             result = _run_csharp_judge(code, stdin_data, time_limit)
+        elif language == "swift":
+            result = _run_swift_judge(code, stdin_data, time_limit)
         elif language == "rust":
             result = _run_rust_judge(code, stdin_data, time_limit)
         elif language == "go":
@@ -327,6 +330,8 @@ async def run_code(body: RunRequest, user: dict = Depends(get_current_user)):
             result = _run_java(code, stdin_data)
         elif language == "csharp":
             result = _run_csharp(code, stdin_data)
+        elif language == "swift":
+            result = _run_swift(code, stdin_data)
         elif language == "rust":
             result = _run_rust(code, stdin_data)
         elif language == "go":
@@ -486,6 +491,31 @@ def _run_csharp_judge(code: str, stdin_data: str, timeout: float) -> dict:
     finally:
         _cleanup_dir(tmpdir)
 
+
+# ── Swift ──
+
+def _run_swift(code: str, stdin_data: str) -> dict:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".swift", delete=False, encoding="utf-8") as f:
+        f.write(code); f.flush()
+        try:
+            return _execute(["swift", f.name], stdin_data)
+        finally:
+            os.unlink(f.name)
+
+
+def _run_swift_judge(code: str, stdin_data: str, timeout: float) -> dict:
+    tmpdir = tempfile.mkdtemp()
+    src = os.path.join(tmpdir, "main.swift")
+    exe = os.path.join(tmpdir, "main")
+    try:
+        with open(src, "w", encoding="utf-8") as f:
+            f.write(code)
+        compile_res = _run_with_timeout(["swiftc", src, "-o", exe], "", 30)
+        if not compile_res["success"]:
+            return {"success": False, "output": "", "error": "컴파일 에러:\n" + compile_res["error"], "timeout": False}
+        return _run_with_timeout([exe], stdin_data, timeout)
+    finally:
+        _cleanup_dir(tmpdir)
 
 
 # ── Rust ──
