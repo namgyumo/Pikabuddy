@@ -256,22 +256,50 @@ async def switch_role(body: SwitchRoleRequest, user: dict = Depends(get_current_
 
 @router.post("/recover-enrollments")
 async def recover_enrollments(user: dict = Depends(get_current_user)):
-    """노트가 존재하는 코스에 대해 수강 등록을 복구한다."""
+    """활동 ���록이 존재하는 코스에 대해 수강 등록을 복구한다."""
     supabase = get_supabase()
     uid = user["id"]
 
-    # 1) 이 유저의 노트가 있는 코스 ID 조회
-    notes = supabase.table("notes").select("course_id").eq("student_id", uid).execute()
-    note_course_ids = list(set(n["course_id"] for n in (notes.data or []) if n.get("course_id")))
+    # 1) 이 유저의 활동이 있는 코스 ID 수집 (노트, 메시��, 과제 제출)
+    activity_course_ids: set = set()
 
-    if not note_course_ids:
+    # 노트
+    notes = supabase.table("notes").select("course_id").eq("student_id", uid).execute()
+    for n in (notes.data or []):
+        if n.get("course_id"):
+            activity_course_ids.add(n["course_id"])
+
+    # 메시지 (보낸 것 + 받은 것)
+    try:
+        sent = supabase.table("messages").select("course_id").eq("sender_id", uid).execute()
+        for m in (sent.data or []):
+            if m.get("course_id"):
+                activity_course_ids.add(m["course_id"])
+        received = supabase.table("messages").select("course_id").eq("receiver_id", uid).execute()
+        for m in (received.data or []):
+            if m.get("course_id"):
+                activity_course_ids.add(m["course_id"])
+    except Exception:
+        pass
+
+    # 과제 제출
+    try:
+        subs = supabase.table("submissions").select("assignment_id, assignments!inner(course_id)").eq("student_id", uid).execute()
+        for s in (subs.data or []):
+            assignment = s.get("assignments") or {}
+            if assignment.get("course_id"):
+                activity_course_ids.add(assignment["course_id"])
+    except Exception:
+        pass
+
+    if not activity_course_ids:
         return {"recovered": 0, "message": "복구할 수강 등록이 없습니다."}
 
-    # 2) 이미 등록된 코스 제외
+    # 2) 이미 등록된 코스 ��외
     existing = supabase.table("enrollments").select("course_id").eq("student_id", uid).execute()
     existing_ids = set(e["course_id"] for e in (existing.data or []))
 
-    to_recover = [cid for cid in note_course_ids if cid not in existing_ids]
+    to_recover = [cid for cid in activity_course_ids if cid not in existing_ids]
 
     # 3) 개인 코스 제외 (is_personal=True인 코스)
     if to_recover:

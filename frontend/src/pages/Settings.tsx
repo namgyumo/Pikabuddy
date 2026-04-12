@@ -243,8 +243,8 @@ export default function Settings() {
               onClick={async () => {
                 try {
                   const { data } = await api.post("/auth/recover-enrollments");
-                  alert(data.message || "복구 완료");
-                } catch { alert("복구 실패"); }
+                  setMessage({ type: data.recovered > 0 ? "success" : "error", text: data.message });
+                } catch { setMessage({ type: "error", text: "복구에 실패했습니다." }); }
               }}
             >
               수강 등록 복구 (역할 변경으로 사라진 강의 복구)
