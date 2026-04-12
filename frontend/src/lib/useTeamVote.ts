@@ -25,6 +25,7 @@ interface VoteInfo {
 
 export interface VoteStatus {
   vote: VoteInfo | null;
+  team_id?: string;
   responses: VoteResponse[];
   team_members: TeamMember[];
   my_response: "approve" | "reject" | null;
@@ -64,10 +65,15 @@ export function useTeamVote(assignmentId: string | undefined, isTeamAssignment: 
     try {
       const { data } = await api.post(`/assignments/${assignmentId}/vote`, payload);
       setVoteStatus(data);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || "투표 시작에 실패했습니다.";
+      alert(msg);
+      // 상태 갱신하여 UI 동기화
+      await fetchStatus();
     } finally {
       setLoading(false);
     }
-  }, [assignmentId]);
+  }, [assignmentId, fetchStatus]);
 
   const castVote = useCallback(async (response: "approve" | "reject") => {
     if (!assignmentId || !voteStatus?.vote?.id) return;
@@ -75,10 +81,14 @@ export function useTeamVote(assignmentId: string | undefined, isTeamAssignment: 
     try {
       const { data } = await api.post(`/assignments/${assignmentId}/vote/${voteStatus.vote.id}/respond`, { response });
       setVoteStatus(data);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || "투표 응답에 실패했습니다.";
+      alert(msg);
+      await fetchStatus();
     } finally {
       setLoading(false);
     }
-  }, [assignmentId, voteStatus?.vote?.id]);
+  }, [assignmentId, voteStatus?.vote?.id, fetchStatus]);
 
   return {
     isTeamAssignment,

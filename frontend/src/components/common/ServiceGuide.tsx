@@ -171,7 +171,7 @@ export default function ServiceGuide() {
                   PikaBuddy 사용법을 안내해 드려요.
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", marginTop: 16 }}>
-                  {["과제는 어떻게 제출해?", "티어 시스템이 뭐야?", "노트에서 표 넣는 법", "블록 코딩�� 뭐야?"].map((q) => (
+                  {["과제 제출 방법 알려줘", "티어는 어떻게 올려?", "노트에서 표 삽입하는 법", "코드 에디터 사용법 알려줘"].map((q) => (
                     <button
                       key={q}
                       onClick={() => { setInput(q); }}

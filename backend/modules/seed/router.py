@@ -5,7 +5,7 @@ then re-inserts the demo seed data defined in seed_data.py.
 """
 
 import logging
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from common.supabase_client import get_supabase
 from middleware.auth import get_current_user
@@ -22,8 +22,33 @@ router = APIRouter(prefix="/seed", tags=["시드 데이터"])
 TEACHER_EMAIL_SUFFIX = "@pikabuddy.admin"
 
 
-def _get_test_users(supabase) -> tuple[dict | None, dict | None]:
-    """Find teacher and student test account records."""
+def _get_test_users(
+    supabase,
+    teacher_id: str | None = None,
+    student_id: str | None = None,
+) -> tuple[dict | None, dict | None]:
+    """Find teacher and student test account records.
+    If explicit IDs are provided, fetch those users directly.
+    Otherwise fall back to @pikabuddy.admin email search.
+    """
+    if teacher_id or student_id:
+        teacher = None
+        student = None
+        if teacher_id:
+            try:
+                r = supabase.table("users").select("*").eq("id", teacher_id).single().execute()
+                teacher = r.data
+            except Exception:
+                pass
+        if student_id:
+            try:
+                r = supabase.table("users").select("*").eq("id", student_id).single().execute()
+                student = r.data
+            except Exception:
+                pass
+        return teacher, student
+
+    # Fallback: email-based search
     rows = (
         supabase.table("users")
         .select("*")
@@ -362,18 +387,23 @@ def _insert_seed_data(supabase, teacher: dict, student: dict):
     logger.info("Created gamification data")
 
 
+@router.get("/users")
+async def list_users(user: dict = Depends(get_current_user)):
+    """관리 대상으로 지정할 수 있는 유저 목록."""
+    sb = get_supabase()
+    rows = (sb.table("users").select("id, name, email, role").order("created_at").execute()).data or []
+    return rows
+
+
 @router.post("/reset")
-async def reset_test_accounts(user: dict = Depends(get_current_user)):
-    """
-    테스트 계정의 모든 데이터를 삭제하고 시드 데이터로 초기화합니다.
-    테스트 계정(@pikabuddy.admin)으로만 호출 가능합니다.
-    """
-    # All authenticated users can manage test accounts
-
+async def reset_test_accounts(
+    user: dict = Depends(get_current_user),
+    teacher_id: str | None = Query(None),
+    student_id: str | None = Query(None),
+):
+    """테스트 계정의 모든 데이터를 삭제하고 시드 데이터로 초기화합니다."""
     supabase = get_supabase()
-
-    # Find both test accounts
-    teacher, student = _get_test_users(supabase)
+    teacher, student = _get_test_users(supabase, teacher_id, student_id)
 
     if not teacher or not student:
         raise HTTPException(
@@ -411,12 +441,14 @@ async def reset_test_accounts(user: dict = Depends(get_current_user)):
 
 
 @router.get("/status")
-async def seed_status(user: dict = Depends(get_current_user)):
-    """테스트 계정 상태 확인 (상세)"""
-    # All authenticated users can view test account status
-
+async def seed_status(
+    user: dict = Depends(get_current_user),
+    teacher_id: str | None = Query(None),
+    student_id: str | None = Query(None),
+):
+    """테스트 계정 상��� 확인 (상세)"""
     sb = get_supabase()
-    teacher, student = _get_test_users(sb)
+    teacher, student = _get_test_users(sb, teacher_id, student_id)
 
     result: dict = {"teacher": None, "student": None, "counts": {}}
 
@@ -474,12 +506,14 @@ async def seed_status(user: dict = Depends(get_current_user)):
 
 
 @router.post("/clean")
-async def clean_test_accounts(user: dict = Depends(get_current_user)):
+async def clean_test_accounts(
+    user: dict = Depends(get_current_user),
+    teacher_id: str | None = Query(None),
+    student_id: str | None = Query(None),
+):
     """테스트 계정 데이터를 전부 삭제 (시드 데이터 재삽입 없이 빈 상태로 만듦)."""
-    # All authenticated users can manage test accounts
-
     sb = get_supabase()
-    teacher, student = _get_test_users(sb)
+    teacher, student = _get_test_users(sb, teacher_id, student_id)
     if not teacher or not student:
         raise HTTPException(status_code=400, detail="두 테스트 계정이 모두 필요합니다.")
 
@@ -728,12 +762,15 @@ class SetExpRequest(BaseModel):
 
 
 @router.post("/snapshot")
-async def save_snapshot(body: SnapshotRequest, user: dict = Depends(get_current_user)):
+async def save_snapshot(
+    body: SnapshotRequest,
+    user: dict = Depends(get_current_user),
+    teacher_id: str | None = Query(None),
+    student_id: str | None = Query(None),
+):
     """현재 테스트 데이터를 스냅샷으로 저장."""
-    # All authenticated users can manage test accounts
-
     sb = get_supabase()
-    teacher, student = _get_test_users(sb)
+    teacher, student = _get_test_users(sb, teacher_id, student_id)
     if not teacher or not student:
         raise HTTPException(status_code=400, detail="두 테스트 계정이 모두 필요합니다.")
 
@@ -758,12 +795,15 @@ async def list_snapshots(user: dict = Depends(get_current_user)):
 
 
 @router.post("/snapshot/{snapshot_id}/restore")
-async def restore_snapshot(snapshot_id: str, user: dict = Depends(get_current_user)):
+async def restore_snapshot(
+    snapshot_id: str,
+    user: dict = Depends(get_current_user),
+    teacher_id: str | None = Query(None),
+    student_id: str | None = Query(None),
+):
     """스냅샷으로 복원 (기존 데이터 삭제 후 스냅샷 데이터 삽입)."""
-    # All authenticated users can manage test accounts
-
     sb = get_supabase()
-    teacher, student = _get_test_users(sb)
+    teacher, student = _get_test_users(sb, teacher_id, student_id)
     if not teacher or not student:
         raise HTTPException(status_code=400, detail="두 테스트 계정이 모두 필요합니다.")
 
@@ -794,12 +834,14 @@ DEFAULT_SNAPSHOT_NAME = "__default_reset_state__"
 
 
 @router.post("/save-default")
-async def save_default_state(user: dict = Depends(get_current_user)):
-    """현재 상태를 '기본 초기화 상태'로 저장. 이후 reset은 이 상태로 복원됨."""
-    # All authenticated users can manage test accounts
-
+async def save_default_state(
+    user: dict = Depends(get_current_user),
+    teacher_id: str | None = Query(None),
+    student_id: str | None = Query(None),
+):
+    """현재 상태를 '��본 초기화 상태'로 저장."""
     sb = get_supabase()
-    teacher, student = _get_test_users(sb)
+    teacher, student = _get_test_users(sb, teacher_id, student_id)
     if not teacher or not student:
         raise HTTPException(status_code=400, detail="두 테스트 계정이 모두 필요합니다.")
 
@@ -834,12 +876,14 @@ async def has_default_state(user: dict = Depends(get_current_user)):
 
 
 @router.post("/reset-to-default")
-async def reset_to_default(user: dict = Depends(get_current_user)):
-    """저장된 기본 상태로 초기화 (현재 상태로 초기화)."""
-    # All authenticated users can manage test accounts
-
+async def reset_to_default(
+    user: dict = Depends(get_current_user),
+    teacher_id: str | None = Query(None),
+    student_id: str | None = Query(None),
+):
+    """저장된 기본 상태로 초기화."""
     sb = get_supabase()
-    teacher, student = _get_test_users(sb)
+    teacher, student = _get_test_users(sb, teacher_id, student_id)
     if not teacher or not student:
         raise HTTPException(status_code=400, detail="두 테스트 계정이 모두 필요합니다.")
 
@@ -930,17 +974,20 @@ def _partial_delete(sb, teacher, student, targets: list[str]):
 
 
 @router.post("/partial-reset")
-async def partial_reset(body: PartialResetRequest, user: dict = Depends(get_current_user)):
+async def partial_reset(
+    body: PartialResetRequest,
+    user: dict = Depends(get_current_user),
+    teacher_id: str | None = Query(None),
+    student_id: str | None = Query(None),
+):
     """선택한 카테고리만 초기화 (삭제)."""
-    # All authenticated users can manage test accounts
-
     valid = {"assignments", "submissions", "notes", "messages", "exp", "badges", "enrollments"}
     invalid = set(body.targets) - valid
     if invalid:
         raise HTTPException(status_code=400, detail=f"잘못된 대상: {', '.join(invalid)}. 사용 가능: {', '.join(sorted(valid))}")
 
     sb = get_supabase()
-    teacher, student = _get_test_users(sb)
+    teacher, student = _get_test_users(sb, teacher_id, student_id)
     if not teacher or not student:
         raise HTTPException(status_code=400, detail="두 테스트 계정이 모두 필요합니다.")
 
@@ -953,12 +1000,15 @@ async def partial_reset(body: PartialResetRequest, user: dict = Depends(get_curr
 # ── EXP/Tier 직접 설정 ──
 
 @router.post("/set-exp")
-async def set_exp(body: SetExpRequest, user: dict = Depends(get_current_user)):
+async def set_exp(
+    body: SetExpRequest,
+    user: dict = Depends(get_current_user),
+    teacher_id: str | None = Query(None),
+    student_id: str | None = Query(None),
+):
     """테스트 계정의 EXP를 직접 설정."""
-    # All authenticated users can manage test accounts
-
     sb = get_supabase()
-    teacher, student = _get_test_users(sb)
+    teacher, student = _get_test_users(sb, teacher_id, student_id)
     if not teacher or not student:
         raise HTTPException(status_code=400, detail="두 테스트 계정이 모두 필요합니다.")
 

@@ -9,7 +9,7 @@ import { customConfirm } from "../lib/confirm";
 const BlockEditorLazy = lazy(() => import("../components/BlockEditor"));
 import DeadlineTimer from "../components/DeadlineTimer";
 import { supabase } from "../lib/supabase";
-import { getAdminToken } from "../store/authStore";
+import { getAdminToken, useAuthStore } from "../store/authStore";
 import { useExamMode } from "../lib/useExamMode";
 import { useTeamVote } from "../lib/useTeamVote";
 import TeamVotePanel from "../components/TeamVotePanel";
@@ -107,10 +107,18 @@ export default function CodeEditor() {
   const logPasteRef = useRef<(text: string, pIdx: number) => void>(() => {});
   const navigate = useNavigate();
 
+  const { user } = useAuthStore();
+
   const { isTeamAssignment, voteStatus, loading: voteLoading, initiateVote, castVote } = useTeamVote(
     assignmentId,
     assignment?.is_team_assignment ?? false,
   );
+
+  // 팀 실시간 코드 공유
+  const [teamPresence, setTeamPresence] = useState<{ userId: string; name: string }[]>([]);
+  const teamChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const isRemoteUpdate = useRef(false);
+  const broadcastTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   // 시험 모드
   const examMode = useExamMode({
@@ -254,7 +262,89 @@ export default function CodeEditor() {
     codeMapRef.current[problemIdx] = newCode;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => saveSnapshot(newCode, problemIdx), 2500);
+
+    // 팀 코드 브로드캐스트 (로컬 변경만, 디바운스 300ms)
+    if (!isRemoteUpdate.current && teamChannelRef.current && user) {
+      if (broadcastTimerRef.current) clearTimeout(broadcastTimerRef.current);
+      broadcastTimerRef.current = setTimeout(() => {
+        teamChannelRef.current?.send({
+          type: "broadcast", event: "code-sync",
+          payload: { userId: user.id, code: newCode, problemIdx: problemIdxRef.current },
+        });
+      }, 300);
+    }
   };
+
+  // ── 팀 과제 실시간 코드 공유 (Supabase Realtime Broadcast) ──
+  const teamId = voteStatus?.team_id;
+
+  useEffect(() => {
+    if (!isTeamAssignment || !teamId || !assignmentId || !user) return;
+
+    const channelName = `team-code:${assignmentId}:${teamId}`;
+    const channel = supabase.channel(channelName, { config: { presence: { key: user.id } } });
+
+    // 피어로부터 코드 수신
+    channel.on("broadcast", { event: "code-sync" }, ({ payload }) => {
+      if (payload.userId === user.id) return;
+      codeMapRef.current[payload.problemIdx] = payload.code;
+      // 현재 보고 있는 문제면 에디터에 반영
+      if (payload.problemIdx === problemIdxRef.current) {
+        isRemoteUpdate.current = true;
+        setCode(payload.code);
+        // Monaco 에디터 직접 업데이트 (커서 위치 유지)
+        if (editorRef.current) {
+          const ed = editorRef.current as { getValue?: () => string; setValue?: (v: string) => void };
+          if (ed.getValue && ed.setValue && ed.getValue() !== payload.code) {
+            ed.setValue(payload.code);
+          }
+        }
+        isRemoteUpdate.current = false;
+      }
+    });
+
+    // 새 피어가 현재 코드 요청
+    channel.on("broadcast", { event: "code-req" }, ({ payload }) => {
+      if (payload.userId === user.id) return;
+      for (const [pIdx, c] of Object.entries(codeMapRef.current)) {
+        channel.send({
+          type: "broadcast", event: "code-sync",
+          payload: { userId: user.id, code: c, problemIdx: Number(pIdx) },
+        });
+      }
+    });
+
+    // 프레즌스: 편집 중인 팀원 표시
+    channel.on("presence", { event: "sync" }, () => {
+      const state = channel.presenceState();
+      const members: { userId: string; name: string }[] = [];
+      for (const [, presences] of Object.entries(state)) {
+        for (const p of presences as { userId: string; name: string }[]) {
+          if (p.userId !== user.id) members.push({ userId: p.userId, name: p.name });
+        }
+      }
+      setTeamPresence(members);
+    });
+
+    channel.subscribe(async (status) => {
+      if (status === "SUBSCRIBED") {
+        await channel.track({ userId: user.id, name: user.name || "Unknown" });
+        // 피어에게 현재 코드 요청
+        channel.send({
+          type: "broadcast", event: "code-req",
+          payload: { userId: user.id },
+        });
+      }
+    });
+
+    teamChannelRef.current = channel;
+
+    return () => {
+      if (broadcastTimerRef.current) clearTimeout(broadcastTimerRef.current);
+      channel.unsubscribe();
+      teamChannelRef.current = null;
+    };
+  }, [isTeamAssignment, teamId, assignmentId, user?.id]);
 
   const logPaste = useCallback(async (pastedText: string, pIdx: number) => {
     if (!assignmentId) return;
@@ -673,6 +763,20 @@ export default function CodeEditor() {
           <span className="badge" style={{ background: "rgba(255,255,255,0.12)", color: "#fff" }}>
             {LANG_LABEL[assignment?.language || "python"] || (assignment?.language || "python").toUpperCase()}
           </span>
+          {isTeamAssignment && (
+            <span className="badge" style={{ background: "rgba(16,185,129,0.25)", color: "#6ee7b7" }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: 3, verticalAlign: -1 }}>
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+              팀 공유
+              {teamPresence.length > 0 && (
+                <span style={{ marginLeft: 4, fontWeight: 700 }}>
+                  ({teamPresence.map(m => m.name).join(", ")} 편집 중)
+                </span>
+              )}
+            </span>
+          )}
           <span className="badge badge-policy">
             AI 정책: {policyLabels[assignment?.ai_policy || ""] || "-"}
           </span>
@@ -754,6 +858,16 @@ export default function CodeEditor() {
                     codeMapRef.current[problemIdx] = generated;
                     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
                     saveTimerRef.current = setTimeout(() => saveSnapshot(generated, problemIdx), 2500);
+                    // 팀 브로드캐스트
+                    if (teamChannelRef.current && user) {
+                      if (broadcastTimerRef.current) clearTimeout(broadcastTimerRef.current);
+                      broadcastTimerRef.current = setTimeout(() => {
+                        teamChannelRef.current?.send({
+                          type: "broadcast", event: "code-sync",
+                          payload: { userId: user.id, code: generated, problemIdx },
+                        });
+                      }, 300);
+                    }
                   }}
                 />
               </Suspense>

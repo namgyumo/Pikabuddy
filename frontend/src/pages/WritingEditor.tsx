@@ -13,13 +13,16 @@ import DeadlineTimer from "../components/DeadlineTimer";
 import { renderMarkdown } from "../lib/markdown";
 import api from "../lib/api";
 import { supabase } from "../lib/supabase";
-import { getAdminToken } from "../store/authStore";
+import { getAdminToken, useAuthStore } from "../store/authStore";
 import { useTeamVote } from "../lib/useTeamVote";
 import { useExamMode } from "../lib/useExamMode";
 import TeamVotePanel from "../components/TeamVotePanel";
 import { toast } from "../lib/toast";
 import { customConfirm } from "../lib/confirm";
 import type { Assignment } from "../types";
+import * as Y from "yjs";
+import { ySyncPlugin, ySyncPluginKey, yCursorPlugin, yCursorPluginKey, yUndoPlugin, yUndoPluginKey, prosemirrorJSONToYXmlFragment } from "y-prosemirror";
+import { SupabaseYjsProvider, getCollabColor } from "../lib/SupabaseYjsProvider";
 
 function stripScoreLine(text: string): string {
   return text.replace(/🤖\s*피카버디의 추천 점수는.*?점이에요!?\s*\n?/g, "")
@@ -47,10 +50,18 @@ export default function WritingEditor() {
   const lastInternalCopyRef = useRef("");
   const navigate = useNavigate();
 
+  const { user } = useAuthStore();
+
   const { isTeamAssignment, voteStatus, loading: voteLoading, initiateVote, castVote } = useTeamVote(
     assignmentId,
     assignment?.is_team_assignment ?? false,
   );
+
+  // 팀 실시간 협업 상태
+  const [teamPresence, setTeamPresence] = useState<{ userId: string; name: string }[]>([]);
+  const ydocRef = useRef<Y.Doc | null>(null);
+  const yjsProviderRef = useRef<SupabaseYjsProvider | null>(null);
+  const realtimeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   // 시험 모드
   const examMode = useExamMode({
@@ -155,6 +166,84 @@ export default function WritingEditor() {
       }
     }).catch(() => {});
   }, [assignmentId, editor]);
+
+  // ── 팀 과제 실시간 협업 (Y.js + Supabase Realtime) ──
+  const teamId = voteStatus?.team_id;
+
+  useEffect(() => {
+    if (!isTeamAssignment || !teamId || !assignmentId || !editor || !user) return;
+
+    const ydoc = new Y.Doc();
+    const provider = new SupabaseYjsProvider(ydoc);
+    ydocRef.current = ydoc;
+    yjsProviderRef.current = provider;
+
+    const fragment = ydoc.getXmlFragment("default");
+    const savedContent = editor.getJSON();
+
+    provider.awareness.setLocalStateField("user", {
+      name: user.name || "Anonymous",
+      color: getCollabColor(user.id),
+    });
+
+    // 동기화 완료 후 플러그인 등록 (콘텐츠 중복 방지)
+    let pluginsRegistered = false;
+    provider.onSynced = (hasPeers: boolean) => {
+      if (pluginsRegistered || !editor || editor.isDestroyed) return;
+      pluginsRegistered = true;
+
+      if (!hasPeers && savedContent?.content?.length) {
+        prosemirrorJSONToYXmlFragment(editor.schema, savedContent, fragment);
+      }
+      try {
+        editor.registerPlugin(ySyncPlugin(fragment));
+        editor.registerPlugin(yUndoPlugin());
+        editor.registerPlugin(yCursorPlugin(provider.awareness));
+      } catch (e) {
+        console.warn("[TeamCollab] Plugin registration error:", e);
+      }
+    };
+
+    // 브로드캐스트 리스너를 subscribe 전에 등록
+    const channelName = `team-writing:${assignmentId}:${teamId}`;
+    const channel = supabase.channel(channelName, { config: { presence: { key: user.id } } });
+
+    channel.on("presence", { event: "sync" }, () => {
+      const state = channel.presenceState();
+      const members: { userId: string; name: string }[] = [];
+      for (const [, presences] of Object.entries(state)) {
+        for (const p of presences as { userId: string; name: string }[]) {
+          if (p.userId !== user.id) {
+            members.push({ userId: p.userId, name: p.name });
+          }
+        }
+      }
+      setTeamPresence(members);
+    });
+
+    provider.connect(channel);
+
+    channel.subscribe(async (status) => {
+      if (status === "SUBSCRIBED") {
+        await channel.track({ userId: user.id, name: user.name || "Unknown" });
+        provider.requestSync();
+      }
+    });
+
+    realtimeChannelRef.current = channel;
+
+    return () => {
+      try { editor.unregisterPlugin(ySyncPluginKey); } catch { /* */ }
+      try { editor.unregisterPlugin(yCursorPluginKey); } catch { /* */ }
+      try { editor.unregisterPlugin(yUndoPluginKey); } catch { /* */ }
+      provider.destroy();
+      ydoc.destroy();
+      ydocRef.current = null;
+      yjsProviderRef.current = null;
+      channel.unsubscribe();
+      realtimeChannelRef.current = null;
+    };
+  }, [isTeamAssignment, teamId, assignmentId, editor, user?.id]);
 
   const saveSnapshot = useCallback(async (content: Record<string, unknown>) => {
     if (!assignmentId) return;
@@ -377,6 +466,20 @@ export default function WritingEditor() {
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <span className="badge" style={{ background: "rgba(99,46,205,0.12)", color: "var(--tertiary)" }}>글쓰기</span>
+          {isTeamAssignment && (
+            <span className="badge" style={{ background: "rgba(16,185,129,0.12)", color: "#10b981" }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: 3, verticalAlign: -1 }}>
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+              팀 공유
+              {teamPresence.length > 0 && (
+                <span style={{ marginLeft: 4, fontWeight: 700 }}>
+                  ({teamPresence.map(m => m.name).join(", ")} 편집 중)
+                </span>
+              )}
+            </span>
+          )}
           <span className="badge badge-policy">
             AI 정책: {({ free: "자유", normal: "보통", strict: "엄격", exam: "시험" } as Record<string, string>)[assignment?.ai_policy || ""] || "-"}
           </span>

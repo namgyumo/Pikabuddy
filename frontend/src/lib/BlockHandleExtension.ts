@@ -174,12 +174,21 @@ export const BlockHandleExtension = Extension.create({
 
       const selectItem = (item: SlashItem, blockPos: number) => {
         destroyBlockMenu();
-        const { state } = editor.view;
-        const resolved = state.doc.resolve(blockPos);
-        const after = resolved.after();
-        editor.chain().focus().insertContentAt(after, { type: "paragraph" }).run();
-        editor.commands.setTextSelection(after + 1);
-        item.action(editor);
+        // Defer to next tick so DOM is settled after menu removal
+        setTimeout(() => {
+          try {
+            const { state } = editor.view;
+            const resolved = state.doc.resolve(blockPos);
+            const after = resolved.after();
+            editor.chain().focus().insertContentAt(after, { type: "paragraph" }).setTextSelection(after + 1).run();
+            // Run action after insert transaction is applied
+            requestAnimationFrame(() => item.action(editor));
+          } catch {
+            // Fallback: just run action at current cursor
+            editor.chain().focus().run();
+            item.action(editor);
+          }
+        }, 0);
       };
 
       // 바깥 클릭 시 닫기
@@ -211,7 +220,7 @@ export const BlockHandleExtension = Extension.create({
               <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
             </svg>
           </button>
-          <button class="block-handle-drag" title="드래그하여 이동">
+          <button class="block-handle-drag" draggable="true" title="드래그하여 이동">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
               <circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/>
               <circle cx="9" cy="10" r="1.5"/><circle cx="15" cy="10" r="1.5"/>
@@ -255,13 +264,11 @@ export const BlockHandleExtension = Extension.create({
         const dragBtn = handle.querySelector(".block-handle-drag")!;
 
         dragBtn.addEventListener("mousedown", (e) => {
-          e.preventDefault();
-          if (!currentBlockEl) return;
-          dragBtn.setAttribute("draggable", "true");
+          e.stopPropagation();
         });
 
         dragBtn.addEventListener("dragstart", (e) => {
-          if (!currentBlockEl || !currentBlockPos) return;
+          if (!currentBlockEl || currentBlockPos == null) return;
           const de = e as DragEvent;
 
           const clone = currentBlockEl.cloneNode(true) as HTMLElement;

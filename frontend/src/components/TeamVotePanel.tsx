@@ -137,7 +137,7 @@ export default function TeamVotePanel({ voteStatus, loading, onInitiateVote, onC
             flex: 1, background: "rgba(220,38,38,0.1)", color: "#dc2626",
             border: "1px solid rgba(220,38,38,0.3)", borderRadius: 8, fontWeight: 600, cursor: "pointer",
           }} onClick={() => onCastVote("reject")} disabled={loading}>
-            취소하기
+            반대하기
           </button>
         </div>
       ) : (

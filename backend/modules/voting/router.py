@@ -185,6 +185,7 @@ def _build_vote_status(supabase, vote: dict, user_id: str) -> dict:
             "created_at": vote["created_at"],
             "resolved_at": vote.get("resolved_at"),
         },
+        "team_id": vote["team_id"],
         "responses": responses,
         "team_members": members,
         "my_response": my_response,
@@ -208,17 +209,21 @@ async def initiate_vote(
     if body.content:
         payload["content"] = body.content
 
-    # 이미 pending 투표가 있는지 먼저 확인
+    # 이미 pending 투표가 있는지 확인 → 만료된 건 자동 resolve
     existing = (
         supabase.table("team_submission_votes")
-        .select("id")
+        .select("*")
         .eq("assignment_id", assignment_id)
         .eq("team_id", team_id)
         .eq("status", "pending")
         .execute()
     )
-    if existing.data:
-        raise HTTPException(status_code=409, detail="이미 진행 중인 투표가 있습니다.")
+    for stale_vote in (existing.data or []):
+        stale_deadline = datetime.fromisoformat(stale_vote["deadline"].replace("Z", "+00:00"))
+        if datetime.now(timezone.utc) >= stale_deadline:
+            _check_and_resolve(supabase, stale_vote["id"])
+        else:
+            raise HTTPException(status_code=409, detail="이미 진행 중인 투표가 있습니다.")
 
     # 투표 생성
     try:
@@ -343,7 +348,7 @@ async def get_vote_status(
     )
 
     if not result.data:
-        return {"vote": None, "responses": [], "team_members": _get_team_members(supabase, team_id), "my_response": None}
+        return {"vote": None, "team_id": team_id, "responses": [], "team_members": _get_team_members(supabase, team_id), "my_response": None}
 
     vote = result.data[0]
 

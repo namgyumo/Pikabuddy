@@ -40,15 +40,56 @@ export default function Settings() {
   const [teacherExp, setTeacherExp] = useState("");
   const [studentExp, setStudentExp] = useState("");
 
+  // Target user selection
+  const [allUsers, setAllUsers] = useState<{ id: string; name: string; email: string; role: string }[]>([]);
+  const [selectedTeacherId, setSelectedTeacherId] = useState(() => localStorage.getItem("seed_teacher_id") || "");
+  const [selectedStudentId, setSelectedStudentId] = useState(() => localStorage.getItem("seed_student_id") || "");
+
+  const seedParams = () => {
+    const p = new URLSearchParams();
+    if (selectedTeacherId) p.set("teacher_id", selectedTeacherId);
+    if (selectedStudentId) p.set("student_id", selectedStudentId);
+    const q = p.toString();
+    return q ? `?${q}` : "";
+  };
+
   const refreshStatus = () => {
-    api.get("/seed/status").then(r => setTestStatus(r.data)).catch(() => {});
+    api.get(`/seed/status${seedParams()}`).then(r => {
+      setTestStatus(r.data);
+      setResetResult(null);
+    }).catch((err: any) => {
+      setTestStatus(null);
+      const msg = err?.response?.data?.detail || "상태 조회 실패";
+      setResetResult({ type: "error", text: `${msg} — 대상 계정 선택을 확인해주세요.` });
+    });
   };
 
   useEffect(() => {
-    refreshStatus();
+    api.get("/seed/users").then(r => {
+      setAllUsers(r.data);
+      // Validate stored IDs — clear if they no longer exist
+      const ids = new Set((r.data as any[]).map((u: any) => u.id));
+      if (selectedTeacherId && !ids.has(selectedTeacherId)) {
+        setSelectedTeacherId("");
+        localStorage.removeItem("seed_teacher_id");
+      }
+      if (selectedStudentId && !ids.has(selectedStudentId)) {
+        setSelectedStudentId("");
+        localStorage.removeItem("seed_student_id");
+      }
+    }).catch(() => {});
     api.get("/seed/snapshots").then(r => setSnapshots(r.data)).catch(() => {});
     api.get("/seed/has-default").then(r => setHasDefault(r.data)).catch(() => {});
   }, []);
+
+  // Refresh status when target changes
+  useEffect(() => {
+    if (selectedTeacherId) localStorage.setItem("seed_teacher_id", selectedTeacherId);
+    else localStorage.removeItem("seed_teacher_id");
+    if (selectedStudentId) localStorage.setItem("seed_student_id", selectedStudentId);
+    else localStorage.removeItem("seed_student_id");
+    refreshStatus();
+  }, [selectedTeacherId, selectedStudentId]);
 
   // Avatar crop state
   const [cropSrc, setCropSrc] = useState<string | null>(null);
@@ -415,8 +456,49 @@ export default function Settings() {
               <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
             </svg>
             테스트 계정 관리
-            <span style={{ fontSize: 11, fontWeight: 400, color: "var(--on-surface-variant)" }}>({user?.email})</span>
           </h2>
+
+          {/* 대상 계정 선택 */}
+          <div style={{ marginBottom: 16, padding: 14, borderRadius: "var(--radius-sm)", background: "var(--surface-container-lowest)", border: "1px solid var(--outline-variant)" }}>
+            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>관리 대상 계정 지정</div>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 4 }}>교수 계정</label>
+                <select
+                  value={selectedTeacherId}
+                  onChange={(e) => setSelectedTeacherId(e.target.value)}
+                  style={{ width: "100%", padding: "8px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--outline-variant)", background: "var(--surface-container-lowest)", color: "var(--on-surface)" }}
+                >
+                  <option value="">자동 감지 (@pikabuddy.admin)</option>
+                  {allUsers.filter(u => u.role === "professor").map(u => (
+                    <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 4 }}>학생 계정</label>
+                <select
+                  value={selectedStudentId}
+                  onChange={(e) => setSelectedStudentId(e.target.value)}
+                  style={{ width: "100%", padding: "8px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--outline-variant)", background: "var(--surface-container-lowest)", color: "var(--on-surface)" }}
+                >
+                  <option value="">자동 감지 (@pikabuddy.admin)</option>
+                  {allUsers.filter(u => u.role === "student").map(u => (
+                    <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {(selectedTeacherId || selectedStudentId) && (
+              <button
+                onClick={() => { setSelectedTeacherId(""); setSelectedStudentId(""); }}
+                className="btn btn-ghost"
+                style={{ fontSize: 11, padding: "4px 10px", marginTop: 8 }}
+              >
+                선택 초기화 (자동 감지로 되돌리기)
+              </button>
+            )}
+          </div>
 
           {/* 현재 상태 */}
           {testStatus && (
@@ -472,7 +554,7 @@ export default function Settings() {
                   if (!confirm("현재 상태를 기본 초기화 상태로 저장하시겠습니까?\n이후 '초기화' 버튼을 누르면 이 상태로 돌아옵니다.")) return;
                   setResetting(true); setResetResult(null);
                   try {
-                    await api.post("/seed/save-default");
+                    await api.post(`/seed/save-default${seedParams()}`);
                     setResetResult({ type: "success", text: "현재 상태가 기본 초기화 상태로 저장되었습니다." });
                     const r = await api.get("/seed/has-default");
                     setHasDefault(r.data);
@@ -496,7 +578,7 @@ export default function Settings() {
                 if (!confirm("저장된 기본 상태로 초기화하시겠습니까?\n현재 데이터가 모두 삭제되고 저장된 상태로 복원됩니다.")) return;
                 setResetting(true); setResetResult(null);
                 try {
-                  await api.post("/seed/reset-to-default");
+                  await api.post(`/seed/reset-to-default${seedParams()}`);
                   setResetResult({ type: "success", text: "저장된 기본 상태로 초기화 완료!" });
                   refreshStatus();
                 } catch (err: any) {
@@ -513,7 +595,7 @@ export default function Settings() {
                 if (!confirm("시드 데이터(파워 초기화)로 되돌리시겠습니까?\n모든 데이터가 삭제되고 기본 데모 데이터로 재설정됩니다.")) return;
                 setResetting(true); setResetResult(null);
                 try {
-                  const res = await api.post("/seed/reset");
+                  const res = await api.post(`/seed/reset${seedParams()}`);
                   setResetResult({ type: "success", text: `파워 초기화 완료! 강의 ${res.data.data.courses}, 과제 ${res.data.data.assignments}, 노트 ${res.data.data.notes}, 메시지 ${res.data.data.messages}개` });
                   refreshStatus();
                 } catch (err: any) {
@@ -530,7 +612,7 @@ export default function Settings() {
                 if (!confirm("모든 데이터를 완전히 삭제하시겠습니까?\n빈 상태가 됩니다.")) return;
                 setResetting(true); setResetResult(null);
                 try {
-                  await api.post("/seed/clean");
+                  await api.post(`/seed/clean${seedParams()}`);
                   setResetResult({ type: "success", text: "전체 삭제 완료. 빈 상태입니다." });
                   refreshStatus();
                 } catch (err: any) {
@@ -602,7 +684,7 @@ export default function Settings() {
                   if (!confirm(`선택 항목 초기화: ${targets.join(", ")}\n해당 데이터가 삭제됩니다.`)) return;
                   setResetting(true); setResetResult(null);
                   try {
-                    const res = await api.post("/seed/partial-reset", { targets });
+                    const res = await api.post(`/seed/partial-reset${seedParams()}`, { targets });
                     setResetResult({ type: "success", text: res.data.message });
                     setPartialTargets(new Set());
                     refreshStatus();
@@ -680,7 +762,7 @@ export default function Settings() {
                   const payload: any = {};
                   if (tExp !== undefined) payload.teacher_exp = tExp;
                   if (sExp !== undefined) payload.student_exp = sExp;
-                  const res = await api.post("/seed/set-exp", payload);
+                  const res = await api.post(`/seed/set-exp${seedParams()}`, payload);
                   setResetResult({ type: "success", text: "EXP 설정 완료!" });
                   setTeacherExp(""); setStudentExp("");
                   refreshStatus();
@@ -715,7 +797,7 @@ export default function Settings() {
                   if (!snapshotName.trim()) return;
                   setSnapshotLoading(true);
                   try {
-                    await api.post("/seed/snapshot", { name: snapshotName.trim() });
+                    await api.post(`/seed/snapshot${seedParams()}`, { name: snapshotName.trim() });
                     setSnapshotName("");
                     const r = await api.get("/seed/snapshots");
                     setSnapshots(r.data);
@@ -748,7 +830,7 @@ export default function Settings() {
                         if (!confirm(`'${s.name}' 스냅샷으로 복원하시겠습니까?\n현재 데이터가 모두 삭제됩니다.`)) return;
                         setSnapshotLoading(true);
                         try {
-                          await api.post(`/seed/snapshot/${s.id}/restore`);
+                          await api.post(`/seed/snapshot/${s.id}/restore${seedParams()}`);
                           setResetResult({ type: "success", text: `'${s.name}' 스냅샷으로 복원 완료!` });
                           refreshStatus();
                         } catch (err: any) {
