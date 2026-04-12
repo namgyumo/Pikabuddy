@@ -795,11 +795,18 @@ textarea.input {
   border-color: var(--primary);
 }
 
-/* Course card link (when card is a div) */
+/* Course card link (when card is a div) — stretched link pattern */
 .course-card-link {
   display: block;
   text-decoration: none;
   color: inherit;
+  position: static;
+}
+.course-card-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
 }
 .course-card-link h3 {
   font-size: 17px;

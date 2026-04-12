@@ -100,7 +100,7 @@ export default function BannerPicker({ current, onChange, onSave, onCancel, uplo
         {current && !current.startsWith("gradient:") && (
           <div style={{
             marginTop: 8, borderRadius: 8, overflow: "hidden",
-            border: "2px solid var(--primary)", height: 48,
+            border: "2px solid var(--primary)", aspectRatio: "3",
             backgroundImage: `url(${current})`, backgroundSize: "cover", backgroundPosition: "center",
           }} />
         )}

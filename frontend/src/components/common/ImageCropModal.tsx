@@ -27,7 +27,12 @@ function getCroppedBlob(src: string, area: Area, w: number, h: number): Promise<
       canvas.width = w;
       canvas.height = h;
       const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(img, area.x, area.y, area.width, area.height, 0, 0, w, h);
+      // Round pixel coordinates to prevent sub-pixel rendering mismatch
+      const sx = Math.round(area.x);
+      const sy = Math.round(area.y);
+      const sw = Math.round(area.width);
+      const sh = Math.round(area.height);
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, w, h);
       const dataUrl = canvas.toDataURL("image/png");
       canvas.toBlob((blob) => {
         if (blob) resolve({ blob, dataUrl });
