@@ -39,14 +39,14 @@ const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8001/api";
 /** Map our language IDs to Monaco editor language IDs */
 const MONACO_LANG: Record<string, string> = {
   python: "python", c: "c", cpp: "cpp", java: "java",
-  javascript: "javascript", csharp: "csharp", swift: "swift",
+  javascript: "javascript", csharp: "csharp",
   rust: "rust", go: "go", asm: "plaintext",
 };
 
 /** Display names for language badges */
 const LANG_LABEL: Record<string, string> = {
   python: "Python", c: "C", cpp: "C++", java: "Java",
-  javascript: "JavaScript", csharp: "C#", swift: "Swift",
+  javascript: "JavaScript", csharp: "C#",
   rust: "Rust", go: "Go", asm: "ASM",
 };
 
