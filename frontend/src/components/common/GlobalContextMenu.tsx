@@ -65,7 +65,7 @@ export default function GlobalContextMenu() {
     []
   );
 
-  // Reposition menu after render to stay in viewport
+  // Reposition menu after render to stay in viewport & update maxHeight
   useLayoutEffect(() => {
     if (!pos || !menuRef.current) return;
     const menu = menuRef.current;
@@ -76,10 +76,10 @@ export default function GlobalContextMenu() {
     if (y + rect.height > window.innerHeight - 8) y = window.innerHeight - rect.height - 8;
     if (x < 8) x = 8;
     if (y < 8) y = 8;
-    if (x !== pos.x || y !== pos.y) {
-      menu.style.left = x + "px";
-      menu.style.top = y + "px";
-    }
+    menu.style.left = x + "px";
+    menu.style.top = y + "px";
+    // dynamic max-height so scroll always reaches the bottom
+    menu.style.maxHeight = `${window.innerHeight - y - 8}px`;
   }, [pos]);
 
   const handleClick = useCallback((e: MouseEvent) => {
@@ -135,29 +135,13 @@ export default function GlobalContextMenu() {
 
   const items: MenuItem[] = [];
 
+  /* inline icon-button row flags — rendered separately */
+  let editorFormatRow = false;
+  let editorAlignRow = false;
+
   if (editorCtx.inEditor) {
-    // ── Editor context menu ──
-    items.push({
-      icon: "B",
-      label: "굵게",
-      action: () => editorCmd("toggleBold"),
-    });
-    items.push({
-      icon: "I",
-      label: "기울임",
-      action: () => editorCmd("toggleItalic"),
-    });
-    items.push({
-      icon: "U",
-      label: "밑줄",
-      action: () => editorCmd("toggleUnderline"),
-    });
-    items.push({
-      icon: "S",
-      label: "취소선",
-      action: () => editorCmd("toggleStrike"),
-      dividerAfter: true,
-    });
+    // ── Editor context menu (compact) ──
+    editorFormatRow = true; // B I U S rendered as icon row
     items.push({
       icon: "H1",
       label: "제목 1",
@@ -192,46 +176,21 @@ export default function GlobalContextMenu() {
     });
     items.push({
       icon: "\u229E",
-      label: "표 삽입 (3\u00D73)",
+      label: "표 삽입",
       action: () => editorCmd("insertTable", { rows: 3, cols: 3, withHeaderRow: true }),
-    });
-    items.push({
-      icon: "\u{1F5BC}",
-      label: "이미지 삽입",
-      action: () => editorCmd("insertImage"),
-    });
-    items.push({
-      icon: "\u2014",
-      label: "구분선",
-      action: () => editorCmd("setHorizontalRule"),
-    });
-    items.push({
-      icon: "\u2211",
-      label: "수식 삽입",
-      action: () => editorCmd("insertMath"),
     });
     items.push({
       icon: "\u275D",
       label: "인용",
       action: () => editorCmd("toggleBlockquote"),
+    });
+    items.push({
+      icon: "\u2014",
+      label: "구분선",
+      action: () => editorCmd("setHorizontalRule"),
       dividerAfter: true,
     });
-    items.push({
-      icon: "\u2190",
-      label: "왼쪽 정렬",
-      action: () => editorCmd("setTextAlign", { alignment: "left" }),
-    });
-    items.push({
-      icon: "\u2194",
-      label: "가운데 정렬",
-      action: () => editorCmd("setTextAlign", { alignment: "center" }),
-    });
-    items.push({
-      icon: "\u2192",
-      label: "오른쪽 정렬",
-      action: () => editorCmd("setTextAlign", { alignment: "right" }),
-      dividerAfter: true,
-    });
+    editorAlignRow = true; // ← ↔ → rendered as icon row
     items.push({
       icon: "\u{1F5D1}",
       label: "블록 삭제",
@@ -314,13 +273,30 @@ export default function GlobalContextMenu() {
     });
   }
 
+  // max-height = viewport bottom minus menu top, with padding
+  const maxH = Math.max(200, window.innerHeight - Math.min(pos.y, window.innerHeight - 200) - 12);
+
   return (
     <div
       className="global-ctx-menu"
       ref={menuRef}
-      style={{ left: pos.x, top: pos.y }}
+      style={{ left: pos.x, top: pos.y, maxHeight: maxH }}
     >
       <div className="global-ctx-brand">{editorCtx.inEditor ? "편집" : "pikabuddy"}</div>
+
+      {/* B I U S — compact icon row */}
+      {editorFormatRow && (
+        <>
+          <div className="ctx-icon-row">
+            <button className="ctx-icon-btn" onClick={() => editorCmd("toggleBold")} title="굵게"><strong>B</strong></button>
+            <button className="ctx-icon-btn" onClick={() => editorCmd("toggleItalic")} title="기울임"><em>I</em></button>
+            <button className="ctx-icon-btn" onClick={() => editorCmd("toggleUnderline")} title="밑줄"><u>U</u></button>
+            <button className="ctx-icon-btn" onClick={() => editorCmd("toggleStrike")} title="취소선"><s>S</s></button>
+          </div>
+          <div className="global-ctx-divider" />
+        </>
+      )}
+
       {items.map((item, i) => (
         <div key={i}>
           <button
@@ -331,6 +307,17 @@ export default function GlobalContextMenu() {
             {item.label}
           </button>
           {item.dividerAfter && <div className="global-ctx-divider" />}
+          {/* Alignment icon row — after the divider before delete */}
+          {item.dividerAfter && editorAlignRow && i === items.length - 2 && (
+            <>
+              <div className="ctx-icon-row">
+                <button className="ctx-icon-btn" onClick={() => editorCmd("setTextAlign", { alignment: "left" })} title="왼쪽">{"\u2190"}</button>
+                <button className="ctx-icon-btn" onClick={() => editorCmd("setTextAlign", { alignment: "center" })} title="가운데">{"\u2194"}</button>
+                <button className="ctx-icon-btn" onClick={() => editorCmd("setTextAlign", { alignment: "right" })} title="오른쪽">{"\u2192"}</button>
+              </div>
+              <div className="global-ctx-divider" />
+            </>
+          )}
         </div>
       ))}
     </div>
