@@ -83,7 +83,7 @@ export default function TierBadge({ compact = false }: { compact?: boolean }) {
   const [showDetail, setShowDetail] = useState(false);
 
   useEffect(() => {
-    api.get("/gamification/me/tier").then(({ data }) => setData(data)).catch(() => {});
+    api.get("/gamification/me/tier").then(({ data }) => setData(data)).catch((err) => console.error("[TierBadge] tier fetch failed:", err));
   }, []);
 
   if (!data) return null;
@@ -158,7 +158,7 @@ function TierDetailModal({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     api.get("/gamification/me/detail")
       .then(({ data }) => setDetail(data))
-      .catch(() => {})
+      .catch((err) => console.error("[TierBadge] detail fetch failed:", err))
       .finally(() => setLoading(false));
   }, []);
 
@@ -166,7 +166,7 @@ function TierDetailModal({ onClose }: { onClose: () => void }) {
     if (achievements) return;
     api.get("/gamification/me/achievements")
       .then(({ data }) => setAchievements(data))
-      .catch(() => {});
+      .catch((err) => console.error("[TierBadge] achievements fetch failed:", err));
   };
 
   return (

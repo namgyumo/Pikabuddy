@@ -64,7 +64,10 @@ export default function GlobalContextMenu() {
     []
   );
 
-  const handleClick = useCallback(() => setPos(null), []);
+  const handleClick = useCallback((e: MouseEvent) => {
+    if (menuRef.current && menuRef.current.contains(e.target as Node)) return;
+    setPos(null);
+  }, []);
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "Escape") setPos(null);

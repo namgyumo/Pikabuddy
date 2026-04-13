@@ -182,11 +182,16 @@ export const BlockHandleExtension = Extension.create({
             const after = resolved.after();
             editor.chain().focus().insertContentAt(after, { type: "paragraph" }).setTextSelection(after + 1).run();
             // Run action after insert transaction is applied
-            requestAnimationFrame(() => item.action(editor));
-          } catch {
+            requestAnimationFrame(() => {
+              try { item.action(editor); } catch (e) { console.error("[BlockMenu] action error:", e); }
+            });
+          } catch (e) {
+            console.error("[BlockMenu] insert fallback:", e);
             // Fallback: just run action at current cursor
-            editor.chain().focus().run();
-            item.action(editor);
+            try {
+              editor.chain().focus().run();
+              item.action(editor);
+            } catch (e2) { console.error("[BlockMenu] fallback action error:", e2); }
           }
         }, 0);
       };
