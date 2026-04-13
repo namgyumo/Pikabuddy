@@ -21,6 +21,11 @@ export const CitationExtension = Node.create({
   },
 
   renderHTML({ HTMLAttributes }) {
+    // Ensure URL has protocol prefix
+    let url = HTMLAttributes.sourceUrl || "";
+    if (url && !/^https?:\/\//i.test(url)) {
+      url = "https://" + url;
+    }
     return [
       "blockquote",
       mergeAttributes({ "data-type": "citation", class: "citation-block" }, HTMLAttributes),
@@ -28,8 +33,8 @@ export const CitationExtension = Node.create({
       [
         "footer",
         { class: "citation-source" },
-        HTMLAttributes.sourceUrl
-          ? ["a", { href: HTMLAttributes.sourceUrl, target: "_blank", rel: "noopener" }, HTMLAttributes.source || HTMLAttributes.sourceUrl]
+        url
+          ? ["a", { href: url, target: "_blank", rel: "noopener noreferrer" }, HTMLAttributes.source || HTMLAttributes.sourceUrl]
           : HTMLAttributes.source || "",
       ],
     ];

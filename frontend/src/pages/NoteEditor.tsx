@@ -623,6 +623,48 @@ export default function NoteEditor() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [handleSave, handleAnalyze]);
 
+  // ── 우클릭 메뉴 커맨드 수신 ──────────────────────────────
+  useEffect(() => {
+    if (!editor) return;
+    const handler = (e: Event) => {
+      const { cmd, args } = (e as CustomEvent).detail || {};
+      if (!cmd) return;
+      const chain = editor.chain().focus();
+      switch (cmd) {
+        case "toggleBold": chain.toggleBold().run(); break;
+        case "toggleItalic": chain.toggleItalic().run(); break;
+        case "toggleUnderline": chain.toggleUnderline().run(); break;
+        case "toggleStrike": chain.toggleStrike().run(); break;
+        case "toggleHeading": chain.toggleHeading({ level: args?.level || 1 }).run(); break;
+        case "setParagraph": chain.setParagraph().run(); break;
+        case "toggleBulletList": chain.toggleBulletList().run(); break;
+        case "toggleOrderedList": chain.toggleOrderedList().run(); break;
+        case "toggleTaskList": chain.toggleTaskList().run(); break;
+        case "toggleBlockquote": chain.toggleBlockquote().run(); break;
+        case "insertTable": chain.insertTable({ rows: args?.rows || 3, cols: args?.cols || 3, withHeaderRow: true }).run(); break;
+        case "insertImage": {
+          const u = prompt("이미지 URL");
+          if (u) chain.setImage({ src: u }).run();
+          break;
+        }
+        case "setHorizontalRule": chain.setHorizontalRule().run(); break;
+        case "insertMath": chain.insertContent({ type: "mathInline", attrs: { formula: "" } }).run(); break;
+        case "setTextAlign": chain.setTextAlign(args?.alignment || "left").run(); break;
+        case "deleteNode": {
+          // Delete current block node
+          const { from } = editor.state.selection;
+          const resolved = editor.state.doc.resolve(from);
+          const blockStart = resolved.before(1);
+          const blockEnd = resolved.after(1);
+          editor.chain().focus().deleteRange({ from: blockStart, to: blockEnd }).run();
+          break;
+        }
+      }
+    };
+    window.addEventListener("ctx-editor-cmd", handler);
+    return () => window.removeEventListener("ctx-editor-cmd", handler);
+  }, [editor]);
+
   // ── Ctrl+클릭으로 링크 열기 ──────────────────────────────
   useEffect(() => {
     if (!editor) return;

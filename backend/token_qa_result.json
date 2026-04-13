@@ -1,0 +1,229 @@
+{
+  "prompt_qa": [
+    {
+      "label": "weekly_report",
+      "model": "gemini-2.5-flash-lite",
+      "input_tokens": 110,
+      "output_tokens": 153,
+      "total_tokens": 263,
+      "cost_usd": 7.22e-05,
+      "elapsed_sec": 1.83
+    },
+    {
+      "label": "note_ask",
+      "model": "gemini-2.5-flash",
+      "input_tokens": 175,
+      "output_tokens": 102,
+      "total_tokens": 277,
+      "cost_usd": 0.0003075,
+      "elapsed_sec": 4.04
+    },
+    {
+      "label": "note_polish",
+      "model": "gemini-2.5-flash",
+      "input_tokens": 263,
+      "output_tokens": 158,
+      "total_tokens": 421,
+      "cost_usd": 0.00047389999999999997,
+      "elapsed_sec": 20.74
+    },
+    {
+      "label": "note_analyze",
+      "model": "gemini-2.5-flash",
+      "input_tokens": 299,
+      "output_tokens": 527,
+      "total_tokens": 826,
+      "cost_usd": 0.0014072000000000002,
+      "elapsed_sec": 12.38
+    },
+    {
+      "label": "tutor_chat",
+      "model": "gemini-2.5-flash",
+      "input_tokens": 189,
+      "output_tokens": 65,
+      "total_tokens": 254,
+      "cost_usd": 0.0002192,
+      "elapsed_sec": 5.18
+    },
+    {
+      "label": "code_analysis",
+      "model": "gemini-2.5-flash",
+      "input_tokens": 365,
+      "output_tokens": 1612,
+      "total_tokens": 1977,
+      "cost_usd": 0.0041395,
+      "elapsed_sec": 14.35
+    },
+    {
+      "label": "dashboard_insights",
+      "model": "gemini-2.5-flash-lite",
+      "input_tokens": 141,
+      "output_tokens": 629,
+      "total_tokens": 770,
+      "cost_usd": 0.0002657,
+      "elapsed_sec": 3.19
+    },
+    {
+      "label": "problem_outline",
+      "model": "gemini-2.5-flash",
+      "input_tokens": 97,
+      "output_tokens": 314,
+      "total_tokens": 411,
+      "cost_usd": 0.0008141,
+      "elapsed_sec": 5.48
+    },
+    {
+      "label": "test_case_gen",
+      "model": "gemini-2.5-flash-lite",
+      "input_tokens": 183,
+      "output_tokens": 494,
+      "total_tokens": 677,
+      "cost_usd": 0.00021590000000000002,
+      "elapsed_sec": 2.36
+    },
+    {
+      "label": "quiz_gen",
+      "model": "gemini-2.5-flash",
+      "input_tokens": 245,
+      "output_tokens": 957,
+      "total_tokens": 1202,
+      "cost_usd": 0.0024659999999999994,
+      "elapsed_sec": 16.39
+    }
+  ],
+  "simulation": {
+    "student_name": "김피카 (가상 학생)",
+    "student_daily": {
+      "actions": [
+        {
+          "action": "튜터에 질문 3회",
+          "model": "gemini-2.5-flash",
+          "count": 3,
+          "input_tokens": 567,
+          "output_tokens": 195,
+          "total_tokens": 762,
+          "cost_usd": 0.000658
+        },
+        {
+          "action": "코드 제출 AI 분석 1회",
+          "model": "gemini-2.5-flash",
+          "count": 1,
+          "input_tokens": 365,
+          "output_tokens": 1612,
+          "total_tokens": 1977,
+          "cost_usd": 0.004139
+        },
+        {
+          "action": "노트 작성 중 질문 2회",
+          "model": "gemini-2.5-flash",
+          "count": 2,
+          "input_tokens": 350,
+          "output_tokens": 204,
+          "total_tokens": 554,
+          "cost_usd": 0.000615
+        },
+        {
+          "action": "노트 다듬기 1회",
+          "model": "gemini-2.5-flash",
+          "count": 1,
+          "input_tokens": 263,
+          "output_tokens": 158,
+          "total_tokens": 421,
+          "cost_usd": 0.000474
+        },
+        {
+          "action": "노트 갭 분석 1회",
+          "model": "gemini-2.5-flash",
+          "count": 1,
+          "input_tokens": 299,
+          "output_tokens": 527,
+          "total_tokens": 826,
+          "cost_usd": 0.001407
+        },
+        {
+          "action": "주간 리포트 확인",
+          "model": "gemini-2.5-flash-lite",
+          "count": 1,
+          "input_tokens": 110,
+          "output_tokens": 153,
+          "total_tokens": 263,
+          "cost_usd": 7.2e-05
+        }
+      ],
+      "total_input_tokens": 1954,
+      "total_output_tokens": 2849,
+      "total_tokens": 4803,
+      "cost_usd": 0.007365,
+      "cost_krw": 10.16
+    },
+    "professor_daily": {
+      "actions": [
+        {
+          "action": "일반 문제 5개 아웃라인 생성",
+          "model": "gemini-2.5-flash",
+          "count": 1,
+          "input_tokens": 97,
+          "output_tokens": 314,
+          "total_tokens": 411,
+          "cost_usd": 0.000814
+        },
+        {
+          "action": "문제당 랜덤 TC 생성 x5",
+          "model": "gemini-2.5-flash-lite",
+          "count": 5,
+          "input_tokens": 915,
+          "output_tokens": 2470,
+          "total_tokens": 3385,
+          "cost_usd": 0.00108
+        },
+        {
+          "action": "퀴즈 3문제 생성",
+          "model": "gemini-2.5-flash",
+          "count": 1,
+          "input_tokens": 245,
+          "output_tokens": 957,
+          "total_tokens": 1202,
+          "cost_usd": 0.002466
+        },
+        {
+          "action": "대시보드 인사이트",
+          "model": "gemini-2.5-flash-lite",
+          "count": 1,
+          "input_tokens": 141,
+          "output_tokens": 629,
+          "total_tokens": 770,
+          "cost_usd": 0.000266
+        }
+      ],
+      "total_input_tokens": 1398,
+      "total_output_tokens": 4370,
+      "total_tokens": 5768,
+      "cost_usd": 0.004625,
+      "cost_krw": 6.38
+    },
+    "scaling": {
+      "30_students_daily_usd": 0.2256,
+      "30_students_daily_krw": 311.0,
+      "30_students_monthly_usd": 4.9629,
+      "30_students_monthly_krw": 6849.0,
+      "100_students_daily_usd": 0.7412,
+      "100_students_daily_krw": 1023.0,
+      "100_students_monthly_usd": 16.3056,
+      "100_students_monthly_krw": 22502.0
+    }
+  },
+  "pricing_reference": {
+    "gemini-2.5-flash": {
+      "input": 0.3,
+      "output": 2.5
+    },
+    "gemini-2.5-flash-lite": {
+      "input": 0.1,
+      "output": 0.4
+    },
+    "gemini-2.0-flash": {
+      "input": 0.1,
+      "output": 0.4
+    }
+  }
+}
