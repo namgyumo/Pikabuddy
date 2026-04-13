@@ -98,6 +98,7 @@ async def list_notes(course_id: str, user: dict = Depends(get_current_user)):
 
     query = supabase.table("notes").select("*").eq("course_id", course_id)
 
+    # 모든 역할에서 본인 노트만 조회 (교수의 학생 노트 열람은 /student-notes 경로 사용)
     if user["role"] == "student":
         from modules.teams.router import get_user_team_ids
         team_ids = get_user_team_ids(supabase, user["id"], course_id)
@@ -106,6 +107,9 @@ async def list_notes(course_id: str, user: dict = Depends(get_current_user)):
             query = query.or_(f"student_id.eq.{user['id']},team_id.in.({team_filter})")
         else:
             query = query.eq("student_id", user["id"])
+    else:
+        # 교수/personal: 본인이 작성한 노트만
+        query = query.eq("student_id", uid)
 
     result = query.order("updated_at", desc=True).execute()
     return result.data
@@ -262,15 +266,18 @@ async def get_note_snapshot(note_id: str, snapshot_id: str, user: dict = Depends
 async def get_graph_data(course_id: str, user: dict = Depends(get_current_user)):
     """노트 그래프 데이터 — 노드 + 엣지 (부모-자식 + 링크 + 카테고리 유사도)"""
     supabase = get_supabase()
+    uid = user["id"]
     query = supabase.table("notes").select("*").eq("course_id", course_id)
     if user["role"] == "student":
         from modules.teams.router import get_user_team_ids
-        team_ids = get_user_team_ids(supabase, user["id"], course_id)
+        team_ids = get_user_team_ids(supabase, uid, course_id)
         if team_ids:
             team_filter = ",".join(team_ids)
-            query = query.or_(f"student_id.eq.{user['id']},team_id.in.({team_filter})")
+            query = query.or_(f"student_id.eq.{uid},team_id.in.({team_filter})")
         else:
-            query = query.eq("student_id", user["id"])
+            query = query.eq("student_id", uid)
+    else:
+        query = query.eq("student_id", uid)
     notes_result = query.order("created_at").execute()
     notes = notes_result.data
 
@@ -481,18 +488,20 @@ async def get_unified_graph(user: dict = Depends(get_current_user)):
 
     course_id_set = set(c["id"] for c in course_list)
 
-    # 2) 모든 코스의 노트를 한번에 가져오기
+    # 2) 모든 코스의 노트를 한번에 가져오기 (본인 노트만)
     all_notes: list[dict] = []
     for c in course_list:
         query = supabase.table("notes").select("*").eq("course_id", c["id"])
         if user["role"] == "student":
             from modules.teams.router import get_user_team_ids
-            team_ids = get_user_team_ids(supabase, user["id"], c["id"])
+            team_ids = get_user_team_ids(supabase, uid, c["id"])
             if team_ids:
                 team_filter = ",".join(team_ids)
-                query = query.or_(f"student_id.eq.{user['id']},team_id.in.({team_filter})")
+                query = query.or_(f"student_id.eq.{uid},team_id.in.({team_filter})")
             else:
-                query = query.eq("student_id", user["id"])
+                query = query.eq("student_id", uid)
+        else:
+            query = query.eq("student_id", uid)
         result = query.order("created_at").execute()
         all_notes.extend(result.data or [])
 
@@ -718,9 +727,9 @@ async def get_backlinks(note_id: str, user: dict = Depends(get_current_user)):
     if not note.data:
         raise HTTPException(status_code=404)
 
-    query = supabase.table("notes").select("id, title, content, updated_at").eq("course_id", note.data["course_id"])
-    if user["role"] == "student":
-        query = query.eq("student_id", user["id"])
+    query = supabase.table("notes").select("id, title, content, updated_at").eq(
+        "course_id", note.data["course_id"]
+    ).eq("student_id", user["id"])
     all_notes = query.execute()
 
     backlinks = []
@@ -747,12 +756,10 @@ async def get_recommendations(note_id: str, user: dict = Depends(get_current_use
     if not note.data:
         raise HTTPException(status_code=404)
 
-    # 같은 과목의 다른 노트들
+    # 같은 과목의 다른 노트들 (본인 노트만)
     query = supabase.table("notes").select("id, title, content, understanding_score, updated_at").eq(
         "course_id", note.data["course_id"]
-    )
-    if user["role"] == "student":
-        query = query.eq("student_id", user["id"])
+    ).eq("student_id", user["id"])
     all_notes = query.execute()
 
     target_text = _tiptap_to_markdown(note.data.get("content") or {}).lower()
