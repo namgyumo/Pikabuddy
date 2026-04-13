@@ -595,7 +595,7 @@ def _run_asm(code: str, stdin_data: str) -> dict:
             asm_result["error"] = "어셈블 에러:\n" + asm_result["error"]
             return asm_result
         # Link
-        link_result = _execute(["gcc", "-no-pie", obj, "-o", exe])
+        link_result = _execute(["gcc", "-no-pie", "-nostartfiles", obj, "-o", exe])
         if not link_result["success"]:
             link_result["error"] = "��크 에러:\n" + link_result["error"]
             return link_result
@@ -615,7 +615,7 @@ def _run_asm_judge(code: str, stdin_data: str, timeout: float) -> dict:
         asm_res = _run_with_timeout(["nasm", "-f", "elf64", src, "-o", obj], "", 10)
         if not asm_res["success"]:
             return {"success": False, "output": "", "error": "어셈블 에러:\n" + asm_res["error"], "timeout": False}
-        link_res = _run_with_timeout(["gcc", "-no-pie", obj, "-o", exe], "", 10)
+        link_res = _run_with_timeout(["gcc", "-no-pie", "-nostartfiles", obj, "-o", exe], "", 10)
         if not link_res["success"]:
             return {"success": False, "output": "", "error": "링크 에러:\n" + link_res["error"], "timeout": False}
         return _run_with_timeout([exe], stdin_data, timeout)
