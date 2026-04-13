@@ -58,6 +58,9 @@ export default function Landing() {
           <button className="landing-nav-link" onClick={() => scrollTo("how-it-works")}>
             {"\uC0AC\uC6A9\uBC95"}
           </button>
+          <button className="landing-nav-link" onClick={() => scrollTo("guide-section")}>
+            {"\uAC00\uC774\uB4DC"}
+          </button>
           <button
             className="btn btn-primary btn-sm"
             onClick={signInWithGoogle}
@@ -306,6 +309,61 @@ export default function Landing() {
             <div className="step-number">4</div>
             <h4>AI {"\uC778\uC0AC\uC774\uD2B8"}</h4>
             <p>AI{"\uAC00"} {"\uD559\uC2B5"} {"\uACFC\uC815\uC744"} {"\uBD84\uC11D\uD558\uACE0"} {"\uD53C\uB4DC\uBC31"} {"\uC81C\uACF5"}</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Guide */}
+      <section className="landing-section" id="guide-section" style={{ padding: "80px 24px" }}>
+        <h2 className="landing-section-title">{"\uC0AC\uC6A9"} {"\uAC00\uC774\uB4DC"}</h2>
+        <p className="landing-section-sub">
+          PikaBuddy{"\uC758"} {"\uBAA8\uB4E0"} {"\uAE30\uB2A5\uC744"} {"\uC0C1\uC138\uD558\uAC8C"} {"\uC548\uB0B4\uD569\uB2C8\uB2E4"}
+        </p>
+        <div style={{ maxWidth: 800, margin: "0 auto" }}>
+          <div className="showcase-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))" }}>
+            <div className="showcase-card" style={{ textAlign: "center", padding: "28px 20px" }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>{"\uD83D\uDCDA"}</div>
+              <h4 style={{ marginBottom: 6 }}>{"\uAC15\uC758"} {"\uAD00\uB9AC"}</h4>
+              <p style={{ fontSize: 13, color: "var(--text-light)" }}>
+                {"\uAC1C\uC124"}, {"\uCD08\uB300"}, {"\uCC38\uAC00"}, {"\uCE98\uB9B0\uB354"}, {"\uAC15\uC758\uC790\uB8CC"}
+              </p>
+            </div>
+            <div className="showcase-card" style={{ textAlign: "center", padding: "28px 20px" }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>{"\uD83D\uDCBB"}</div>
+              <h4 style={{ marginBottom: 6 }}>{"\uCF54\uB4DC"} {"\uC5D0\uB514\uD130"}</h4>
+              <p style={{ fontSize: 13, color: "var(--text-light)" }}>
+                AI {"\uD53C\uB4DC\uBC31"}, {"\uD29C\uD130"}, {"\uBE14\uB85D"} {"\uCF54\uB529"}, {"\uC2DC\uD5D8"} {"\uBAA8\uB4DC"}
+              </p>
+            </div>
+            <div className="showcase-card" style={{ textAlign: "center", padding: "28px 20px" }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>{"\uD83D\uDCDD"}</div>
+              <h4 style={{ marginBottom: 6 }}>{"\uB178\uD2B8"} & {"\uAE00\uC4F0\uAE30"}</h4>
+              <p style={{ fontSize: 13, color: "var(--text-light)" }}>
+                {"\uBE14\uB85D"} {"\uC5D0\uB514\uD130"}, {"\uC218\uC2DD"}, {"\uB4DC\uB85C\uC789"}, AI {"\uBD84\uC11D"}
+              </p>
+            </div>
+            <div className="showcase-card" style={{ textAlign: "center", padding: "28px 20px" }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>{"\uD83C\uDFAE"}</div>
+              <h4 style={{ marginBottom: 6 }}>{"\uAC8C\uC774\uBBF8\uD53C\uCF00\uC774\uC158"}</h4>
+              <p style={{ fontSize: 13, color: "var(--text-light)" }}>
+                EXP, {"\uD2F0\uC5B4"}, {"\uC2A4\uD2B8\uB9AD"}, {"\uB9AC\uB354\uBCF4\uB4DC"}, {"\uBBF8\uC158"}, {"\uBC30\uC9C0"}
+              </p>
+            </div>
+          </div>
+          <div style={{ textAlign: "center", marginTop: 32 }}>
+            <a
+              href="/guide.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-primary btn-lg"
+              style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 8 }}
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M3 3h9l4 4v8H3V3z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M6.5 10h5M6.5 12.5h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              </svg>
+              {"\uC0AC\uC6A9"} {"\uAC00\uC774\uB4DC"} {"\uC804\uCCB4"} {"\uBCF4\uAE30"}
+            </a>
           </div>
         </div>
       </section>
