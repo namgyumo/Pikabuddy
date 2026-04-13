@@ -7285,9 +7285,9 @@ textarea.form-input {
 .global-ctx-menu {
   position: fixed;
   z-index: 10000;
-  min-width: 200px;
-  max-height: calc(100vh - 16px);
+  min-width: 180px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   background: rgba(15, 23, 42, 0.95);
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -7298,6 +7298,10 @@ textarea.form-input {
     0 0 80px rgba(0, 74, 198, 0.08);
   animation: ctxMenuIn 0.12s ease-out;
 }
+/* thin scrollbar for context menu */
+.global-ctx-menu::-webkit-scrollbar { width: 4px; }
+.global-ctx-menu::-webkit-scrollbar-track { background: transparent; }
+.global-ctx-menu::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
 @keyframes ctxMenuIn {
   from { opacity: 0; transform: scale(0.95) translateY(-4px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
@@ -7351,6 +7355,30 @@ textarea.form-input {
 .global-ctx-item.ctx-danger:hover {
   background: rgba(248, 113, 113, 0.15);
   color: #fca5a5;
+}
+/* compact icon button row (B I U S / alignment) */
+.ctx-icon-row {
+  display: flex;
+  gap: 2px;
+  padding: 4px 6px;
+}
+.ctx-icon-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 0;
+  border: none;
+  background: transparent;
+  color: #cbd5e1;
+  font-size: 13px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.ctx-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f1f5f9;
 }
 
 /* ===== 404 Not Found Page ===== */
