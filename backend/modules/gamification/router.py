@@ -42,6 +42,9 @@ EXP_REWARDS = {
     "exam_complete": 20,         # 시험 완료
     "vote_participate": 5,       # 투표 참여
     "message_send": 3,           # 메시지 전송
+    "mission_reward": 0,         # 미션 보상 (동적)
+    "professor_award": 0,        # 교수 보상 (동적)
+    "streak_bonus": 0,           # 스트릭 보너스 (동적)
 }
 
 EVENT_LABELS = {
@@ -58,6 +61,9 @@ EVENT_LABELS = {
     "exam_complete": "시험 완료",
     "vote_participate": "투표 참여",
     "message_send": "메시지 전송",
+    "mission_reward": "주간 미션 보상",
+    "professor_award": "교수 보상",
+    "streak_bonus": "스트릭 보너스",
 }
 
 
@@ -350,3 +356,213 @@ async def get_new_badges(after: str | None = None, user: dict = Depends(get_curr
 async def list_tiers():
     """전체 티어 목록"""
     return [{"id": tid, "min_exp": exp, **_tier_display(tid)} for tid, exp in TIERS]
+
+
+@router.get("/me/streak")
+async def get_my_streak(user: dict = Depends(get_current_user)):
+    """내 연속 출석 스트릭 조회"""
+    from modules.gamification.badge_defs import _count_exp_log_days, _calc_streak
+    supabase = get_supabase()
+    dates = _count_exp_log_days(supabase, user["id"])
+    streak = _calc_streak(dates)
+    total_days = len(dates)
+    return {"streak": streak, "total_days": total_days}
+
+
+@router.get("/me/heatmap")
+async def get_my_heatmap(user: dict = Depends(get_current_user)):
+    """활동 히트맵 (최근 180일)"""
+    from datetime import date, timedelta
+    supabase = get_supabase()
+    uid = user["id"]
+    since = (date.today() - timedelta(days=180)).isoformat()
+
+    logs = supabase.table("exp_logs").select("exp_amount, created_at") \
+        .eq("user_id", uid).gte("created_at", since).execute()
+
+    day_map: dict[str, int] = {}
+    for log in (logs.data or []):
+        d = log["created_at"][:10]
+        day_map[d] = day_map.get(d, 0) + log["exp_amount"]
+
+    # Fill all dates
+    heatmap = []
+    cur = date.today() - timedelta(days=179)
+    while cur <= date.today():
+        d_str = cur.isoformat()
+        heatmap.append({"date": d_str, "exp": day_map.get(d_str, 0)})
+        cur += timedelta(days=1)
+
+    return heatmap
+
+
+@router.get("/leaderboard/{course_id}")
+async def get_leaderboard(course_id: str, period: str = Query("all", regex="^(week|month|all)$"),
+                          user: dict = Depends(get_current_user)):
+    """강의별 EXP 리더보드"""
+    from datetime import date, timedelta
+    supabase = get_supabase()
+
+    # Get students in course
+    enrollments = supabase.table("enrollments").select("student_id").eq("course_id", course_id).execute()
+    student_ids = [e["student_id"] for e in (enrollments.data or [])]
+    # Also include professor
+    course = supabase.table("courses").select("professor_id").eq("id", course_id).execute()
+    if course.data:
+        student_ids.append(course.data[0]["professor_id"])
+
+    if not student_ids:
+        return []
+
+    # Get EXP for each user
+    board = []
+    for sid in student_ids:
+        q = supabase.table("exp_logs").select("exp_amount, created_at").eq("user_id", sid)
+        if period == "week":
+            since = (date.today() - timedelta(days=7)).isoformat()
+            q = q.gte("created_at", since)
+        elif period == "month":
+            since = (date.today() - timedelta(days=30)).isoformat()
+            q = q.gte("created_at", since)
+        logs = q.execute()
+        total = sum(l["exp_amount"] for l in (logs.data or []))
+        if total > 0:
+            u = supabase.table("users").select("name, avatar_url").eq("id", sid).execute()
+            name = (u.data[0]["name"] if u.data else "알 수 없음")
+            avatar = (u.data[0].get("avatar_url") if u.data else None)
+            exp_data = supabase.table("user_exp").select("tier").eq("user_id", sid).execute()
+            tier = exp_data.data[0]["tier"] if exp_data.data else "seed_iv"
+            board.append({
+                "user_id": sid,
+                "name": name,
+                "avatar_url": avatar,
+                "exp": total,
+                "tier": tier,
+                "is_me": sid == user["id"],
+            })
+
+    board.sort(key=lambda x: -x["exp"])
+    for i, item in enumerate(board):
+        item["rank"] = i + 1
+
+    return board
+
+
+@router.get("/me/missions")
+async def get_my_missions(user: dict = Depends(get_current_user)):
+    """주간 미션 조회 — 매주 월요일 기준으로 자동 생성"""
+    from datetime import date, timedelta
+    supabase = get_supabase()
+    uid = user["id"]
+
+    # Current week start (Monday)
+    today = date.today()
+    week_start = today - timedelta(days=today.weekday())
+    week_key = week_start.isoformat()
+
+    # Define missions for this week (deterministic from week_key)
+    import hashlib
+    seed = int(hashlib.md5(week_key.encode()).hexdigest()[:8], 16)
+
+    all_missions = [
+        {"id": "note_3", "title": "노트 3개 작성", "desc": "이번 주 노트 3개를 작성하세요", "target": 3, "exp": 30, "event": "note_create"},
+        {"id": "note_5", "title": "노트 5개 작성", "desc": "이번 주 노트 5개를 작성하세요", "target": 5, "exp": 50, "event": "note_create"},
+        {"id": "submit_2", "title": "과제 2개 제출", "desc": "이번 주 과제 2개를 제출하세요", "target": 2, "exp": 40, "event": "assignment_submit"},
+        {"id": "submit_3", "title": "과제 3개 제출", "desc": "이번 주 과제 3개를 제출하세요", "target": 3, "exp": 60, "event": "assignment_submit"},
+        {"id": "msg_5", "title": "메시지 5개 보내기", "desc": "이번 주 메시지 5개를 보내세요", "target": 5, "exp": 20, "event": "message_send"},
+        {"id": "msg_10", "title": "메시지 10개 보내기", "desc": "이번 주 메시지 10개를 보내세요", "target": 10, "exp": 35, "event": "message_send"},
+        {"id": "analyze_2", "title": "AI 분석 2회", "desc": "이번 주 AI 분석을 2회 실행하세요", "target": 2, "exp": 25, "event": "note_analyze"},
+        {"id": "login_5", "title": "5일 접속", "desc": "이번 주 5일 이상 접속하세요", "target": 5, "exp": 30, "event": "daily_login"},
+        {"id": "tutor_3", "title": "AI 튜터 3회 질문", "desc": "이번 주 AI 튜터에게 3번 질문하세요", "target": 3, "exp": 25, "event": "tutor_chat"},
+        {"id": "comment_3", "title": "코멘트 3개 작성", "desc": "이번 주 코멘트 3개를 작성하세요", "target": 3, "exp": 20, "event": "comment"},
+    ]
+
+    # Pick 4 missions for this week
+    import random
+    rng = random.Random(seed)
+    weekly = rng.sample(all_missions, min(4, len(all_missions)))
+
+    # Calculate progress for each mission
+    week_end = week_start + timedelta(days=7)
+    missions = []
+    for m in weekly:
+        logs = supabase.table("exp_logs").select("id", count="exact") \
+            .eq("user_id", uid).eq("event_type", m["event"]) \
+            .gte("created_at", week_start.isoformat()) \
+            .lt("created_at", week_end.isoformat()).execute()
+        current = logs.count or 0
+        completed = current >= m["target"]
+
+        # Check if reward already claimed
+        reward_key = f"mission_{week_key}_{m['id']}"
+        claimed = supabase.table("exp_logs").select("id") \
+            .eq("user_id", uid).eq("event_type", "mission_reward") \
+            .eq("ref_id", reward_key).execute()
+        already_claimed = bool(claimed.data)
+
+        missions.append({
+            "id": m["id"],
+            "title": m["title"],
+            "desc": m["desc"],
+            "target": m["target"],
+            "current": min(current, m["target"]),
+            "exp_reward": m["exp"],
+            "completed": completed,
+            "claimed": already_claimed,
+        })
+
+    return {"week_start": week_key, "missions": missions}
+
+
+@router.post("/me/missions/{mission_id}/claim")
+async def claim_mission_reward(mission_id: str, user: dict = Depends(get_current_user)):
+    """완료된 주간 미션 보상 수령"""
+    from datetime import date, timedelta
+    supabase = get_supabase()
+    uid = user["id"]
+
+    today = date.today()
+    week_start = today - timedelta(days=today.weekday())
+    week_key = week_start.isoformat()
+    reward_key = f"mission_{week_key}_{mission_id}"
+
+    # Check not already claimed
+    existing = supabase.table("exp_logs").select("id") \
+        .eq("user_id", uid).eq("event_type", "mission_reward") \
+        .eq("ref_id", reward_key).execute()
+    if existing.data:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="이미 보상을 수령했습니다.")
+
+    # Verify mission is completed (re-fetch missions)
+    missions_resp = await get_my_missions(user)
+    mission = next((m for m in missions_resp["missions"] if m["id"] == mission_id), None)
+    if not mission or not mission["completed"]:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="미션이 완료되지 않았습니다.")
+
+    # Award EXP
+    award_exp(uid, "mission_reward", reward_key, mission["exp_reward"])
+    return {"message": "보상을 수령했습니다!", "exp": mission["exp_reward"]}
+
+
+@router.post("/award")
+async def professor_award_exp(
+    body: dict,
+    user: dict = Depends(get_current_user),
+):
+    """교수가 학생에게 보너스 EXP 부여"""
+    from fastapi import HTTPException
+
+    if user.get("role") not in ("professor", "personal"):
+        raise HTTPException(status_code=403, detail="교수만 사용할 수 있습니다.")
+
+    student_id = body.get("student_id")
+    amount = body.get("amount", 0)
+    reason = body.get("reason", "교수 보상")
+
+    if not student_id or amount <= 0 or amount > 500:
+        raise HTTPException(status_code=400, detail="유효하지 않은 요청입니다. (최대 500 EXP)")
+
+    award_exp(student_id, "professor_award", f"award_{user['id']}_{student_id}_{amount}", amount)
+    return {"message": f"{amount} EXP를 부여했습니다.", "amount": amount}

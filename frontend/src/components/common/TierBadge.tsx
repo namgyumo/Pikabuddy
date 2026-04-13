@@ -69,6 +69,22 @@ interface AchievementData {
   earned_count: number;
 }
 
+interface Mission {
+  id: string;
+  title: string;
+  desc: string;
+  target: number;
+  current: number;
+  exp_reward: number;
+  completed: boolean;
+  claimed: boolean;
+}
+
+interface HeatmapDay {
+  date: string;
+  exp: number;
+}
+
 const TIER_ICONS: Record<string, string> = {
   seed: "\u{1F331}",
   sprout: "\u{1F33F}",
@@ -80,10 +96,12 @@ const TIER_ICONS: Record<string, string> = {
 
 export default function TierBadge({ compact = false }: { compact?: boolean }) {
   const [data, setData] = useState<TierData | null>(null);
+  const [streak, setStreak] = useState<number>(0);
   const [showDetail, setShowDetail] = useState(false);
 
   useEffect(() => {
-    api.get("/gamification/me/tier").then(({ data }) => setData(data)).catch((err) => console.error("[TierBadge] tier fetch failed:", err));
+    api.get("/gamification/me/tier").then(({ data }) => setData(data)).catch(() => {});
+    api.get("/gamification/me/streak").then(({ data }) => setStreak(data.streak)).catch(() => {});
   }, []);
 
   if (!data) return null;
@@ -105,6 +123,11 @@ export default function TierBadge({ compact = false }: { compact?: boolean }) {
           <span>{icon}</span>
           <span style={{ fontWeight: 600, color: tier.color }}>{tier.display}</span>
           <span style={{ color: "var(--on-surface-variant)", fontSize: 10 }}>{total_exp} EXP</span>
+          {streak > 0 && (
+            <span style={{ fontSize: 10, color: "#f59e0b", fontWeight: 700 }}>
+              {"\uD83D\uDD25"}{streak}
+            </span>
+          )}
         </div>
         {showDetail && <TierDetailModal onClose={() => setShowDetail(false)} />}
       </>
@@ -123,10 +146,16 @@ export default function TierBadge({ compact = false }: { compact?: boolean }) {
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
           <span style={{ fontSize: 24 }}>{icon}</span>
-          <div>
+          <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 700, fontSize: 14, color: tier.color }}>{tier.display}</div>
             <div style={{ fontSize: 11, color: "var(--on-surface-variant)" }}>{total_exp} EXP</div>
           </div>
+          {streak > 0 && (
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 16 }}>{"\uD83D\uDD25"}</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#f59e0b" }}>{streak}일</div>
+            </div>
+          )}
         </div>
         <div style={{ height: 6, borderRadius: 3, background: "var(--outline-variant)", overflow: "hidden" }}>
           <div style={{
@@ -149,25 +178,42 @@ export default function TierBadge({ compact = false }: { compact?: boolean }) {
 
 // ── Detail Modal ──
 
+type TabType = "tier" | "achievements" | "missions" | "heatmap";
+
 function TierDetailModal({ onClose }: { onClose: () => void }) {
-  const [tab, setTab] = useState<"tier" | "achievements">("tier");
+  const [tab, setTab] = useState<TabType>("tier");
   const [detail, setDetail] = useState<DetailData | null>(null);
   const [achievements, setAchievements] = useState<AchievementData | null>(null);
+  const [missions, setMissions] = useState<{ week_start: string; missions: Mission[] } | null>(null);
+  const [heatmap, setHeatmap] = useState<HeatmapDay[] | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     api.get("/gamification/me/detail")
       .then(({ data }) => setDetail(data))
-      .catch((err) => console.error("[TierBadge] detail fetch failed:", err))
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
-  const loadAchievements = () => {
-    if (achievements) return;
-    api.get("/gamification/me/achievements")
-      .then(({ data }) => setAchievements(data))
-      .catch((err) => console.error("[TierBadge] achievements fetch failed:", err));
+  const loadTab = (t: TabType) => {
+    setTab(t);
+    if (t === "achievements" && !achievements) {
+      api.get("/gamification/me/achievements").then(({ data }) => setAchievements(data)).catch(() => {});
+    }
+    if (t === "missions" && !missions) {
+      api.get("/gamification/me/missions").then(({ data }) => setMissions(data)).catch(() => {});
+    }
+    if (t === "heatmap" && !heatmap) {
+      api.get("/gamification/me/heatmap").then(({ data }) => setHeatmap(data)).catch(() => {});
+    }
   };
+
+  const tabs: { key: TabType; label: string }[] = [
+    { key: "tier", label: "티어" },
+    { key: "achievements", label: "도전과제" },
+    { key: "missions", label: "미션" },
+    { key: "heatmap", label: "활동" },
+  ];
 
   return (
     <div
@@ -180,7 +226,7 @@ function TierDetailModal({ onClose }: { onClose: () => void }) {
       <div
         style={{
           background: "var(--surface)", borderRadius: "var(--radius-lg)",
-          padding: 0, maxWidth: 520, width: "92vw", maxHeight: "85vh",
+          padding: 0, maxWidth: 560, width: "94vw", maxHeight: "88vh",
           overflow: "hidden", boxShadow: "var(--shadow-lg)",
           display: "flex", flexDirection: "column",
         }}
@@ -189,30 +235,23 @@ function TierDetailModal({ onClose }: { onClose: () => void }) {
         {/* Tab bar */}
         <div style={{
           display: "flex", borderBottom: "1px solid var(--outline-variant)",
-          background: "var(--surface-container-low)",
+          background: "var(--surface-container-low)", overflowX: "auto",
         }}>
-          <button
-            onClick={() => setTab("tier")}
-            style={{
-              flex: 1, padding: "12px 0", border: "none", background: "none",
-              cursor: "pointer", fontSize: 13, fontWeight: tab === "tier" ? 700 : 400,
-              color: tab === "tier" ? "var(--primary)" : "var(--on-surface-variant)",
-              borderBottom: tab === "tier" ? "2px solid var(--primary)" : "2px solid transparent",
-            }}
-          >
-            티어 정보
-          </button>
-          <button
-            onClick={() => { setTab("achievements"); loadAchievements(); }}
-            style={{
-              flex: 1, padding: "12px 0", border: "none", background: "none",
-              cursor: "pointer", fontSize: 13, fontWeight: tab === "achievements" ? 700 : 400,
-              color: tab === "achievements" ? "var(--primary)" : "var(--on-surface-variant)",
-              borderBottom: tab === "achievements" ? "2px solid var(--primary)" : "2px solid transparent",
-            }}
-          >
-            도전과제
-          </button>
+          {tabs.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => loadTab(t.key)}
+              style={{
+                flex: 1, padding: "11px 0", border: "none", background: "none",
+                cursor: "pointer", fontSize: 13, fontWeight: tab === t.key ? 700 : 400,
+                color: tab === t.key ? "var(--primary)" : "var(--on-surface-variant)",
+                borderBottom: tab === t.key ? "2px solid var(--primary)" : "2px solid transparent",
+                whiteSpace: "nowrap", minWidth: 60,
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
 
         {/* Content */}
@@ -223,8 +262,16 @@ function TierDetailModal({ onClose }: { onClose: () => void }) {
             </div>
           ) : tab === "tier" ? (
             <TierTab detail={detail} />
-          ) : (
+          ) : tab === "achievements" ? (
             <AchievementsTab data={achievements} />
+          ) : tab === "missions" ? (
+            <MissionsTab data={missions} onClaim={(id) => {
+              api.post(`/gamification/me/missions/${id}/claim`).then(() => {
+                api.get("/gamification/me/missions").then(({ data }) => setMissions(data));
+              }).catch(() => {});
+            }} />
+          ) : (
+            <HeatmapTab data={heatmap} />
           )}
         </div>
 
@@ -375,6 +422,178 @@ function TierTab({ detail }: { detail: DetailData | null }) {
             </div>
           );
         })}
+      </div>
+    </>
+  );
+}
+
+
+// ── Missions Tab ──
+
+function MissionsTab({ data, onClaim }: { data: { week_start: string; missions: Mission[] } | null; onClaim: (id: string) => void }) {
+  if (!data) {
+    return <div style={{ textAlign: "center", padding: 40, color: "var(--on-surface-variant)" }}>로딩 중...</div>;
+  }
+
+  const weekLabel = new Date(data.week_start).toLocaleDateString("ko-KR", { month: "long", day: "numeric" }) + " 주간";
+
+  return (
+    <>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>주간 미션</div>
+          <div style={{ fontSize: 12, color: "var(--on-surface-variant)" }}>{weekLabel}</div>
+        </div>
+        <div style={{ fontSize: 11, color: "var(--on-surface-variant)" }}>
+          {data.missions.filter(m => m.completed).length}/{data.missions.length} 완료
+        </div>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {data.missions.map((m) => {
+          const pct = Math.min(100, Math.round((m.current / m.target) * 100));
+          return (
+            <div key={m.id} style={{
+              padding: "14px 16px", borderRadius: 10,
+              background: m.claimed ? "var(--surface-container)" : "var(--surface-container-low)",
+              border: m.completed && !m.claimed ? "1px solid var(--primary)" : "1px solid var(--outline-variant)",
+              opacity: m.claimed ? 0.6 : 1,
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>{m.title}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--primary)" }}>+{m.exp_reward} EXP</div>
+              </div>
+              <div style={{ fontSize: 12, color: "var(--on-surface-variant)", marginBottom: 8 }}>{m.desc}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ flex: 1, height: 6, borderRadius: 3, background: "var(--outline-variant)", overflow: "hidden" }}>
+                  <div style={{
+                    height: "100%", width: `${pct}%`, borderRadius: 3,
+                    background: m.completed ? "var(--success, #22c55e)" : "var(--primary)",
+                    transition: "width 0.3s",
+                  }} />
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 600, color: "var(--on-surface-variant)", minWidth: 45, textAlign: "right" }}>
+                  {m.current}/{m.target}
+                </span>
+                {m.completed && !m.claimed && (
+                  <button
+                    onClick={() => onClaim(m.id)}
+                    style={{
+                      padding: "4px 12px", borderRadius: 6, border: "none",
+                      background: "var(--primary)", color: "var(--on-primary)",
+                      cursor: "pointer", fontSize: 11, fontWeight: 700,
+                    }}
+                  >
+                    수령
+                  </button>
+                )}
+                {m.claimed && (
+                  <span style={{ fontSize: 11, color: "var(--success, #22c55e)", fontWeight: 600 }}>완료</span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+
+// ── Heatmap Tab ──
+
+function HeatmapTab({ data }: { data: HeatmapDay[] | null }) {
+  if (!data) {
+    return <div style={{ textAlign: "center", padding: 40, color: "var(--on-surface-variant)" }}>로딩 중...</div>;
+  }
+
+  const maxExp = Math.max(...data.map(d => d.exp), 1);
+
+  const getColor = (exp: number) => {
+    if (exp === 0) return "var(--surface-container)";
+    const intensity = Math.min(exp / maxExp, 1);
+    if (intensity < 0.25) return "rgba(34,197,94,0.2)";
+    if (intensity < 0.5) return "rgba(34,197,94,0.4)";
+    if (intensity < 0.75) return "rgba(34,197,94,0.65)";
+    return "rgba(34,197,94,0.9)";
+  };
+
+  // Summary stats
+  const totalExp = data.reduce((s, d) => s + d.exp, 0);
+  const activeDays = data.filter(d => d.exp > 0).length;
+  const last30 = data.slice(-30);
+  const last30Exp = last30.reduce((s, d) => s + d.exp, 0);
+
+  // Group by week for grid display (last 26 weeks = 182 days)
+  const weeks: HeatmapDay[][] = [];
+  let currentWeek: HeatmapDay[] = [];
+
+  // Pad start to align with Sunday
+  const firstDate = new Date(data[0]?.date || "");
+  const padStart = firstDate.getDay(); // 0=Sun
+  for (let i = 0; i < padStart; i++) {
+    currentWeek.push({ date: "", exp: -1 });
+  }
+
+  for (const d of data) {
+    currentWeek.push(d);
+    if (currentWeek.length === 7) {
+      weeks.push(currentWeek);
+      currentWeek = [];
+    }
+  }
+  if (currentWeek.length > 0) weeks.push(currentWeek);
+
+  return (
+    <>
+      {/* Stats */}
+      <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
+        <div style={{ flex: 1, padding: "12px", borderRadius: 8, background: "var(--surface-container-low)", textAlign: "center" }}>
+          <div style={{ fontWeight: 700, fontSize: 18, color: "var(--primary)" }}>{totalExp}</div>
+          <div style={{ fontSize: 11, color: "var(--on-surface-variant)" }}>총 EXP (6개월)</div>
+        </div>
+        <div style={{ flex: 1, padding: "12px", borderRadius: 8, background: "var(--surface-container-low)", textAlign: "center" }}>
+          <div style={{ fontWeight: 700, fontSize: 18, color: "var(--success, #22c55e)" }}>{activeDays}</div>
+          <div style={{ fontSize: 11, color: "var(--on-surface-variant)" }}>활동일</div>
+        </div>
+        <div style={{ flex: 1, padding: "12px", borderRadius: 8, background: "var(--surface-container-low)", textAlign: "center" }}>
+          <div style={{ fontWeight: 700, fontSize: 18, color: "#f59e0b" }}>{last30Exp}</div>
+          <div style={{ fontSize: 11, color: "var(--on-surface-variant)" }}>최근 30일 EXP</div>
+        </div>
+      </div>
+
+      {/* Heatmap grid */}
+      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8 }}>활동 히트맵</div>
+      <div style={{ overflowX: "auto", paddingBottom: 8 }}>
+        <div style={{ display: "flex", gap: 2, minWidth: weeks.length * 14 }}>
+          {weeks.map((week, wi) => (
+            <div key={wi} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {week.map((day, di) => (
+                <div
+                  key={di}
+                  title={day.exp >= 0 ? `${day.date}: ${day.exp} EXP` : ""}
+                  style={{
+                    width: 12, height: 12, borderRadius: 2,
+                    background: day.exp < 0 ? "transparent" : getColor(day.exp),
+                    cursor: day.exp >= 0 ? "default" : "auto",
+                  }}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 8, fontSize: 10, color: "var(--on-surface-variant)" }}>
+        <span>적음</span>
+        {[0, 0.25, 0.5, 0.75, 1].map((v) => (
+          <div key={v} style={{
+            width: 12, height: 12, borderRadius: 2,
+            background: v === 0 ? "var(--surface-container)" : `rgba(34,197,94,${v * 0.9})`,
+          }} />
+        ))}
+        <span>많음</span>
       </div>
     </>
   );

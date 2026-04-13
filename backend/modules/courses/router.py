@@ -89,6 +89,8 @@ async def list_courses(user: dict = Depends(get_current_user)):
     # 교수/학생 모드: 비개인 코스 + 타인의 개인 코스에 수강 등록된 경우도 표시
     if role == "personal":
         return [c for c in all_courses.values() if c.get("is_personal")]
+    elif role == "professor":
+        return [c for c in all_courses.values() if c.get("_relation") == "owner"]
     else:
         return [c for c in all_courses.values()
                 if not c.get("is_personal") or c.get("_relation") == "enrolled"]

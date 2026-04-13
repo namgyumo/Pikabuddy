@@ -10,6 +10,7 @@ import BannerPicker from "../components/common/BannerPicker";
 import { useCourseStore } from "../store/courseStore";
 import type { Course, Assignment, CourseMaterial } from "../types";
 import { getKoreanHolidays } from "../lib/holidays";
+import Leaderboard from "../components/common/Leaderboard";
 
 export default function CourseDetail() {
   const { courseId } = useParams<{ courseId: string }>();
@@ -1163,6 +1164,13 @@ export default function CourseDetail() {
               }} onClick={confirmDialog.onConfirm}>삭제</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── 리더보드 ── */}
+      {courseId && (
+        <div style={{ marginTop: 32 }}>
+          <Leaderboard courseId={courseId} />
         </div>
       )}
 

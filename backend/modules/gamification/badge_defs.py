@@ -311,17 +311,8 @@ def _check_multi_track(sb, user_id: str) -> bool:
     # both counts as coding+writing
     has_coding = "coding" in types or "both" in types or "algorithm" in types
     has_writing = "writing" in types or "both" in types
-    has_quiz = any(a.get("type") == "coding" for a in (assignments.data or []))
-    # For quiz: check if any submission has quiz_answers in content
-    if not has_quiz:
-        for sub in subs.data[:50]:
-            s_detail = sb.table("submissions").select("content") \
-                .eq("id", sub.get("id", "")).limit(1).execute()
-            if s_detail.data and isinstance(s_detail.data[0].get("content"), dict):
-                if "quiz_answers" in s_detail.data[0]["content"]:
-                    has_quiz = True
-                    break
-    return has_coding and has_writing
+    has_quiz = "quiz" in types
+    return has_coding and has_writing and has_quiz
 
 
 def _check_weekend_study(sb, user_id: str) -> bool:
@@ -654,7 +645,12 @@ def _check_single(badge_id: str, user_id: str, sb, ctx: dict) -> bool:
 
         # ── Professor ──
         if badge_id == "curriculum_designer":
-            r = sb.table("assignments").select("id", count="exact").eq("created_by", user_id).eq("is_published", True).execute()
+            # Check assignments in courses owned by this professor
+            courses = sb.table("courses").select("id").eq("professor_id", user_id).execute()
+            if not courses.data:
+                return False
+            cids = [c["id"] for c in courses.data]
+            r = sb.table("assignments").select("id", count="exact").in_("course_id", cids).eq("status", "published").execute()
             return (r.count or 0) >= 5
         if badge_id == "feedback_master":
             return ctx.get("finalize_count", 0) >= 10

@@ -92,6 +92,8 @@ export default function BadgeToast() {
   const rarityColor = RARITY_COLORS[current.rarity] || RARITY_COLORS.common;
   const rarityName = RARITY_NAMES[current.rarity] || "일반";
 
+  const isLegendary = current.rarity === "legendary" || current.rarity === "hidden";
+
   return (
     <div
       style={{
@@ -100,6 +102,31 @@ export default function BadgeToast() {
         animation: visible ? "badgeSlideIn 0.5s ease-out" : "badgeSlideOut 0.4s ease-in forwards",
       }}
     >
+      {/* Confetti for legendary/hidden badges */}
+      {isLegendary && visible && (
+        <div style={{ position: "absolute", top: -20, left: "50%", transform: "translateX(-50%)", pointerEvents: "none" }}>
+          {Array.from({ length: 24 }).map((_, i) => {
+            const colors = ["#f59e0b", "#ef4444", "#3b82f6", "#22c55e", "#8b5cf6", "#ec4899"];
+            const c = colors[i % colors.length];
+            const x = (Math.random() - 0.5) * 300;
+            const y = -(Math.random() * 200 + 60);
+            const r = Math.random() * 720;
+            const delay = Math.random() * 0.3;
+            const size = 6 + Math.random() * 6;
+            return (
+              <div key={i} style={{
+                position: "absolute", width: size, height: size,
+                background: c, borderRadius: Math.random() > 0.5 ? "50%" : "1px",
+                animation: `confettiFall 1.2s ${delay}s ease-out forwards`,
+                ["--cx" as string]: `${x}px`,
+                ["--cy" as string]: `${y}px`,
+                ["--cr" as string]: `${r}deg`,
+              }} />
+            );
+          })}
+        </div>
+      )}
+
       <div
         style={{
           display: "flex", alignItems: "center", gap: 12,
@@ -152,6 +179,10 @@ export default function BadgeToast() {
         @keyframes badgeSpin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
+        }
+        @keyframes confettiFall {
+          0% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+          100% { opacity: 0; transform: translate(var(--cx), var(--cy)) rotate(var(--cr)); }
         }
       `}</style>
     </div>

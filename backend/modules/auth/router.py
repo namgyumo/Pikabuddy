@@ -112,14 +112,20 @@ async def admin_login(body: AdminLoginRequest):
 
     user_data = supabase.table("users").select("*").eq("supabase_uid", supabase_uid).single().execute()
 
-    # 일일 로그인 EXP + 배지 체크
+    # 일일 로그인 EXP + 스트릭 보너스 + 배지 체크
     earned_badges = []
     try:
         from datetime import date as _date, datetime as _dt
         from modules.gamification.router import award_exp
-        from modules.gamification.badge_defs import check_badges
+        from modules.gamification.badge_defs import check_badges, _count_exp_log_days, _calc_streak
         uid = user_data.data["id"]
         award_exp(uid, "daily_login", f"login_{_date.today().isoformat()}", 5)
+        # Streak bonus
+        sb = get_supabase()
+        days = _count_exp_log_days(sb, uid)
+        streak = _calc_streak(days)
+        if streak > 0 and streak % 7 == 0:
+            award_exp(uid, "streak_bonus", f"streak_{streak}_{_date.today().isoformat()}", min(streak, 50))
         hour = _dt.now().hour
         earned_badges = check_badges(uid, "login", {"is_dawn": 4 <= hour <= 5})
     except Exception as e:
@@ -188,13 +194,19 @@ async def auth_callback(body: AuthCallbackRequest):
                 .execute()
             )
 
-        # 일일 로그인 EXP + 배지 체크
+        # 일일 로그인 EXP + 스트릭 보너스 + 배지 체크
         try:
             from datetime import date as _date, datetime as _dt
             from modules.gamification.router import award_exp
-            from modules.gamification.badge_defs import check_badges
+            from modules.gamification.badge_defs import check_badges, _count_exp_log_days, _calc_streak
             uid = user_data.data["id"]
             award_exp(uid, "daily_login", f"login_{_date.today().isoformat()}", 5)
+            # Streak bonus
+            _sb = get_supabase()
+            days = _count_exp_log_days(_sb, uid)
+            streak = _calc_streak(days)
+            if streak > 0 and streak % 7 == 0:
+                award_exp(uid, "streak_bonus", f"streak_{streak}_{_date.today().isoformat()}", min(streak, 50))
             hour = _dt.now().hour
             check_badges(uid, "login", {"is_dawn": 4 <= hour <= 5})
         except Exception as e:

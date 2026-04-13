@@ -28,6 +28,10 @@ export default function Dashboard() {
   } | null>(null);
   const [kickTarget, setKickTarget] = useState<{ id: string; name: string } | null>(null);
   const [kicking, setKicking] = useState(false);
+  const [rewardTarget, setRewardTarget] = useState<{ id: string; name: string } | null>(null);
+  const [rewardAmount, setRewardAmount] = useState(10);
+  const [rewardReason, setRewardReason] = useState("");
+  const [rewarding, setRewarding] = useState(false);
 
   useEffect(() => {
     if (!courseId) return;
@@ -226,7 +230,27 @@ export default function Dashboard() {
                     <td style={{ fontSize: 18 }}>
                       {s.status === "warning" ? "⚠️" : "✅"}
                     </td>
-                    <td>
+                    <td style={{ display: "flex", gap: 4 }}>
+                      <button
+                        className="btn btn-sm"
+                        style={{
+                          background: "var(--primary)",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: 6,
+                          padding: "4px 10px",
+                          fontSize: 12,
+                          cursor: "pointer",
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setRewardTarget({ id: s.student.id, name: s.student.name });
+                          setRewardAmount(10);
+                          setRewardReason("");
+                        }}
+                      >
+                        EXP
+                      </button>
                       <button
                         className="btn btn-sm"
                         style={{
@@ -277,6 +301,60 @@ export default function Dashboard() {
                   disabled={kicking}
                 >
                   {kicking ? "처리 중..." : "추방"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {rewardTarget && (
+          <div className="modal-overlay" onClick={() => !rewarding && setRewardTarget(null)}>
+            <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400 }}>
+              <h3 style={{ margin: "0 0 12px" }}>EXP 보상</h3>
+              <p style={{ margin: "0 0 12px", color: "var(--text-secondary, #64748b)" }}>
+                <strong>{rewardTarget.name}</strong> 학생에게 보너스 EXP를 부여합니다.
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+                <label style={{ fontSize: 12, fontWeight: 600 }}>EXP 양 (1~500)</label>
+                <input
+                  className="input"
+                  type="number"
+                  min={1} max={500}
+                  value={rewardAmount}
+                  onChange={(e) => setRewardAmount(Math.min(500, Math.max(1, Number(e.target.value))))}
+                />
+                <label style={{ fontSize: 12, fontWeight: 600 }}>사유 (선택)</label>
+                <input
+                  className="input"
+                  placeholder="우수 활동, 발표 참여 등"
+                  value={rewardReason}
+                  onChange={(e) => setRewardReason(e.target.value)}
+                />
+              </div>
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setRewardTarget(null)}
+                  disabled={rewarding}
+                >
+                  취소
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={async () => {
+                    setRewarding(true);
+                    try {
+                      await api.post("/gamification/award", {
+                        student_id: rewardTarget.id,
+                        amount: rewardAmount,
+                        reason: rewardReason || "교수 보상",
+                      });
+                      setRewardTarget(null);
+                    } catch {}
+                    setRewarding(false);
+                  }}
+                  disabled={rewarding}
+                >
+                  {rewarding ? "처리 중..." : `+${rewardAmount} EXP 부여`}
                 </button>
               </div>
             </div>
