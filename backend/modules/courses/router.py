@@ -363,3 +363,22 @@ async def kick_student(course_id: str, student_id: str, user: dict = Depends(get
         raise HTTPException(status_code=404, detail="해당 학생이 수강 등록되어 있지 않습니다.")
 
     return {"message": "학생을 추방했습니다."}
+
+
+@router.delete("/{course_id}")
+async def delete_course(course_id: str, user: dict = Depends(require_professor_or_personal)):
+    """교수가 자신의 강의를 삭제. 관련 수강 등록도 함께 삭제."""
+    supabase = get_supabase()
+
+    course = supabase.table("courses").select("professor_id").eq("id", course_id).single().execute()
+    if not course.data:
+        raise HTTPException(status_code=404, detail="강의를 찾을 수 없습니다.")
+    if course.data["professor_id"] != user["id"]:
+        raise HTTPException(status_code=403, detail="본인 강의만 삭제할 수 있습니다.")
+
+    # 수강 등록 삭제
+    supabase.table("enrollments").delete().eq("course_id", course_id).execute()
+    # 강의 삭제
+    supabase.table("courses").delete().eq("id", course_id).execute()
+
+    return {"message": "강의가 삭제되었습니다."}

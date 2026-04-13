@@ -115,16 +115,15 @@ async def admin_login(body: AdminLoginRequest):
     # 일일 로그인 EXP + 배지 체크
     earned_badges = []
     try:
-        from datetime import date as _date
+        from datetime import date as _date, datetime as _dt
         from modules.gamification.router import award_exp
         from modules.gamification.badge_defs import check_badges
         uid = user_data.data["id"]
         award_exp(uid, "daily_login", f"login_{_date.today().isoformat()}", 5)
-        from datetime import datetime as _dt
         hour = _dt.now().hour
         earned_badges = check_badges(uid, "login", {"is_dawn": 4 <= hour <= 5})
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error(f"[Auth] gamification error on admin-login: {e}")
 
     return {
         "access_token": access_token,
@@ -198,8 +197,8 @@ async def auth_callback(body: AuthCallbackRequest):
             award_exp(uid, "daily_login", f"login_{_date.today().isoformat()}", 5)
             hour = _dt.now().hour
             check_badges(uid, "login", {"is_dawn": 4 <= hour <= 5})
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"[Auth] gamification error on callback: {e}")
 
         return {
             "user_id": user_data.data["id"],

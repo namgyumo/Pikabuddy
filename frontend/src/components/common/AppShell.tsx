@@ -266,11 +266,9 @@ export default function AppShell({ children, courseTitle }: Props) {
         </nav>
 
         <div className="sidebar-bottom">
-          {!isProfessor && (
-            <div style={{ padding: "8px 16px" }}>
-              <TierBadge compact />
-            </div>
-          )}
+          <div style={{ padding: "8px 16px" }}>
+            <TierBadge compact />
+          </div>
           <Link
             to="/settings"
             className={`sidebar-link ${location.pathname === "/settings" ? "active" : ""}`}

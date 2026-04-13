@@ -53,6 +53,8 @@ export default function CourseDetail() {
   const infoCacheRef = useRef<any>(null);
   const [leaveConfirm, setLeaveConfirm] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // 배너 편집 + 표시/숨기기
   const [bannerEditOpen, setBannerEditOpen] = useState(false);
@@ -214,6 +216,7 @@ export default function CourseDetail() {
   const isProfessor = user?.role === "professor";
   const isPersonal = user?.role === "personal";
   const canManage = isProfessor || isPersonal;
+  const isCourseOwner = course?.professor_id === user?.id;
   const policyLabels: Record<string, string> = {
     free: "자유",
     normal: "보통",
@@ -718,15 +721,21 @@ export default function CourseDetail() {
         ) : (
           (() => {
             const now = new Date();
-            const expiredAssignments = canManage
-              ? assignments.filter((a) => a.due_date && new Date(a.due_date) < now)
-              : [];
-            const activeAssignments = canManage
-              ? assignments.filter((a) => !a.due_date || new Date(a.due_date) >= now)
-              : assignments.filter((a) => !a.has_submitted);
-            const completedAssignments = canManage
-              ? []
-              : assignments.filter((a) => a.has_submitted);
+            const isExpired = (a: Assignment) => !!(a.due_date && new Date(a.due_date) < now);
+            let activeAssignments: Assignment[];
+            let completedAssignments: Assignment[];
+            let expiredAssignments: Assignment[];
+
+            if (canManage) {
+              activeAssignments = assignments.filter((a) => !isExpired(a));
+              completedAssignments = [];
+              expiredAssignments = assignments.filter((a) => isExpired(a));
+            } else {
+              // 학생: 활성(미제출+미마감), 완료(제출완료), 마감(미제출+마감)
+              activeAssignments = assignments.filter((a) => !a.has_submitted && !isExpired(a));
+              completedAssignments = assignments.filter((a) => a.has_submitted);
+              expiredAssignments = assignments.filter((a) => !a.has_submitted && isExpired(a));
+            }
 
             const renderAssignmentCard = (a: Assignment) => {
               const isOverdue = a.due_date && new Date(a.due_date) < new Date();
@@ -1249,8 +1258,72 @@ export default function CourseDetail() {
                   </div>
                 </>
               )}
-              {/* 강의 나가기 (학생���) */}
-              {!isProfessor && !isPersonal && (
+              {/* 강의 삭제 (소유자만) */}
+              {isCourseOwner && (
+                <>
+                  <div className="info-divider" />
+                  {!deleteConfirm ? (
+                    <button
+                      onClick={() => setDeleteConfirm(true)}
+                      style={{
+                        width: "100%", padding: "10px 0", borderRadius: 8,
+                        border: "1px solid var(--error, #dc2626)", background: "none",
+                        color: "var(--error, #dc2626)", fontSize: 13, fontWeight: 600,
+                        cursor: "pointer", marginTop: 8,
+                      }}
+                    >
+                      강의 삭제
+                    </button>
+                  ) : (
+                    <div style={{
+                      marginTop: 8, padding: 14, borderRadius: 8,
+                      background: "rgba(220,38,38,0.08)", border: "1px solid var(--error, #dc2626)",
+                    }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--error, #dc2626)", marginBottom: 6 }}>
+                        정말 이 강의를 삭제하시겠습니까?
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--on-surface-variant)", marginBottom: 12 }}>
+                        강의의 모든 데이터(과제, 수강생 등)가 영구 삭제됩니다.
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button
+                          onClick={() => setDeleteConfirm(false)}
+                          style={{
+                            flex: 1, padding: "8px 0", borderRadius: 6,
+                            border: "1px solid var(--outline-variant)", background: "var(--surface)",
+                            color: "var(--on-surface)", fontSize: 12, cursor: "pointer",
+                          }}
+                        >
+                          취소
+                        </button>
+                        <button
+                          disabled={deleting}
+                          onClick={async () => {
+                            setDeleting(true);
+                            try {
+                              await api.delete(`/courses/${courseId}`);
+                              navigate("/");
+                            } catch {
+                              setDeleting(false);
+                              setDeleteConfirm(false);
+                            }
+                          }}
+                          style={{
+                            flex: 1, padding: "8px 0", borderRadius: 6,
+                            border: "none", background: "var(--error, #dc2626)",
+                            color: "#fff", fontSize: 12, fontWeight: 600,
+                            cursor: deleting ? "not-allowed" : "pointer", opacity: deleting ? 0.6 : 1,
+                          }}
+                        >
+                          {deleting ? "삭제 중..." : "삭제"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+              {/* 강의 나가기 (소유자 제외 모두 가능) */}
+              {!isCourseOwner && (
                 <>
                   <div className="info-divider" />
                   {!leaveConfirm ? (
