@@ -94,11 +94,12 @@ export default function GlobalContextMenu() {
   );
 
   useEffect(() => {
-    document.addEventListener("contextmenu", handleContextMenu);
+    // Use capture phase so we intercept before ProseMirror or browser defaults
+    document.addEventListener("contextmenu", handleContextMenu, true);
     document.addEventListener("click", handleClick, true);
     document.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.removeEventListener("contextmenu", handleContextMenu);
+      document.removeEventListener("contextmenu", handleContextMenu, true);
       document.removeEventListener("click", handleClick, true);
       document.removeEventListener("keydown", handleKeyDown);
     };
