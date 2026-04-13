@@ -221,6 +221,7 @@ export default function NoteEditor() {
   const [noteLinkQuery, setNoteLinkQuery] = useState("");
   const [noteLinkResults, setNoteLinkResults] = useState<Note[]>([]);
   const noteLinkRef = useRef<HTMLDivElement>(null);
+  const linkInputRef = useRef<HTMLInputElement>(null);
   const realtimeChannelRef = useRef<RealtimeChannel | null>(null);
   const [teamPresence, setTeamPresence] = useState<{ userId: string; name: string; avatarUrl: string | null }[]>([]);
   const [remoteUpdatePending, setRemoteUpdatePending] = useState(false);
@@ -718,6 +719,13 @@ export default function NoteEditor() {
     } catch { /* silent */ }
   }, [noteId]);
 
+  // Focus link input reliably (autoFocus alone can lose to ProseMirror)
+  useEffect(() => {
+    if (showLinkInput) {
+      requestAnimationFrame(() => linkInputRef.current?.focus());
+    }
+  }, [showLinkInput]);
+
   const insertLink = () => {
     if (!editor) return;
     if (!linkUrl.trim()) { editor.chain().focus().unsetLink().run(); }
@@ -915,17 +923,17 @@ export default function NoteEditor() {
 
           {/* 링크 입력 팝업 */}
           {showLinkInput && (
-            <div className="toolbar-popup" style={{ position: "absolute", top: 100, left: 60, zIndex: 100 }}>
-              <input className="input" style={{ fontSize: 13, padding: "6px 10px", width: 260 }} placeholder="URL (빈 칸이면 링크 제거)" value={linkUrl}
+            <div className="toolbar-popup" style={{ position: "absolute", top: 100, left: 60, zIndex: 10001 }}>
+              <input ref={linkInputRef} className="input" style={{ fontSize: 13, padding: "6px 10px", width: 260 }} placeholder="URL (빈 칸이면 링크 제거)" value={linkUrl}
                 onChange={(e) => setLinkUrl(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") insertLink(); if (e.key === "Escape") setShowLinkInput(false); }} autoFocus />
+                onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Enter") insertLink(); if (e.key === "Escape") setShowLinkInput(false); }} autoFocus />
               <button className="btn btn-primary" style={{ fontSize: 12, padding: "4px 12px" }} onClick={insertLink}>적용</button>
             </div>
           )}
 
           {/* 출처 인용 입력 팝업 */}
           {showCitationInput && (
-            <div className="toolbar-popup citation-input-popup" style={{ position: "absolute", top: 100, left: 60, zIndex: 100 }}>
+            <div className="toolbar-popup citation-input-popup" style={{ position: "absolute", top: 100, left: 60, zIndex: 10001 }}>
               <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>출처 인용 삽입</div>
               <input className="input" style={{ fontSize: 13, padding: "6px 10px", width: 280, marginBottom: 6 }} placeholder="출처 (예: 홍길동, 2024, p.42)"
                 value={citationSource} onChange={(e) => setCitationSource(e.target.value)}

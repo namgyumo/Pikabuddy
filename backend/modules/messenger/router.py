@@ -276,9 +276,11 @@ async def send_message(
     }
     result = sb.table("messages").insert(row).execute()
 
-    # 배지 체크: 메시지 전송
+    # 배지 + EXP: 메시지 전송
     try:
+        from modules.gamification.router import award_exp
         from modules.gamification.badge_defs import check_badges
+        award_exp(user["id"], "message_send", result.data[0]["id"], 3)
         check_badges(user["id"], "message_send")
     except Exception:
         pass

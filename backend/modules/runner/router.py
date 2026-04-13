@@ -135,6 +135,17 @@ async def judge_code(body: JudgeRequest, user: dict = Depends(get_current_user))
             overall = r["verdict"]
             break
 
+    # ── Gamification: badge checks ──
+    try:
+        from modules.gamification.badge_defs import check_badges
+        check_badges(user["id"], "code_judge", {
+            "passed": passed,
+            "total": len(body.test_cases),
+            "language": language,
+        })
+    except Exception:
+        pass  # gamification should never break code execution
+
     return {
         "verdict": overall,
         "passed": passed,

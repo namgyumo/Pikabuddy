@@ -155,22 +155,32 @@ BADGE_MAP = {b["id"]: b for b in BADGES}
 
 # ── Event → Badge mapping ──
 EVENT_BADGES: dict[str, list[str]] = {
-    "note_create": ["first_note_save", "note_1", "note_5", "note_20", "sub_notes"],
+    "note_create": ["first_note_save", "note_1", "note_5", "note_20", "sub_notes", "block_master", "note_architect"],
     "note_analyze": ["first_analysis", "first_ai", "understanding_first", "analysis_10", "analysis_30", "precise_reviser"],
-    "assignment_submit": ["first_submit", "submit_1", "submit_5", "submit_10", "submit_30", "submit_50", "multi_track"],
+    "assignment_submit": ["first_submit", "submit_1", "submit_5", "submit_10", "submit_30", "submit_50",
+                          "multi_track", "first_writing", "writing_5", "long_writing"],
     "score_received": ["score_80", "score_90", "score_100", "score_80_10", "score_90_streak3",
                         "comeback", "rising_curve", "high_collector"],
+    "code_judge": ["first_pass", "all_pass", "debugger", "one_shot", "lang_explorer"],
     "comment_create": ["first_comment", "comment_resolver"],
     "message_send": ["first_message", "chat_5_users", "social_learner"],
     "team_join": ["team_join"],
     "team_note_edit": ["team_note"],
+    "team_create": ["team_builder"],
+    "vote_start": ["team_vote"],
+    "vote_complete": ["unanimous"],
     "tutor_chat": ["tutor_first", "tutor_10"],
     "note_link": ["first_link", "link_10", "link_forest"],
     "graph_view": ["graph_explorer"],
+    "exam_start": ["first_exam"],
+    "exam_end": ["exam_focus", "exam_3_clean", "honest_learner"],
     "login": ["first_step", "streak_1", "streak_3", "streak_7", "streak_14",
-              "streak_30", "streak_50", "streak_100", "weekend_study", "perfect_day"],
+              "streak_30", "streak_50", "streak_100", "weekend_study",
+              "perfect_day", "dawn_sage", "all_rounder"],
     "enrollment": ["first_classroom"],
     "course_create": ["first_course"],
+    "score_finalize": ["curriculum_designer", "feedback_master"],
+    "note_review": ["note_reviewer"],
 }
 
 
@@ -326,6 +336,79 @@ def _check_weekend_study(sb, user_id: str) -> bool:
         elif d.weekday() == 6:
             sun_found = True
         if sat_found and sun_found:
+            return True
+    return False
+
+
+def _count_languages(sb, user_id: str) -> int:
+    """Count distinct programming languages used in submissions."""
+    subs = sb.table("submissions").select("content").eq("student_id", user_id).limit(200).execute()
+    langs = set()
+    for s in (subs.data or []):
+        c = s.get("content")
+        if isinstance(c, dict) and c.get("language"):
+            langs.add(c["language"].lower())
+    return len(langs)
+
+
+def _count_writing_submissions(sb, user_id: str) -> int:
+    """Count writing-type assignment submissions."""
+    subs = sb.table("submissions").select("assignment_id").eq("student_id", user_id).execute()
+    if not subs.data:
+        return 0
+    a_ids = list({s["assignment_id"] for s in subs.data})
+    assignments = sb.table("assignments").select("id, type").in_("id", a_ids).execute()
+    writing_ids = {a["id"] for a in (assignments.data or []) if a.get("type") in ("writing", "both")}
+    return sum(1 for s in subs.data if s["assignment_id"] in writing_ids)
+
+
+def _count_long_writings(sb, user_id: str) -> int:
+    """Count submissions with 1000+ chars of writing content."""
+    subs = sb.table("submissions").select("content").eq("student_id", user_id).limit(200).execute()
+    count = 0
+    for s in (subs.data or []):
+        c = s.get("content")
+        if isinstance(c, dict):
+            text = c.get("writing", "") or c.get("text", "") or ""
+            if len(text) >= 1000:
+                count += 1
+    return count
+
+
+def _count_clean_exams(sb, user_id: str) -> int:
+    """Count exams completed without violations."""
+    # Get all assignments where student submitted (exam type)
+    subs = sb.table("submissions").select("assignment_id").eq("student_id", user_id).execute()
+    if not subs.data:
+        return 0
+    a_ids = list({s["assignment_id"] for s in subs.data})
+    # Check which had violations
+    violations = sb.table("exam_violations").select("assignment_id") \
+        .eq("student_id", user_id).in_("assignment_id", a_ids).execute()
+    violated_aids = {v["assignment_id"] for v in (violations.data or [])}
+    return len([aid for aid in a_ids if aid not in violated_aids])
+
+
+def _check_all_rounder(sb, user_id: str) -> bool:
+    """Check if user used code/writing/notes/graph/messenger in a single day."""
+    logs = sb.table("exp_logs").select("event_type, created_at") \
+        .eq("user_id", user_id).execute()
+    day_events: dict[str, set] = {}
+    for log in (logs.data or []):
+        d = log["created_at"][:10]
+        day_events.setdefault(d, set()).add(log["event_type"])
+
+    msgs = sb.table("messages").select("created_at").eq("sender_id", user_id).limit(200).execute()
+    for m in (msgs.data or []):
+        d = m["created_at"][:10]
+        day_events.setdefault(d, set()).add("message_send")
+
+    for events in day_events.values():
+        has_code = "assignment_submit" in events
+        has_note = "note_create" in events or "note_analyze" in events
+        has_msg = "message_send" in events
+        has_tutor = "tutor_chat" in events
+        if has_code and has_note and has_msg and has_tutor:
             return True
     return False
 
@@ -518,15 +601,73 @@ def _check_single(badge_id: str, user_id: str, sb, ctx: dict) -> bool:
         if badge_id == "team_note":
             r = sb.table("note_snapshots").select("id", count="exact").eq("saved_by", user_id).execute()
             return (r.count or 0) >= 1
+        if badge_id == "team_builder":
+            r = sb.table("teams").select("id", count="exact").eq("created_by", user_id).execute()
+            return (r.count or 0) >= 3
+        if badge_id == "team_vote":
+            return True  # triggered by vote_start event
+        if badge_id == "unanimous":
+            # Check context for unanimous vote
+            return ctx.get("unanimous", False)
+
+        # ── Code execution ──
+        if badge_id == "first_pass":
+            return ctx.get("passed", 0) >= 1
+        if badge_id == "all_pass":
+            return ctx.get("passed", 0) > 0 and ctx.get("passed", 0) == ctx.get("total", 0)
+        if badge_id == "one_shot":
+            # Check if first judge for this assignment got all pass
+            return ctx.get("first_attempt", False) and ctx.get("passed", 0) == ctx.get("total", 0)
+        if badge_id == "debugger":
+            return ctx.get("attempt_count", 0) >= 10 and ctx.get("passed", 0) == ctx.get("total", 0)
+        if badge_id == "lang_explorer":
+            return _count_languages(sb, user_id) >= 3
+
+        # ── Writing ──
+        if badge_id == "first_writing":
+            return _count_writing_submissions(sb, user_id) >= 1
+        if badge_id == "writing_5":
+            return _count_writing_submissions(sb, user_id) >= 5
+        if badge_id == "long_writing":
+            return ctx.get("long_writing_count", 0) >= 3 or _count_long_writings(sb, user_id) >= 3
+
+        # ── Note extras ──
+        if badge_id == "block_master":
+            return ctx.get("block_types", 0) >= 5
+        if badge_id == "note_architect":
+            return ctx.get("block_count", 0) >= 30
+
+        # ── Exam ──
+        if badge_id == "first_exam":
+            return True  # triggered by exam_start event
+        if badge_id == "exam_focus":
+            return ctx.get("violation_count", 0) == 0
+        if badge_id == "exam_3_clean":
+            return _count_clean_exams(sb, user_id) >= 3
+        if badge_id == "honest_learner":
+            return _count_clean_exams(sb, user_id) >= 5
 
         # ── Enrollment / Course ──
         if badge_id == "first_course":
             c = sb.table("courses").select("id", count="exact").eq("professor_id", user_id).execute()
             return (c.count or 0) >= 1
 
+        # ── Professor ──
+        if badge_id == "curriculum_designer":
+            r = sb.table("assignments").select("id", count="exact").eq("created_by", user_id).eq("is_published", True).execute()
+            return (r.count or 0) >= 5
+        if badge_id == "feedback_master":
+            return ctx.get("finalize_count", 0) >= 10
+        if badge_id == "note_reviewer":
+            return ctx.get("review_count", 0) >= 10
+
         # ── Hidden ──
         if badge_id == "perfect_day":
             return _check_perfect_day(sb, user_id)
+        if badge_id == "dawn_sage":
+            return ctx.get("is_dawn", False)
+        if badge_id == "all_rounder":
+            return _check_all_rounder(sb, user_id)
 
     except Exception as e:
         logger.warning(f"[Badge] check '{badge_id}' failed: {e}")

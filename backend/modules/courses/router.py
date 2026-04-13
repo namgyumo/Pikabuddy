@@ -36,6 +36,14 @@ async def create_course(body: CourseCreateRequest, user: dict = Depends(require_
         row["banner_url"] = body.banner_url
 
     result = supabase.table("courses").insert(row).execute()
+
+    # ── Gamification ──
+    try:
+        from modules.gamification.badge_defs import check_badges
+        check_badges(user["id"], "course_create")
+    except Exception:
+        pass
+
     return result.data[0]
 
 
@@ -135,6 +143,15 @@ async def join_course_by_code(
     supabase.table("enrollments").insert(
         {"student_id": user["id"], "course_id": course_id}
     ).execute()
+
+    # ── Gamification ──
+    try:
+        from modules.gamification.router import award_exp
+        from modules.gamification.badge_defs import check_badges
+        award_exp(user["id"], "enrollment", course_id, 15)
+        check_badges(user["id"], "enrollment")
+    except Exception:
+        pass
 
     return {"message": "강의에 참여했습니다.", "course": course.data}
 

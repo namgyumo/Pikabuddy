@@ -120,7 +120,9 @@ async def admin_login(body: AdminLoginRequest):
         from modules.gamification.badge_defs import check_badges
         uid = user_data.data["id"]
         award_exp(uid, "daily_login", f"login_{_date.today().isoformat()}", 5)
-        earned_badges = check_badges(uid, "login")
+        from datetime import datetime as _dt
+        hour = _dt.now().hour
+        earned_badges = check_badges(uid, "login", {"is_dawn": 4 <= hour <= 5})
     except Exception:
         pass
 
@@ -189,12 +191,13 @@ async def auth_callback(body: AuthCallbackRequest):
 
         # 일일 로그인 EXP + 배지 체크
         try:
-            from datetime import date as _date
+            from datetime import date as _date, datetime as _dt
             from modules.gamification.router import award_exp
             from modules.gamification.badge_defs import check_badges
             uid = user_data.data["id"]
             award_exp(uid, "daily_login", f"login_{_date.today().isoformat()}", 5)
-            check_badges(uid, "login")
+            hour = _dt.now().hour
+            check_badges(uid, "login", {"is_dawn": 4 <= hour <= 5})
         except Exception:
             pass
 

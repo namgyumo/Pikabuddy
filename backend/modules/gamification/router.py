@@ -36,6 +36,12 @@ EXP_REWARDS = {
     "assignment_score_bonus": 20,  # 점수 80+ 보너스
     "comment": 5,
     "tutor_chat": 5,
+    "code_judge_pass": 10,       # 코드 채점 통과
+    "code_all_pass": 25,         # 전체 테스트 통과
+    "enrollment": 15,            # 강의 참여
+    "exam_complete": 20,         # 시험 완료
+    "vote_participate": 5,       # 투표 참여
+    "message_send": 3,           # 메시지 전송
 }
 
 EVENT_LABELS = {
@@ -46,6 +52,12 @@ EVENT_LABELS = {
     "comment": "코멘트 작성",
     "tutor_chat": "AI 튜터 질문",
     "daily_login": "일일 접속",
+    "code_judge_pass": "코드 채점 통과",
+    "code_all_pass": "전체 테스트 통과",
+    "enrollment": "강의 참여",
+    "exam_complete": "시험 완료",
+    "vote_participate": "투표 참여",
+    "message_send": "메시지 전송",
 }
 
 

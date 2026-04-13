@@ -98,6 +98,16 @@ async def start_exam(body: ScreenshotURLRequest, user: dict = Depends(get_curren
     ).eq("student_id", user["id"]).eq("violation_type", "forced_end").execute()
     if existing.data:
         raise HTTPException(403, "시험이 이미 종료되었습니다. 재입장할 수 없습니다.")
+
+    # ── Gamification ──
+    try:
+        from modules.gamification.router import award_exp
+        from modules.gamification.badge_defs import check_badges
+        award_exp(user["id"], "exam_complete", body.assignment_id, 20)
+        check_badges(user["id"], "exam_start")
+    except Exception:
+        pass
+
     return {"message": "시험 시작"}
 
 

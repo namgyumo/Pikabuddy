@@ -115,6 +115,15 @@ async def create_team(
     member_rows = [{"team_id": team_id, "student_id": sid} for sid in body.member_ids]
     supabase.table("team_members").insert(member_rows).execute()
 
+    # ── Gamification: team join badges for all members ──
+    try:
+        from modules.gamification.badge_defs import check_badges
+        for sid in body.member_ids:
+            check_badges(sid, "team_join")
+        check_badges(user["id"], "team_create")
+    except Exception:
+        pass
+
     return _fetch_team_with_members(supabase, team_id)
 
 

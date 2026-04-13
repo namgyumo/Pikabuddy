@@ -268,6 +268,15 @@ async def initiate_vote(
     if total <= 1:
         vote = _check_and_resolve(supabase, vote["id"])
 
+    # ── Gamification ──
+    try:
+        from modules.gamification.router import award_exp
+        from modules.gamification.badge_defs import check_badges
+        award_exp(user["id"], "vote_participate", vote["id"], 5)
+        check_badges(user["id"], "vote_start")
+    except Exception:
+        pass
+
     return _build_vote_status(supabase, vote, user["id"])
 
 
@@ -333,6 +342,14 @@ async def respond_to_vote(
 
     # resolve 체크
     vote = _check_and_resolve(supabase, vote["id"])
+
+    # ── Gamification ──
+    try:
+        from modules.gamification.router import award_exp
+        award_exp(user["id"], "vote_participate", vote_id, 5)
+    except Exception:
+        pass
+
     return _build_vote_status(supabase, vote, user["id"])
 
 
