@@ -26,21 +26,10 @@ export default function SubNoteNodeView({ node, updateAttributes, deleteNode, se
   const [toast, setToast] = useState<string | null>(null);
 
   const handleOpen = useCallback(async () => {
-    console.log("[SubNote] handleOpen called", {
-      courseId,
-      parentNoteId,
-      noteId: node.attrs.noteId,
-      title: node.attrs.title,
-    });
-
-    if (!courseId) {
-      console.warn("[SubNote] courseId is missing, aborting");
-      return;
-    }
+    if (!courseId) return;
 
     // Already-created sub-note: navigate directly
     if (node.attrs.noteId) {
-      console.log("[SubNote] Navigating to existing sub-note:", node.attrs.noteId);
       navigate(`/courses/${courseId}/notes/${node.attrs.noteId}`);
       return;
     }
@@ -63,7 +52,6 @@ export default function SubNoteNodeView({ node, updateAttributes, deleteNode, se
         parent_id: parentNoteId,
       });
       childId = data.id;
-      console.log("[SubNote] Child note created:", childId);
     } catch (err) {
       console.error("[SubNote] Failed to create child note:", err);
       setCreating(false);
@@ -78,13 +66,10 @@ export default function SubNoteNodeView({ node, updateAttributes, deleteNode, se
       const content = editor.getJSON();
       const patched = ensureSubNoteId(content, node.attrs.title, childId);
       await api.patch(`/notes/${parentNoteId}`, { content: patched });
-      console.log("[SubNote] Parent note saved with child ID");
     } catch (err) {
       console.error("[SubNote] Failed to save parent note:", err);
     }
 
-    // 4) Navigate to child note regardless
-    console.log("[SubNote] Navigating to new child:", childId);
     navigate(`/courses/${courseId}/notes/${childId}`);
   }, [courseId, parentNoteId, node.attrs.noteId, node.attrs.title, navigate, updateAttributes, editor]);
 

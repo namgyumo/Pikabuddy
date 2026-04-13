@@ -8,9 +8,9 @@ PikaBuddy는 학생의 **학습 과정(process)**을 AI가 추적·분석하여 
 
 | 항목 | 내용 |
 |------|------|
-| 개발 기간 | 설계 2주 + 구현 26시간 (AI 바이브코딩) |
+| 프로젝트 기간 | 1주 (주제 발표 ~ 구현 완료, AI 바이브코딩) |
 | 팀 규모 | 4명 |
-| 코드 규모 | 프론트엔드 39,246줄 + 백엔드 14,593줄 = **약 53,800줄** |
+| 코드 규모 | 프론트엔드 ~44,500줄 + 백엔드 ~19,800줄 = **약 64,400줄** |
 | 설계 문서 | 7종 (PRD, SRS, TDD, API, ERD, UI/UX, INFRA) |
 
 ---
@@ -19,7 +19,7 @@ PikaBuddy는 학생의 **학습 과정(process)**을 AI가 추적·분석하여 
 
 ### 1. 코딩 + 글쓰기 + 퀴즈 — 3종 과제 통합
 
-- **코딩 과제**: Monaco 에디터, 9개 언어(Python/JS/C/C++/Java/C#/Swift/Rust/Go/ASM) 서버 사이드 실행, OJ 판정(AC/WA/TLE/MLE), AI 피드백
+- **코딩 과제**: Monaco 에디터, 9개 언어(Python/JS/C/C++/Java/C#/Rust/Go/ASM) 서버 사이드 실행, OJ 판정(AC/WA/TLE/MLE), AI 피드백
 - **글쓰기 과제**: TipTap 리치 텍스트 에디터(슬래시 명령 16종, Excalidraw 드로잉, KaTeX 수식), AI가 논리 구조·표현력·주제 적합도·복붙 분석까지 다차원 피드백
 - **퀴즈 과제**: 객관식/단답형/서술형 자동 채점, AI 자동 문제 생성
 
@@ -96,16 +96,16 @@ PikaBuddy는 학생의 **학습 과정(process)**을 AI가 추적·분석하여 
 
 | 계층 | 기술 | 상세 |
 |------|------|------|
-| **프론트엔드** | React 19 | TypeScript, Vite, 27개 페이지 (39,246 LOC) |
-| | 상태 관리 | Zustand (7개 글로벌 스토어: auth, course, comment, messenger, notification, theme, tutorial) |
+| **프론트엔드** | React 19 | TypeScript, Vite, 28개 페이지 (~44,500 LOC) |
+| | 상태 관리 | Zustand (6개 글로벌 스토어: auth, course, comment, messenger, notification, theme) |
 | | 에디터 | TipTap (10개 커스텀 확장, 슬래시 명령 16종), Monaco Editor |
 | | 시각화 | React Force Graph 2D (지식 그래프), Recharts (대시보드), Blockly (블록 코딩) |
 | | 스타일 | CSS 변수 디자인 시스템, 55개 이펙트 엔진, 프리셋 8종 테마 |
-| **백엔드** | FastAPI 0.115.0 | Uvicorn, 21개 모듈, 135개 API 엔드포인트 (14,593 LOC) |
+| **백엔드** | FastAPI 0.115.0 | Uvicorn, 20개 모듈, 168개 API 엔드포인트 (~19,800 LOC) |
 | | AI | Google Gemini (2.5/2.0/1.5 Flash 3단계 폴백), JSON mode, 임베딩 유사도 |
-| | 데이터베이스 | Supabase (PostgreSQL), 29개 테이블, RLS 보안 |
+| | 데이터베이스 | Supabase (PostgreSQL), 30개 테이블, RLS 보안 |
 | | 파일 저장 | Cloudflare R2 (S3 호환, 시험 스크린샷) |
-| | 코드 실행 | 9개 언어 지원 (Python/JS/C/C++/Java/C#/Swift/Rust/Go), subprocess + CPU 격리 + 보안 패턴 차단 |
+| | 코드 실행 | 9개 언어 지원 (Python/JS/C/C++/Java/C#/Rust/Go/ASM), subprocess + CPU 격리 + 보안 패턴 차단 |
 | | 실시간 | SSE 스트리밍 (AI 피드백), Supabase Realtime (메신저/알림) |
 | **배포** | 컨테이너 | Docker (gcc/g++, JDK, Node.js 런타임 내장) |
 | | 웹 서버 | Nginx (리버스 프록시, SSL, gzip 압축, keepalive) |
@@ -115,7 +115,7 @@ PikaBuddy는 학생의 **학습 과정(process)**을 AI가 추적·분석하여 
 
 ## 아키텍처 개요
 
-### 백엔드 모듈 구조 (21개)
+### 백엔드 모듈 구조 (20개)
 
 ```
 backend/modules/
@@ -138,11 +138,10 @@ backend/modules/
 ├── events/         # 캘린더 이벤트, 투두 리스트
 ├── teams/          # 팀 생성/편집, 팀원 관리
 ├── voting/         # 조별과제 제출 투표 시스템
-├── seed/           # 테스트 데이터 시딩
-└── agents/         # AI 에이전트 세션 관리
+└── seed/           # 테스트 데이터 시딩
 ```
 
-### 프론트엔드 (27개 페이지)
+### 프론트엔드 (28개 페이지)
 
 | 페이지 | 역할 |
 |--------|------|
@@ -167,31 +166,29 @@ backend/modules/
 
 SlashCommand, SubNote, NoteLink(`[[]]`), Excalidraw, Math(KaTeX), AIPolished, Callout, BlockHandle, Toggle, Citation
 
-### 데이터베이스 (29개 테이블)
+### 데이터베이스 (30개 테이블)
 
 ```
 schema.sql (16): users, courses, enrollments, assignments, submissions, snapshots,
                  ai_analyses, notes, course_materials, user_exp, badges, user_badges,
                  judge_results, ai_comments, exam_screenshots, exam_violations
-migrations (13): exam_reset_logs, messages, note_categories, note_comments,
-                 note_manual_links, teams, team_members, team_notes, note_snapshots,
-                 team_submission_votes, team_vote_responses, user_events, course_banner
+migrations (14): exam_reset_logs, exp_logs, user_achievements, messages, custom_categories,
+                 note_comments, note_manual_links, teams, team_members, note_snapshots,
+                 team_submission_votes, team_vote_responses, test_snapshots, user_events
 ```
 
 ---
 
-## 개발 타임라인
+## 개발 타임라인 (총 1주)
+
+> 주제 발표부터 구현 완료까지 **1주일** — AI 바이브코딩으로 64,400줄 규모의 풀스택 애플리케이션을 완성했습니다.
 
 | 기간 | 단계 | 주요 성과 |
 |------|------|---------|
-| 3/23~25 | 팀 셋업 | 프로젝트 구조, 컨벤션, PR/이슈 템플릿 |
-| 3/25~4/7 | 기획/설계 | 7종 설계 문서 (PRD, SRS, TDD, API, ERD, UI/UX, INFRA) |
-| 4/8 | 핵심 구현 | 전체 애플리케이션 구현 — 133파일, 29,747줄 |
-| 4/9 오전 | 고급 기능 | 시험 감독, OJ, 게이미피케이션 — 55파일, 6,818줄 |
-| 4/9 오후 | 확장 기능 | 커스텀 테마, AI 폴백, 퀴즈, 블록코딩, 55개 이펙트 — 8,031줄 |
-| 4/10~12 | 안정화/확장 | 메신저, 코멘트, 알림, 통합 노트 지도, 팀 투표, 9개 언어 코드 실행, 버그 수정 |
-
-> **실질 코딩: 26시간+, 53,800줄** — AI 바이브코딩의 생산성을 직접 증명합니다.
+| Day 1 (4/8) | 핵심 구현 | 전체 애플리케이션 핵심 기능 구현 |
+| Day 2 (4/9) | 고급 기능 | 시험 감독, OJ, 게이미피케이션, 커스텀 테마, 퀴즈 |
+| Day 3~5 (4/10~12) | 확장/안정화 | 메신저, 코멘트, 알림, 통합 노트 지도, 팀 투표, 9개 언어 코드 실행, 버그 수정 |
+| Day 6 (4/13) | 배포/마무리 | EC2 배포, Cloudflare CDN, 최종 QA |
 
 ---
 
@@ -222,13 +219,22 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 ```
 SUPABASE_URL=your_supabase_url
+SUPABASE_KEY=your_anon_key
 SUPABASE_SERVICE_KEY=your_service_key
 GEMINI_API_KEY=your_gemini_key
-AWS_ACCOUNT_ID=your_r2_account_id
-AWS_ACCESS_KEY_ID=your_r2_access_key
-AWS_SECRET_ACCESS_KEY=your_r2_secret_key
-R2_BUCKET_NAME=your_bucket_name
 CORS_ORIGINS=http://localhost:5173
+
+# Admin / Test accounts
+studentAdminId=your_admin_id
+studentAdminPassword=your_admin_password
+teacherAdminId=your_admin_id
+teacherAdminPassword=your_admin_password
+
+# Cloudflare R2
+R2_ACCOUNT_ID=your_r2_account_id
+R2_ACCESS_KEY_ID=your_r2_access_key
+R2_SECRET_ACCESS_KEY=your_r2_secret_key
+R2_BUCKET_NAME=your_bucket_name
 ```
 
 ### Docker 배포
@@ -248,10 +254,10 @@ docker run -d --name backend -p 80:8000 --env-file ./backend/.env backend \
 Pikabuddy/
 ├── frontend/
 │   └── src/
-│       ├── pages/          # 27개 페이지
-│       ├── components/     # 28개 재사용 컴포넌트
-│       ├── store/          # Zustand (7개 글로벌 스토어)
-│       ├── lib/            # TipTap 확장 10개, 커스텀 훅 3개, 유틸리티
+│       ├── pages/          # 28개 페이지
+│       ├── components/     # 33개 재사용 컴포넌트
+│       ├── store/          # Zustand (6개 글로벌 스토어)
+│       ├── lib/            # TipTap 확장 10개, 유틸리티
 │       ├── types/          # TypeScript 타입 정의
 │       └── themes/effects/ # 55개 시각 이펙트 엔진
 ├── backend/
@@ -259,12 +265,12 @@ Pikabuddy/
 │   ├── config/settings.py
 │   ├── common/             # Supabase, Gemini, R2 클라이언트
 │   ├── middleware/          # 인증 미들웨어
-│   ├── modules/            # 21개 API 모듈, 135개 엔드포인트
+│   ├── modules/            # 20개 API 모듈, 168개 엔드포인트
 │   ├── Dockerfile          # Python 3.12 + gcc/g++/JDK/Node.js
 │   └── requirements.txt
 ├── supabase/
 │   ├── schema.sql          # 16개 기본 테이블
-│   └── add_*.sql           # 10개 마이그레이션 (총 29 테이블)
+│   └── add_*.sql           # 12개 마이그레이션 (총 30 테이블)
 ├── tests/
 │   └── test_api.py         # 31개 API 테스트
 ├── nginx/

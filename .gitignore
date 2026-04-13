@@ -6,10 +6,16 @@ __pycache__/
 # Environment
 .env
 backend/.env
+frontend/.env.production
+frontend/.env.local
 
 # Build
 frontend/dist/
+frontend/.vite/
 *.egg-info/
+
+# Test
+.pytest_cache/
 
 # IDE
 .vscode/
