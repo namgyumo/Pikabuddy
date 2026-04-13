@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libfreetype6-dev \
     libpng-dev \
     libncurses6 \
+    libboost-all-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Node.js LTS (v20) — apt 기본 버전이 너무 낮으므로 NodeSource 사용
@@ -42,6 +43,9 @@ RUN SWIFT_URL="https://download.swift.org/swift-5.10.1-release/ubuntu2204/swift-
     && ln -s /opt/swift-5.10.1-RELEASE-ubuntu22.04/usr/bin/swift /usr/local/bin/swift \
     && ln -s /opt/swift-5.10.1-RELEASE-ubuntu22.04/usr/bin/swiftc /usr/local/bin/swiftc \
     && rm /tmp/swift.tar.gz
+
+# Node.js 글로벌 패키지 (학생 코드 실행용)
+RUN npm install -g lodash axios chalk dayjs uuid
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

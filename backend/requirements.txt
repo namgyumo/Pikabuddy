@@ -19,3 +19,7 @@ scipy
 sympy
 pillow
 networkx
+scikit-learn
+requests
+beautifulsoup4
+openpyxl
