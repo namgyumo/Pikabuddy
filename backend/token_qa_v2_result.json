@@ -1,0 +1,264 @@
+{
+  "features": {
+    "tutor_chat": {
+      "display": "튜터 채팅",
+      "model": "gemini-2.5-flash",
+      "variants": {
+        "short_clean": {
+          "desc": "짧고 명확한 질문, 깔끔한 코드",
+          "input_tokens": 253,
+          "output_tokens": 634,
+          "total_tokens": 887,
+          "cost_usd": 0.0016609,
+          "elapsed_sec": 5.85
+        },
+        "long_clean": {
+          "desc": "긴 코드 + 상세한 맥락 설명이 포함된 질문",
+          "input_tokens": 1046,
+          "output_tokens": 159,
+          "total_tokens": 1205,
+          "cost_usd": 0.0007113,
+          "elapsed_sec": 8.98
+        },
+        "short_messy": {
+          "desc": "짧고 두루뭉술한 질문, 코드 없음",
+          "input_tokens": 193,
+          "output_tokens": 199,
+          "total_tokens": 392,
+          "cost_usd": 0.0005554,
+          "elapsed_sec": 3.0
+        },
+        "long_messy": {
+          "desc": "긴 스파게티 코드 + 두루뭉술하고 장황한 질문",
+          "input_tokens": 619,
+          "output_tokens": 160,
+          "total_tokens": 779,
+          "cost_usd": 0.0005857,
+          "elapsed_sec": 5.77
+        }
+      }
+    },
+    "code_analysis": {
+      "display": "코드 분석",
+      "model": "gemini-2.5-flash",
+      "variants": {
+        "short_clean": {
+          "desc": "짧고 깔끔한 코드 (~10줄)",
+          "input_tokens": 366,
+          "output_tokens": 1526,
+          "total_tokens": 1892,
+          "cost_usd": 0.0039248,
+          "elapsed_sec": 14.96
+        },
+        "long_clean": {
+          "desc": "길고 구조화된 코드 (~80줄, 클래스/독스트링/타입힌트 포함)",
+          "input_tokens": 1316,
+          "output_tokens": 1855,
+          "total_tokens": 3171,
+          "cost_usd": 0.0050323,
+          "elapsed_sec": 21.95
+        },
+        "short_messy": {
+          "desc": "짧고 엉망인 코드 (변수명 의미없음, 하드코딩)",
+          "input_tokens": 318,
+          "output_tokens": 1462,
+          "total_tokens": 1780,
+          "cost_usd": 0.0037504,
+          "elapsed_sec": 17.14
+        },
+        "long_messy": {
+          "desc": "길고 엉망인 코드 (중복, 데드코드, 매직넘버, 전역변수 남용)",
+          "input_tokens": 1278,
+          "output_tokens": 3328,
+          "total_tokens": 4606,
+          "cost_usd": 0.0087034,
+          "elapsed_sec": 33.47
+        }
+      }
+    },
+    "note_ask": {
+      "display": "노트 중 질문",
+      "model": "gemini-2.5-flash",
+      "variants": {
+        "short_clean": {
+          "desc": "짧고 구조화된 노트 + 명확한 질문",
+          "input_tokens": 234,
+          "output_tokens": 107,
+          "total_tokens": 341,
+          "cost_usd": 0.0003377,
+          "elapsed_sec": 4.05
+        },
+        "long_clean": {
+          "desc": "길고 상세한 노트 + 심화 질문",
+          "input_tokens": 856,
+          "output_tokens": 166,
+          "total_tokens": 1022,
+          "cost_usd": 0.0006718,
+          "elapsed_sec": 5.18
+        },
+        "short_messy": {
+          "desc": "짧고 엉망인 노트 + 모호한 질문",
+          "input_tokens": 175,
+          "output_tokens": 162,
+          "total_tokens": 337,
+          "cost_usd": 0.0004575,
+          "elapsed_sec": 4.81
+        },
+        "long_messy": {
+          "desc": "길고 엉망인 노트 (오타, 비문, 혼란스러운 구조) + 장황한 질문",
+          "input_tokens": 559,
+          "output_tokens": 381,
+          "total_tokens": 940,
+          "cost_usd": 0.0011202,
+          "elapsed_sec": 7.81
+        }
+      }
+    },
+    "note_polish": {
+      "display": "노트 다듬기",
+      "model": "gemini-2.5-flash",
+      "variants": {
+        "short_clean": {
+          "desc": "짧고 거의 구조화된 노트 (약간의 정리만 필요)",
+          "input_tokens": 243,
+          "output_tokens": 116,
+          "total_tokens": 359,
+          "cost_usd": 0.0003629,
+          "elapsed_sec": 7.37
+        },
+        "long_clean": {
+          "desc": "길고 내용은 좋지만 포맷팅이 안 된 노트",
+          "input_tokens": 785,
+          "output_tokens": 797,
+          "total_tokens": 1582,
+          "cost_usd": 0.002228,
+          "elapsed_sec": 14.63
+        },
+        "short_messy": {
+          "desc": "짧고 뒤죽박죽인 메모",
+          "input_tokens": 274,
+          "output_tokens": 184,
+          "total_tokens": 458,
+          "cost_usd": 0.0005422,
+          "elapsed_sec": 10.34
+        },
+        "long_messy": {
+          "desc": "길고 두서없는 강의 필기 (순서 뒤죽박죽, 중복, 오타)",
+          "input_tokens": 602,
+          "output_tokens": 546,
+          "total_tokens": 1148,
+          "cost_usd": 0.0015456,
+          "elapsed_sec": 14.56
+        }
+      }
+    },
+    "note_analyze": {
+      "display": "노트 분석",
+      "model": "gemini-2.5-flash",
+      "variants": {
+        "short_clean": {
+          "desc": "짧고 구조화된 노트",
+          "input_tokens": 357,
+          "output_tokens": 610,
+          "total_tokens": 967,
+          "cost_usd": 0.0016321,
+          "elapsed_sec": 11.27
+        },
+        "long_clean": {
+          "desc": "길고 상세하게 정리된 노트",
+          "input_tokens": 1137,
+          "output_tokens": 909,
+          "total_tokens": 2046,
+          "cost_usd": 0.0026136,
+          "elapsed_sec": 24.14
+        },
+        "short_messy": {
+          "desc": "짧고 엉망인 노트",
+          "input_tokens": 255,
+          "output_tokens": 489,
+          "total_tokens": 744,
+          "cost_usd": 0.001299,
+          "elapsed_sec": 11.33
+        },
+        "long_messy": {
+          "desc": "길고 두서없는 노트",
+          "input_tokens": 630,
+          "output_tokens": 750,
+          "total_tokens": 1380,
+          "cost_usd": 0.002064,
+          "elapsed_sec": 18.41
+        }
+      }
+    },
+    "weekly_report": {
+      "display": "주간 리포트",
+      "model": "gemini-2.5-flash-lite",
+      "variants": {
+        "short_clean": {
+          "desc": "적은 활동량 학생",
+          "input_tokens": 82,
+          "output_tokens": 104,
+          "total_tokens": 186,
+          "cost_usd": 4.98e-05,
+          "elapsed_sec": 5.45
+        },
+        "long_clean": {
+          "desc": "많은 활동량 우수 학생",
+          "input_tokens": 211,
+          "output_tokens": 230,
+          "total_tokens": 441,
+          "cost_usd": 0.0001131,
+          "elapsed_sec": 2.2
+        },
+        "short_messy": {
+          "desc": "거의 활동 없는 학생",
+          "input_tokens": 75,
+          "output_tokens": 76,
+          "total_tokens": 151,
+          "cost_usd": 3.79e-05,
+          "elapsed_sec": 0.98
+        },
+        "long_messy": {
+          "desc": "많이 했지만 이해도가 낮은 학생",
+          "input_tokens": 226,
+          "output_tokens": 184,
+          "total_tokens": 410,
+          "cost_usd": 9.62e-05,
+          "elapsed_sec": 2.64
+        }
+      }
+    }
+  },
+  "summary": {
+    "tutor_chat": {
+      "min_cost": 0.0005554,
+      "max_cost": 0.0016609,
+      "ratio": 3.0
+    },
+    "code_analysis": {
+      "min_cost": 0.0037504,
+      "max_cost": 0.0087034,
+      "ratio": 2.3
+    },
+    "note_ask": {
+      "min_cost": 0.0003377,
+      "max_cost": 0.0011202,
+      "ratio": 3.3
+    },
+    "note_polish": {
+      "min_cost": 0.0003629,
+      "max_cost": 0.002228,
+      "ratio": 6.1
+    },
+    "note_analyze": {
+      "min_cost": 0.001299,
+      "max_cost": 0.0026136,
+      "ratio": 2.0
+    },
+    "weekly_report": {
+      "min_cost": 3.79e-05,
+      "max_cost": 0.0001131,
+      "ratio": 3.0
+    }
+  }
+}
