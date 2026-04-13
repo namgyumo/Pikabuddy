@@ -339,12 +339,32 @@ export const ANIMATION_PRESETS = [
 
 /** Sanitize user CSS — strip JS injection vectors, keep valid CSS */
 export function sanitizeCSS(css: string): string {
+  // Limit total CSS length to prevent abuse
+  if (css.length > 10000) {
+    css = css.slice(0, 10000);
+  }
+
   return css
+    // Block dangerous at-rules
     .replace(/@import\b[^;]*;/gi, "")
-    .replace(/expression\s*\(/gi, "")
-    .replace(/javascript\s*:/gi, "")
+    .replace(/@charset\b[^;]*;/gi, "")
+    .replace(/@font-face\s*\{[^}]*\}/gi, "")
+    // Block expression() with any whitespace/comment variations (e.g. expr/**/ession)
+    .replace(/e\s*x\s*p\s*r\s*e\s*s\s*s\s*i\s*o\s*n\s*\(/gi, "")
+    .replace(/e[\s/]*x[\s/]*p[\s/]*r[\s/]*e[\s/]*s[\s/]*s[\s/]*i[\s/]*o[\s/]*n[\s/]*\(/gi, "")
+    // Block javascript: protocol
+    .replace(/j\s*a\s*v\s*a\s*s\s*c\s*r\s*i\s*p\s*t\s*:/gi, "")
+    // Block dangerous properties
     .replace(/behavior\s*:/gi, "")
     .replace(/-moz-binding\s*:/gi, "")
+    .replace(/content\s*:/gi, "")
+    // Block url() in all contexts (data exfiltration, external resource loading)
+    .replace(/url\s*\(/gi, "")
+    // Block position:fixed/absolute with high z-index patterns
+    .replace(/position\s*:\s*(fixed|absolute)\s*;[^}]*z-index\s*:\s*(\d{4,})/gi, "position: static;")
+    .replace(/position\s*:\s*fixed/gi, "position: static")
+    .replace(/position\s*:\s*absolute/gi, "position: relative")
+    // Remove script tags
     .replace(/<\/?script[^>]*>/gi, "");
 }
 

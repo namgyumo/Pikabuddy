@@ -97,29 +97,53 @@ def _tier_display(tier_id: str) -> dict:
     }
 
 
-def _award_exp_raw(user_id: str, amount: int, reason: str = ""):
-    """내부: user_exp 테이블에 EXP 증감 반영."""
+def _award_exp_raw(user_id: str, amount: int, reason: str = "", max_retries: int = 3):
+    """내부: user_exp 테이블에 EXP 증감 반영. 낙관적 잠금으로 race condition 방지."""
     if amount <= 0:
         return None
     supabase = get_supabase()
-    existing = supabase.table("user_exp").select("*").eq("user_id", user_id).execute()
 
-    if not existing.data:
-        new_exp = amount
-        tier = _compute_tier(new_exp)
-        supabase.table("user_exp").insert({
-            "user_id": user_id, "total_exp": new_exp, "tier": tier,
-        }).execute()
-    else:
-        current = existing.data[0]
-        new_exp = current["total_exp"] + amount
-        tier = _compute_tier(new_exp)
-        supabase.table("user_exp").update({
-            "total_exp": new_exp, "tier": tier,
-        }).eq("user_id", user_id).execute()
+    for attempt in range(max_retries):
+        existing = supabase.table("user_exp").select("*").eq("user_id", user_id).execute()
 
-    logger.info(f"[Gamification] user={user_id}, +{amount} EXP ({reason}), total={new_exp}, tier={tier}")
-    return {"total_exp": new_exp, "tier": tier}
+        if not existing.data:
+            new_exp = amount
+            tier = _compute_tier(new_exp)
+            try:
+                supabase.table("user_exp").insert({
+                    "user_id": user_id, "total_exp": new_exp, "tier": tier,
+                }).execute()
+            except Exception:
+                # 다른 스레드가 먼저 insert했을 수 있으므로 재시도
+                if attempt < max_retries - 1:
+                    continue
+                raise
+        else:
+            current = existing.data[0]
+            old_exp = current["total_exp"]
+            new_exp = old_exp + amount
+            tier = _compute_tier(new_exp)
+            # 낙관적 잠금: old_exp 값이 여전히 같을 때만 업데이트
+            result = supabase.table("user_exp").update({
+                "total_exp": new_exp, "tier": tier,
+            }).eq("user_id", user_id).eq("total_exp", old_exp).execute()
+            if not result.data:
+                # 다른 스레드가 먼저 업데이트함 — 재시도
+                if attempt < max_retries - 1:
+                    continue
+                # 최종 시도 실패 시 강제 업데이트 (데이터 유실보다 나음)
+                existing2 = supabase.table("user_exp").select("*").eq("user_id", user_id).execute()
+                if existing2.data:
+                    new_exp = existing2.data[0]["total_exp"] + amount
+                    tier = _compute_tier(new_exp)
+                    supabase.table("user_exp").update({
+                        "total_exp": new_exp, "tier": tier,
+                    }).eq("user_id", user_id).execute()
+
+        logger.info(f"[Gamification] user={user_id}, +{amount} EXP ({reason}), total={new_exp}, tier={tier}")
+        return {"total_exp": new_exp, "tier": tier}
+
+    return None
 
 
 def award_exp(user_id: str, event_type: str, ref_id: str, new_amount: int | None = None):
@@ -149,7 +173,7 @@ def award_exp(user_id: str, event_type: str, ref_id: str, new_amount: int | None
             .eq("id", existing.data["id"]).execute()
         _award_exp_raw(user_id, delta, f"{event_type}:{ref_id} delta={delta}")
     else:
-        # 신규 로그 삽입
+        # 신규 로그 삽입 — unique 충돌 시 _award_exp_raw를 건너뛰어 중복 EXP 방지
         try:
             supabase.table("exp_logs").insert({
                 "user_id": user_id,
@@ -158,7 +182,8 @@ def award_exp(user_id: str, event_type: str, ref_id: str, new_amount: int | None
                 "exp_amount": new_amount,
             }).execute()
         except Exception:
-            return  # unique 충돌 시 무시
+            logger.debug(f"[Gamification] exp_logs 중복 삽입 무시: {event_type}:{ref_id}")
+            return  # unique 충돌 시 _award_exp_raw 호출하지 않고 종료
         _award_exp_raw(user_id, new_amount, f"{event_type}:{ref_id}")
 
 

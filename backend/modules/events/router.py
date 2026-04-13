@@ -1,9 +1,19 @@
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from common.supabase_client import get_supabase
 from middleware.auth import get_current_user
 
 router = APIRouter(tags=["events"])
+
+
+def _validate_iso8601(value: str) -> str:
+    """ISO 8601 날짜 형식 검증."""
+    try:
+        datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        raise ValueError(f"유효하지 않은 ISO 8601 날짜 형식입니다: {value}")
+    return value
 
 
 class EventCreate(BaseModel):
@@ -13,6 +23,18 @@ class EventCreate(BaseModel):
     end_date: str | None = None  # ISO 8601, 기간 일정용
     color: str = "primary"
 
+    @field_validator("event_date")
+    @classmethod
+    def validate_event_date(cls, v: str) -> str:
+        return _validate_iso8601(v)
+
+    @field_validator("end_date")
+    @classmethod
+    def validate_end_date(cls, v: str | None) -> str | None:
+        if v is not None:
+            return _validate_iso8601(v)
+        return v
+
 
 class EventUpdate(BaseModel):
     title: str | None = None
@@ -20,6 +42,20 @@ class EventUpdate(BaseModel):
     event_date: str | None = None
     end_date: str | None = None
     color: str | None = None
+
+    @field_validator("event_date")
+    @classmethod
+    def validate_event_date(cls, v: str | None) -> str | None:
+        if v is not None:
+            return _validate_iso8601(v)
+        return v
+
+    @field_validator("end_date")
+    @classmethod
+    def validate_end_date(cls, v: str | None) -> str | None:
+        if v is not None:
+            return _validate_iso8601(v)
+        return v
 
 
 @router.get("/events")
@@ -56,9 +92,11 @@ async def update_event(event_id: str, body: EventUpdate, user: dict = Depends(ge
     updates = body.model_dump(exclude_none=True)
     if not updates:
         raise HTTPException(status_code=400, detail="수정할 항목이 없습니다.")
-    supabase.table("user_events").update(updates).eq(
+    result = supabase.table("user_events").update(updates).eq(
         "id", event_id
     ).eq("user_id", user["id"]).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="일정을 찾을 수 없습니다.")
     return {"message": "일정이 수정되었습니다."}
 
 
@@ -66,9 +104,11 @@ async def update_event(event_id: str, body: EventUpdate, user: dict = Depends(ge
 async def delete_event(event_id: str, user: dict = Depends(get_current_user)):
     """일정 삭제"""
     supabase = get_supabase()
-    supabase.table("user_events").delete().eq(
+    result = supabase.table("user_events").delete().eq(
         "id", event_id
     ).eq("user_id", user["id"]).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="일정을 찾을 수 없습니다.")
     return {"message": "일정이 삭제되었습니다."}
 
 
@@ -93,13 +133,16 @@ async def get_calendar(user: dict = Depends(get_current_user)):
     course_map = {c["id"]: c["title"] for c in (courses.data or [])}
 
     assignments = []
-    for cid in course_map:
-        result = supabase.table("assignments").select(
+    course_ids_list = list(course_map.keys())
+    if course_ids_list:
+        # 단일 쿼리로 모든 코스의 과제를 한 번에 조회 (N+1 쿼리 방지)
+        query = supabase.table("assignments").select(
             "id, title, type, due_date, status, course_id"
-        ).eq("course_id", cid).not_.is_("due_date", "null").execute()
+        ).in_("course_id", course_ids_list).not_.is_("due_date", "null")
+        if role != "professor":
+            query = query.eq("status", "published")
+        result = query.execute()
         for a in (result.data or []):
-            if role != "professor" and a.get("status") != "published":
-                continue
             assignments.append({
                 "id": a["id"],
                 "title": a["title"],

@@ -18,9 +18,11 @@ function useKatexRender(
     const el = containerRef.current;
     if (!el) return;
     if (!formula.trim()) {
-      el.innerHTML = `<span style="color:var(--on-surface-variant);opacity:0.5">${
-        displayMode ? "수식을 입력하세요" : "수식"
-      }</span>`;
+      el.textContent = "";
+      const placeholder = document.createElement("span");
+      placeholder.style.cssText = "color:var(--on-surface-variant);opacity:0.5";
+      placeholder.textContent = displayMode ? "수식을 입력하세요" : "수식";
+      el.appendChild(placeholder);
       return;
     }
     try {
@@ -28,10 +30,14 @@ function useKatexRender(
         displayMode,
         throwOnError: false,
         strict: false,
-        trust: true,
+        trust: false,
       });
     } catch {
-      el.innerHTML = `<span style="color:var(--error)">수식 오류</span>`;
+      el.textContent = "";
+      const errSpan = document.createElement("span");
+      errSpan.style.cssText = "color:var(--error)";
+      errSpan.textContent = "수식 오류";
+      el.appendChild(errSpan);
     }
   }, [formula, displayMode, containerRef]);
 }

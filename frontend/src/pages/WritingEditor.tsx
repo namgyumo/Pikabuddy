@@ -137,6 +137,14 @@ export default function WritingEditor() {
   const ydocRef = useRef<Y.Doc | null>(null);
   const yjsProviderRef = useRef<SupabaseYjsProvider | null>(null);
   const realtimeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const submitAbortRef = useRef<AbortController | null>(null);
+
+  // Cleanup SSE streams on unmount
+  useEffect(() => {
+    return () => {
+      submitAbortRef.current?.abort();
+    };
+  }, []);
 
   // 시험 모드
   const examMode = useExamMode({
@@ -411,7 +419,9 @@ export default function WritingEditor() {
       }
 
       const headers = await getAuthHeaders();
-      const response = await fetch(`${API_BASE}/submissions/${submission.id}/feedback-stream`, { headers });
+      const abortController = new AbortController();
+      submitAbortRef.current = abortController;
+      const response = await fetch(`${API_BASE}/submissions/${submission.id}/feedback-stream`, { headers, signal: abortController.signal });
 
       if (!response.ok) {
         setFeedback(`피드백 요청 실패 (${response.status})`);
@@ -444,9 +454,12 @@ export default function WritingEditor() {
           for (const line of lines) processLine(line);
         }
       }
-    } catch {
-      setFeedback("제출 중 오류가 발생했습니다.");
+    } catch (err) {
+      if ((err as Error)?.name !== "AbortError") {
+        setFeedback("제출 중 오류가 발생했습니다.");
+      }
     } finally {
+      submitAbortRef.current = null;
       setSubmitting(false);
     }
   };

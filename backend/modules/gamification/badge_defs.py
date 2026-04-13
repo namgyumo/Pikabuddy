@@ -257,7 +257,15 @@ def _calc_streak(dates: list[str]) -> int:
 def _count_tutor_days(sb, user_id: str) -> int:
     """Count distinct tutor chat days."""
     r = sb.table("exp_logs").select("ref_id").eq("user_id", user_id).eq("event_type", "tutor_chat").execute()
-    return len(r.data or [])
+    # ref_id 형식: "daily_2026-04-10" → 날짜 부분 추출하여 고유 일수 계산
+    days = set()
+    for row in (r.data or []):
+        ref = row.get("ref_id", "")
+        if ref.startswith("daily_"):
+            days.add(ref[6:])  # "daily_" 이후 날짜 부분
+        else:
+            days.add(ref)
+    return len(days)
 
 
 def _count_analyses(sb, user_id: str) -> int:
@@ -316,19 +324,22 @@ def _check_multi_track(sb, user_id: str) -> bool:
 
 
 def _check_weekend_study(sb, user_id: str) -> bool:
-    """Check if user had activity on both Sat and Sun of any week."""
+    """Check if user had activity on both Sat and Sun of the SAME week."""
     dates = _count_exp_log_days(sb, user_id)
-    sat_found = False
-    sun_found = False
+    # 주차별로 토요일/일요일 활동 여부 추적
+    sat_weeks: set[str] = set()
+    sun_weeks: set[str] = set()
     for d_str in dates:
         d = date.fromisoformat(d_str)
+        # ISO 주차 번호 (year-week 형태로 키 생성)
+        iso_year, iso_week, _ = d.isocalendar()
+        week_key = f"{iso_year}-W{iso_week}"
         if d.weekday() == 5:
-            sat_found = True
+            sat_weeks.add(week_key)
         elif d.weekday() == 6:
-            sun_found = True
-        if sat_found and sun_found:
-            return True
-    return False
+            sun_weeks.add(week_key)
+    # 같은 주에 토/일 모두 활동이 있는지 확인
+    return bool(sat_weeks & sun_weeks)
 
 
 def _count_languages(sb, user_id: str) -> int:

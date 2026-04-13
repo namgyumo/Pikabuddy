@@ -1,7 +1,7 @@
 import asyncio
 import json
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sse_starlette.sse import EventSourceResponse
 from common.gemini_client import get_gemini_model
 from middleware.auth import require_student_or_personal
@@ -16,6 +16,31 @@ class TutorChatRequest(BaseModel):
     code_context: str | None = None   # 학생의 현재 코드
     history: list[dict] | None = None  # [{"role": "user"|"ai", "content": "..."}]
     problem_context: dict | None = None  # {title, description, expected_output, hints}
+
+    @field_validator("message")
+    @classmethod
+    def validate_message(cls, v: str) -> str:
+        if len(v) > 5000:
+            raise ValueError("메시지는 5000자 이내여야 합니다.")
+        return v
+
+    @field_validator("starter_code", "code_context")
+    @classmethod
+    def validate_code(cls, v: str | None) -> str | None:
+        if v and len(v) > 50000:
+            raise ValueError("코드는 50000자 이내여야 합니다.")
+        return v
+
+    @field_validator("history")
+    @classmethod
+    def validate_history(cls, v: list[dict] | None) -> list[dict] | None:
+        if v:
+            if len(v) > 20:
+                v = v[-20:]
+            for h in v:
+                if "role" not in h or "content" not in h:
+                    raise ValueError("history 항목에는 role과 content가 필요합니다.")
+        return v
 
 
 @router.post("/chat")

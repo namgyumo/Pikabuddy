@@ -1,8 +1,9 @@
 import hmac
 import logging
+import time
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Request, status, UploadFile, File
+from pydantic import BaseModel, field_validator
 from common.supabase_client import get_supabase
 from middleware.auth import get_current_user
 from config import get_settings
@@ -10,6 +11,51 @@ from config import get_settings
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["인증"])
+
+# ── In-memory rate limiter for admin-login ──
+# Key: (ip, username) -> list of failed attempt timestamps
+_login_fail_attempts: dict[tuple[str, str], list[float]] = {}
+_LOGIN_MAX_FAILURES = 5
+_LOGIN_WINDOW_SECS = 300  # 5 minutes
+_LOGIN_BLOCK_SECS = 900   # 15 minutes
+
+
+def _check_rate_limit(ip: str, username: str):
+    """Check and enforce rate limit. Raises HTTPException if blocked."""
+    key = (ip, username)
+    now = time.time()
+    attempts = _login_fail_attempts.get(key, [])
+    # Prune old attempts outside the block window
+    attempts = [t for t in attempts if now - t < _LOGIN_BLOCK_SECS]
+    _login_fail_attempts[key] = attempts
+
+    # If there are >= max failures within the window, check if still blocked
+    recent = [t for t in attempts if now - t < _LOGIN_WINDOW_SECS]
+    if len(attempts) >= _LOGIN_MAX_FAILURES:
+        last_failure = max(attempts)
+        if now - last_failure < _LOGIN_BLOCK_SECS:
+            raise HTTPException(
+                status_code=429,
+                detail=f"로그인 시도가 너무 많습니다. {_LOGIN_BLOCK_SECS // 60}분 후에 다시 시도해주세요.",
+            )
+        else:
+            # Block period expired, reset
+            _login_fail_attempts[key] = []
+
+
+def _record_login_failure(ip: str, username: str):
+    """Record a failed login attempt."""
+    key = (ip, username)
+    now = time.time()
+    if key not in _login_fail_attempts:
+        _login_fail_attempts[key] = []
+    _login_fail_attempts[key].append(now)
+
+
+def _clear_login_failures(ip: str, username: str):
+    """Clear failed login attempts on success."""
+    key = (ip, username)
+    _login_fail_attempts.pop(key, None)
 
 
 class AuthCallbackRequest(BaseModel):
@@ -26,9 +72,12 @@ class AdminLoginRequest(BaseModel):
 
 
 @router.post("/admin-login")
-async def admin_login(body: AdminLoginRequest):
+async def admin_login(body: AdminLoginRequest, request: Request):
     """관리자 계정 로그인 (ID/PW)"""
     import httpx
+
+    client_ip = request.client.host if request.client else "unknown"
+    _check_rate_limit(client_ip, body.username)
 
     settings = get_settings()
     supabase = get_supabase()
@@ -44,7 +93,10 @@ async def admin_login(body: AdminLoginRequest):
     elif settings.teachertestid and hmac.compare_digest(body.username, settings.teachertestid) and hmac.compare_digest(body.password, settings.teachertestpassword):
         role = "professor"
     else:
+        _record_login_failure(client_ip, body.username)
         raise HTTPException(status_code=401, detail="아이디 또는 비밀번호가 올바르지 않습니다.")
+
+    _clear_login_failures(client_ip, body.username)
 
     admin_email = f"{body.username}@pikabuddy.admin"
     base_url = settings.SUPABASE_URL
@@ -140,8 +192,8 @@ async def admin_login(body: AdminLoginRequest):
 
 
 @router.get("/test-accounts")
-async def get_test_accounts():
-    """테스트 계정 정보 반환 (로그인 화면에 표시)"""
+async def get_test_accounts(user: dict = Depends(get_current_user)):
+    """테스트 계정 정보 반환 (인증 필요)"""
     settings = get_settings()
     accounts = []
     if settings.teachertestid:
@@ -380,6 +432,28 @@ class ProfileUpdateRequest(BaseModel):
     bio: str | None = None
     social_links: dict | None = None
     profile_color: str | None = None
+
+    @field_validator("preferences")
+    @classmethod
+    def validate_preferences(cls, v):
+        if v is not None:
+            if len(v) > 10:
+                raise ValueError("preferences는 최대 10개의 키만 허용됩니다.")
+            for key, val in v.items():
+                if isinstance(val, str) and len(val) > 1000:
+                    raise ValueError(f"preferences 값은 최대 1000자까지 허용됩니다. (키: {key})")
+        return v
+
+    @field_validator("social_links")
+    @classmethod
+    def validate_social_links(cls, v):
+        if v is not None:
+            if len(v) > 10:
+                raise ValueError("social_links는 최대 10개의 키만 허용됩니다.")
+            for key, val in v.items():
+                if isinstance(val, str) and len(val) > 1000:
+                    raise ValueError(f"social_links 값은 최대 1000자까지 허용됩니다. (키: {key})")
+        return v
 
 
 @router.patch("/profile")

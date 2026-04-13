@@ -49,11 +49,25 @@ async def get_dashboard(course_id: str, user: dict = Depends(require_professor_o
     if not student_list:
         return {"course_id": course_id, "student_count": 0, "avg_class_score": 0, "at_risk_count": 0, "students": []}
 
+    # 해당 코스의 과제 ID 목록 조회 (cross-course 데이터 누출 방지)
+    course_assignments = (
+        supabase.table("assignments")
+        .select("id")
+        .eq("course_id", course_id)
+        .execute()
+    )
+    course_assignment_ids = [a["id"] for a in (course_assignments.data or [])]
+
     # Fetch all student data in parallel
     def fetch_student_data(sid: str):
         sb = get_supabase()
-        submissions = sb.table("submissions").select("*, ai_analyses(*)").eq("student_id", sid).execute()
-        paste_count = sb.table("snapshots").select("id", count="exact").eq("student_id", sid).eq("is_paste", True).execute()
+        # 해당 코스의 과제에 대한 제출물만 조회
+        if course_assignment_ids:
+            submissions = sb.table("submissions").select("*, ai_analyses(*)").eq("student_id", sid).in_("assignment_id", course_assignment_ids).execute()
+            paste_count = sb.table("snapshots").select("id", count="exact").eq("student_id", sid).eq("is_paste", True).in_("assignment_id", course_assignment_ids).execute()
+        else:
+            submissions = type("R", (), {"data": []})()
+            paste_count = type("R", (), {"count": 0})()
         notes = sb.table("notes").select("understanding_score").eq("student_id", sid).eq("course_id", course_id).execute()
         return submissions, paste_count, notes
 

@@ -77,10 +77,18 @@ function showToast(item: ToastItem) {
     lineHeight: "1.4",
   });
 
-  el.innerHTML = `
-    <span style="flex-shrink:0;display:flex;align-items:center">${ICONS[item.type]}</span>
-    <span style="flex:1;word-break:keep-all">${item.message}</span>
-  `;
+  // Icon span — use innerHTML only for static SVG constants (no user data)
+  const iconSpan = document.createElement("span");
+  Object.assign(iconSpan.style, { flexShrink: "0", display: "flex", alignItems: "center" });
+  iconSpan.innerHTML = ICONS[item.type]; // safe: static SVG, no user input
+
+  // Message span — use textContent to prevent XSS
+  const msgSpan = document.createElement("span");
+  Object.assign(msgSpan.style, { flex: "1", wordBreak: "keep-all" });
+  msgSpan.textContent = item.message;
+
+  el.appendChild(iconSpan);
+  el.appendChild(msgSpan);
 
   el.addEventListener("click", () => removeToast(el));
   container.appendChild(el);

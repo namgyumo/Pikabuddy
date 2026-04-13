@@ -1,21 +1,25 @@
 """Cloudflare R2 클라이언트 — S3 호환 API로 presigned URL 발급 및 파일 관리"""
+import threading
 import boto3
 from config import get_settings
 
 _client = None
+_client_lock = threading.Lock()
 
 
 def get_r2_client():
     global _client
     if _client is None:
-        settings = get_settings()
-        _client = boto3.client(
-            "s3",
-            endpoint_url=f"https://{settings.R2_ACCOUNT_ID}.r2.cloudflarestorage.com",
-            aws_access_key_id=settings.R2_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.R2_SECRET_ACCESS_KEY,
-            region_name="auto",
-        )
+        with _client_lock:
+            if _client is None:
+                settings = get_settings()
+                _client = boto3.client(
+                    "s3",
+                    endpoint_url=f"https://{settings.R2_ACCOUNT_ID}.r2.cloudflarestorage.com",
+                    aws_access_key_id=settings.R2_ACCESS_KEY_ID,
+                    aws_secret_access_key=settings.R2_SECRET_ACCESS_KEY,
+                    region_name="auto",
+                )
     return _client
 
 

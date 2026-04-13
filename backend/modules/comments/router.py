@@ -279,6 +279,7 @@ async def list_student_notes(
     enrollments = enrollment_query.execute()
 
     result = []
+    all_note_ids = []
     for enrollment in (enrollments.data or []):
         student = enrollment.get("users")
         if not student:
@@ -292,18 +293,27 @@ async def list_student_notes(
             .eq("course_id", course_id) \
             .order("updated_at", desc=True).execute()
 
-        note_list = []
-        for note in (notes.data or []):
-            # 코멘트 수
-            cc = sb.table("note_comments") \
-                .select("id", count="exact") \
-                .eq("note_id", note["id"]).execute()
-            note["comment_count"] = cc.count or 0
-            note_list.append(note)
-
+        note_list = notes.data or []
+        all_note_ids.extend([n["id"] for n in note_list])
         result.append({
             "student": student,
             "notes": note_list,
         })
+
+    # 배치로 코멘트 수 조회 (N+1 쿼리 해결)
+    if all_note_ids:
+        comment_counts = {}
+        # Supabase에서 note_id별 코멘트 수를 한 번에 조회
+        for batch_start in range(0, len(all_note_ids), 100):
+            batch_ids = all_note_ids[batch_start:batch_start + 100]
+            cc = sb.table("note_comments") \
+                .select("note_id") \
+                .in_("note_id", batch_ids).execute()
+            for row in (cc.data or []):
+                nid = row["note_id"]
+                comment_counts[nid] = comment_counts.get(nid, 0) + 1
+        for entry in result:
+            for note in entry["notes"]:
+                note["comment_count"] = comment_counts.get(note["id"], 0)
 
     return result

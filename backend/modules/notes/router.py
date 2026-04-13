@@ -19,6 +19,53 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["노트"])
 
 
+def _verify_note_access(user: dict, note_id: str) -> dict:
+    """노트에 대한 접근 권한을 검증한다. 소유자, 팀 멤버, 또는 코스 교수만 접근 가능.
+    반환: note 데이터 (student_id, course_id, team_id 포함)"""
+    supabase = get_supabase()
+    note = (
+        supabase.table("notes")
+        .select("student_id, course_id, team_id")
+        .eq("id", note_id)
+        .single()
+        .execute()
+    )
+    if not note.data:
+        raise HTTPException(status_code=404, detail="노트를 찾을 수 없습니다.")
+
+    note_data = note.data
+
+    # 어드민은 통과
+    is_admin = user.get("email", "").endswith("@pikabuddy.admin")
+    if is_admin:
+        return note_data
+
+    # 소유자
+    if note_data["student_id"] == user["id"]:
+        return note_data
+
+    # 팀 멤버
+    if note_data.get("team_id"):
+        from modules.teams.router import get_user_team_ids
+        user_teams = get_user_team_ids(supabase, user["id"], note_data["course_id"])
+        if note_data["team_id"] in user_teams:
+            return note_data
+
+    # 코스 교수
+    if user.get("role") in ("professor", "personal"):
+        course = (
+            supabase.table("courses")
+            .select("professor_id")
+            .eq("id", note_data["course_id"])
+            .single()
+            .execute()
+        )
+        if course.data and course.data["professor_id"] == user["id"]:
+            return note_data
+
+    raise HTTPException(status_code=403, detail="노트에 접근 권한이 없습니다.")
+
+
 class NoteCreateRequest(BaseModel):
     title: str
     content: dict  # Tiptap JSON

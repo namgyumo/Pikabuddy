@@ -7,6 +7,11 @@ from middleware.auth import get_current_user, require_professor_or_personal, ver
 
 router = APIRouter(tags=["강의자료"])
 
+ALLOWED_MATERIAL_EXTS = {
+    ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx",
+    ".txt", ".md", ".csv", ".jpg", ".jpeg", ".png", ".gif", ".zip",
+}
+
 
 class MaterialResponse(BaseModel):
     id: str
@@ -44,6 +49,16 @@ async def upload_material(
     """교수 또는 개인 모드 유저가 강의자료 업로드 (Supabase Storage 사용)"""
     if user.get("role") not in ("professor", "personal"):
         raise HTTPException(status_code=403, detail="자료 업로드 권한이 없습니다.")
+
+    # File extension validation
+    filename = file.filename or ""
+    ext = ("." + filename.rsplit(".", 1)[-1]).lower() if "." in filename else ""
+    if ext not in ALLOWED_MATERIAL_EXTS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"허용되지 않는 파일 형식입니다. 허용: {', '.join(sorted(ALLOWED_MATERIAL_EXTS))}",
+        )
+
     verify_course_ownership(user, course_id)
     supabase = get_supabase()
 
@@ -107,5 +122,16 @@ async def delete_material(
     )
     if not mat.data:
         raise HTTPException(status_code=404, detail="자료를 찾을 수 없습니다.")
+
+    # Delete file from Supabase Storage
+    file_url = mat.data.get("file_url", "")
+    # Extract storage path from public URL (format: .../object/public/course-files/materials/...)
+    storage_marker = "/object/public/course-files/"
+    if storage_marker in file_url:
+        storage_path = file_url.split(storage_marker, 1)[1]
+        try:
+            supabase.storage.from_("course-files").remove([storage_path])
+        except Exception:
+            pass  # Best-effort cleanup; don't fail deletion if storage removal fails
 
     supabase.table("course_materials").delete().eq("id", material_id).execute()

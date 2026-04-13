@@ -45,6 +45,28 @@ class ExamResetRequest(BaseModel):
     reason: str = ""
 
 
+# ── 스크린샷 파일 유효성 검사 ──
+
+ALLOWED_SCREENSHOT_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+ALLOWED_SCREENSHOT_MIMES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+# Magic bytes for common image formats
+IMAGE_MAGIC_BYTES = {
+    b"\xff\xd8\xff": "image/jpeg",
+    b"\x89PNG": "image/png",
+    b"GIF87a": "image/gif",
+    b"GIF89a": "image/gif",
+    b"RIFF": "image/webp",  # WebP starts with RIFF....WEBP
+}
+
+
+def _validate_image_magic_bytes(data: bytes) -> bool:
+    """Check if file starts with valid image magic bytes."""
+    for magic in IMAGE_MAGIC_BYTES:
+        if data[:len(magic)] == magic:
+            return True
+    return False
+
+
 # ── 학생용: 스크린샷 업로드 (백엔드 프록시 → R2) ──
 
 @router.post("/exam/screenshot", status_code=201)
@@ -54,12 +76,31 @@ async def upload_screenshot(
     user: dict = Depends(get_current_user),
 ):
     """스크린샷을 백엔드에서 R2로 업로드 + DB 메타데이터 저장"""
+    # File type validation
+    filename = file.filename or ""
+    ext = ("." + filename.rsplit(".", 1)[-1]).lower() if "." in filename else ""
+    if ext not in ALLOWED_SCREENSHOT_EXTS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"허용되지 않는 파일 형식입니다. 허용: {', '.join(ALLOWED_SCREENSHOT_EXTS)}",
+        )
+    if file.content_type and file.content_type not in ALLOWED_SCREENSHOT_MIMES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"허용되지 않는 Content-Type입니다: {file.content_type}",
+        )
+
     student_id = user["id"]
     timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
     file_id = uuid.uuid4().hex[:8]
     r2_key = f"exam/{assignment_id}/{student_id}/{timestamp}_{file_id}.jpg"
 
     file_bytes = await file.read()
+
+    # Validate magic bytes
+    if not _validate_image_magic_bytes(file_bytes):
+        raise HTTPException(status_code=400, detail="파일 내용이 유효한 이미지 형식이 아닙니다.")
+
     file_size_kb = len(file_bytes) // 1024
 
     # R2에 업로드
@@ -99,11 +140,9 @@ async def start_exam(body: ScreenshotURLRequest, user: dict = Depends(get_curren
     if existing.data:
         raise HTTPException(403, "시험이 이미 종료되었습니다. 재입장할 수 없습니다.")
 
-    # ── Gamification ──
+    # ── Gamification: 시험 시작 배지만 체크 (EXP는 시험 완료 시 부여) ──
     try:
-        from modules.gamification.router import award_exp
         from modules.gamification.badge_defs import check_badges
-        award_exp(user["id"], "exam_complete", body.assignment_id, 20)
         check_badges(user["id"], "exam_start")
     except Exception:
         pass
@@ -138,6 +177,17 @@ async def log_violation(body: ViolationRequest, user: dict = Depends(get_current
         "violation_count": body.violation_count,
         "detail": body.detail,
     }).execute()
+
+    # ── Gamification: 시험 완료(forced_end) 시 EXP 부여 ──
+    if body.violation_type == "forced_end":
+        try:
+            from modules.gamification.router import award_exp
+            from modules.gamification.badge_defs import check_badges
+            award_exp(user["id"], "exam_complete", body.assignment_id, 20)
+            check_badges(user["id"], "exam_complete")
+        except Exception:
+            pass
+
     return {"message": "위반 기록 완료"}
 
 

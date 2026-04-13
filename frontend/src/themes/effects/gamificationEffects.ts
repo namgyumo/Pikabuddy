@@ -167,7 +167,10 @@ export const levelUpCelebrationEffect: ThemeEffect = {
     const level = data?.level || "UP";
     const overlay = document.createElement("div");
     overlay.className = "pkb-levelup-overlay";
-    overlay.innerHTML = `<div class="pkb-levelup-text">LEVEL ${level}!</div>`;
+    const textDiv = document.createElement("div");
+    textDiv.className = "pkb-levelup-text";
+    textDiv.textContent = `LEVEL ${level}!`;
+    overlay.appendChild(textDiv);
     document.body.appendChild(overlay);
 
     // Also fire confetti
@@ -358,7 +361,14 @@ export const badgeUnlockEffect: ThemeEffect = {
     const name = data?.name || "새 뱃지 획득!";
     const overlay = document.createElement("div");
     overlay.className = "pkb-badge-unlock-overlay";
-    overlay.innerHTML = `<div class="pkb-badge-icon">${icon}</div><div class="pkb-badge-label">${name}</div>`;
+    const iconDiv = document.createElement("div");
+    iconDiv.className = "pkb-badge-icon";
+    iconDiv.textContent = icon;
+    const labelDiv = document.createElement("div");
+    labelDiv.className = "pkb-badge-label";
+    labelDiv.textContent = name;
+    overlay.appendChild(iconDiv);
+    overlay.appendChild(labelDiv);
     document.body.appendChild(overlay);
     setTimeout(() => overlay.remove(), 2700);
   },
@@ -423,11 +433,18 @@ export const rankUpAnimationEffect: ThemeEffect = {
     const to = data?.to || "🥇";
     const overlay = document.createElement("div");
     overlay.className = "pkb-rankup-overlay";
-    overlay.innerHTML = `
-      <div class="pkb-rankup-old">${from}</div>
-      <div class="pkb-rankup-new">${to}</div>
-      <div class="pkb-rankup-label">RANK UP!</div>
-    `;
+    const oldDiv = document.createElement("div");
+    oldDiv.className = "pkb-rankup-old";
+    oldDiv.textContent = from;
+    const newDiv = document.createElement("div");
+    newDiv.className = "pkb-rankup-new";
+    newDiv.textContent = to;
+    const labelDiv = document.createElement("div");
+    labelDiv.className = "pkb-rankup-label";
+    labelDiv.textContent = "RANK UP!";
+    overlay.appendChild(oldDiv);
+    overlay.appendChild(newDiv);
+    overlay.appendChild(labelDiv);
     document.body.appendChild(overlay);
     confettiEffect.trigger?.();
     setTimeout(() => overlay.remove(), 3200);
@@ -497,11 +514,18 @@ export const dailyRewardEffect: ThemeEffect = {
     const reward = data?.reward || "⭐";
     const overlay = document.createElement("div");
     overlay.className = "pkb-reward-overlay";
-    overlay.innerHTML = `
-      <div class="pkb-reward-box">🎁</div>
-      <div class="pkb-reward-item">${reward}</div>
-      <div class="pkb-reward-label">일일 보상!</div>
-    `;
+    const boxDiv = document.createElement("div");
+    boxDiv.className = "pkb-reward-box";
+    boxDiv.textContent = "🎁";
+    const itemDiv = document.createElement("div");
+    itemDiv.className = "pkb-reward-item";
+    itemDiv.textContent = reward;
+    const labelDiv = document.createElement("div");
+    labelDiv.className = "pkb-reward-label";
+    labelDiv.textContent = "일일 보상!";
+    overlay.appendChild(boxDiv);
+    overlay.appendChild(itemDiv);
+    overlay.appendChild(labelDiv);
     document.body.appendChild(overlay);
     setTimeout(() => overlay.remove(), 3200);
   },

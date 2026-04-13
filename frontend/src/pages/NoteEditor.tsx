@@ -225,8 +225,16 @@ export default function NoteEditor() {
   const noteLinkRef = useRef<HTMLDivElement>(null);
   const linkInputRef = useRef<HTMLInputElement>(null);
   const realtimeChannelRef = useRef<RealtimeChannel | null>(null);
+  const analyzeAbortRef = useRef<AbortController | null>(null);
   const [teamPresence, setTeamPresence] = useState<{ userId: string; name: string; avatarUrl: string | null }[]>([]);
   const [remoteUpdatePending, setRemoteUpdatePending] = useState(false);
+
+  // Cleanup SSE streams on unmount
+  useEffect(() => {
+    return () => {
+      analyzeAbortRef.current?.abort();
+    };
+  }, []);
 
   // Heading Backspace fix: convert heading to paragraph when pressing Backspace at position 0
   const HeadingBackspaceFix = Extension.create({
@@ -544,7 +552,9 @@ export default function NoteEditor() {
       }
 
       const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8001/api";
-      const response = await fetch(`${API_BASE}/notes/${noteId}/analyze-stream`, { headers });
+      const abortController = new AbortController();
+      analyzeAbortRef.current = abortController;
+      const response = await fetch(`${API_BASE}/notes/${noteId}/analyze-stream`, { headers, signal: abortController.signal });
 
       if (!response.ok) {
         // Fallback to non-streaming endpoint
@@ -588,9 +598,12 @@ export default function NoteEditor() {
       // Fetch AI comments after analysis completes
       const { data: comments } = await api.get(`/notes/${noteId}/ai-comments`);
       setAiComments(comments);
-    } catch {
-      setFeedbackText((prev) => prev || "분석 중 오류가 발생했습니다.");
+    } catch (err) {
+      if ((err as Error)?.name !== "AbortError") {
+        setFeedbackText((prev) => prev || "분석 중 오류가 발생했습니다.");
+      }
     } finally {
+      analyzeAbortRef.current = null;
       setAnalyzing(false);
     }
   }, [noteId]);

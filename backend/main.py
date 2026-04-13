@@ -1,4 +1,4 @@
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from middleware.auth import get_current_user
 from config import get_settings
@@ -36,8 +36,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"],
 )
 
 # 라우터 등록
@@ -72,16 +72,27 @@ async def health_check():
     return {"status": "ok", "service": "ai-edu-platform"}
 
 
-# ── Token usage stats (dev/admin) ──
+# ── Token usage stats (admin only) ──
 from common.gemini_client import get_token_stats, reset_token_stats
+from middleware.auth import _is_admin_email
+
+
+def _require_admin_user(user: dict):
+    """Raise 403 if the user is not an admin."""
+    email = user.get("email", "")
+    if not _is_admin_email(email):
+        raise HTTPException(status_code=403, detail="관리자 권한이 필요합니다.")
+
 
 @app.get("/api/token-stats")
 async def token_stats(user: dict = Depends(get_current_user)):
-    """AI 토큰 사용량 통계 조회 (인증 필요)"""
+    """AI 토큰 사용량 통계 조회 (관리자 전용)"""
+    _require_admin_user(user)
     return get_token_stats()
 
 @app.post("/api/token-stats/reset")
 async def token_stats_reset(user: dict = Depends(get_current_user)):
-    """AI 토큰 사용량 통계 초기화 (인증 필요)"""
+    """AI 토큰 사용량 통계 초기화 (관리자 전용)"""
+    _require_admin_user(user)
     reset_token_stats()
     return {"message": "Token stats reset"}

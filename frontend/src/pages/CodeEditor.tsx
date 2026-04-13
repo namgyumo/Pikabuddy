@@ -119,6 +119,16 @@ export default function CodeEditor() {
   const teamChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const isRemoteUpdate = useRef(false);
   const broadcastTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const submitAbortRef = useRef<AbortController | null>(null);
+  const tutorAbortRef = useRef<AbortController | null>(null);
+
+  // Cleanup SSE streams on unmount
+  useEffect(() => {
+    return () => {
+      submitAbortRef.current?.abort();
+      tutorAbortRef.current?.abort();
+    };
+  }, []);
 
   // 시험 모드
   const examMode = useExamMode({
@@ -491,9 +501,11 @@ export default function CodeEditor() {
       }
 
       const headers = await getAuthHeaders();
+      const abortController = new AbortController();
+      submitAbortRef.current = abortController;
       const response = await fetch(
         `${API_BASE}/submissions/${submission.id}/feedback-stream`,
-        { headers }
+        { headers, signal: abortController.signal }
       );
 
       if (!response.ok) {
@@ -532,8 +544,11 @@ export default function CodeEditor() {
         }
       }
     } catch (err) {
-      setFeedback((prev) => prev || "제출 중 오류가 발생했습니다. 다시 시도해주세요.");
+      if ((err as Error)?.name !== "AbortError") {
+        setFeedback((prev) => prev || "제출 중 오류가 발생했습니다. 다시 시도해주세요.");
+      }
     } finally {
+      submitAbortRef.current = null;
       setSubmitting(false);
     }
   }, [assignmentId, submitting, code, problemIdx]);
@@ -589,11 +604,14 @@ export default function CodeEditor() {
 
     try {
       const headers = await getAuthHeaders();
+      const abortController = new AbortController();
+      tutorAbortRef.current = abortController;
       const response = await fetch(
         `${API_BASE}/tutor/chat`,
         {
           method: "POST",
           headers,
+          signal: abortController.signal,
           body: JSON.stringify({
             message: userMsg,
             assignment_id: assignmentId,
@@ -636,8 +654,12 @@ export default function CodeEditor() {
           }
         }
       }
-    } catch {
-      /* tutor error */
+    } catch (err) {
+      if ((err as Error)?.name !== "AbortError") {
+        /* tutor error */
+      }
+    } finally {
+      tutorAbortRef.current = null;
     }
   };
 

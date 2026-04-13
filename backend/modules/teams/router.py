@@ -132,6 +132,17 @@ async def list_teams(course_id: str, user: dict = Depends(get_current_user)):
     """팀 목록. 교수=전체, 학생=본인 팀만."""
     supabase = get_supabase()
 
+    # 강의 접근 검증: 교수이거나 수강생이어야 함
+    is_admin = user.get("email", "").endswith("@pikabuddy.admin")
+    if not is_admin:
+        course = supabase.table("courses").select("professor_id").eq("id", course_id).single().execute()
+        if not course.data:
+            raise HTTPException(status_code=404, detail="과목을 찾을 수 없습니다.")
+        if course.data["professor_id"] != user["id"]:
+            enrollment = supabase.table("enrollments").select("id").eq("course_id", course_id).eq("student_id", user["id"]).execute()
+            if not (enrollment.data):
+                raise HTTPException(status_code=403, detail="해당 과목에 대한 접근 권한이 없습니다.")
+
     teams_result = (
         supabase.table("teams")
         .select("*")
@@ -181,6 +192,13 @@ async def get_team(course_id: str, team_id: str, user: dict = Depends(get_curren
 
     if team_data["course_id"] != course_id:
         raise HTTPException(status_code=404, detail="팀을 찾을 수 없습니다.")
+
+    # 교수: 해당 과목 소유자인지 확인
+    is_admin = user.get("email", "").endswith("@pikabuddy.admin")
+    if user["role"] != "student" and not is_admin:
+        course = supabase.table("courses").select("professor_id").eq("id", course_id).single().execute()
+        if course.data and course.data["professor_id"] != user["id"]:
+            raise HTTPException(status_code=403, detail="해당 과목의 교수만 접근할 수 있습니다.")
 
     if user["role"] == "student":
         member_ids = {m["student_id"] for m in team_data["members"]}

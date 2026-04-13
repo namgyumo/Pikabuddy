@@ -5,6 +5,7 @@ import google.generativeai as genai
 from config import get_settings
 
 _configured = False
+_configure_lock = threading.Lock()
 
 # ── Model tiers ──
 MODEL_HEAVY = "gemini-3-flash-preview"  # 분석, 튜터, 문제 생성 등 복잡한 작업
@@ -100,9 +101,11 @@ def reset_token_stats():
 def get_gemini_model(model_name: str = MODEL_HEAVY, json_mode: bool = False):
     global _configured
     if not _configured:
-        settings = get_settings()
-        genai.configure(api_key=settings.GEMINI_API_KEY)
-        _configured = True
+        with _configure_lock:
+            if not _configured:
+                settings = get_settings()
+                genai.configure(api_key=settings.GEMINI_API_KEY)
+                _configured = True
     config = {}
     if json_mode:
         config["response_mime_type"] = "application/json"
@@ -124,9 +127,11 @@ def get_embeddings(texts: list[str]) -> list[list[float]]:
     """텍스트 리스트의 임베딩 벡터를 반환한다. 빈 텍스트는 빈 벡터로."""
     global _configured
     if not _configured:
-        settings = get_settings()
-        genai.configure(api_key=settings.GEMINI_API_KEY)
-        _configured = True
+        with _configure_lock:
+            if not _configured:
+                settings = get_settings()
+                genai.configure(api_key=settings.GEMINI_API_KEY)
+                _configured = True
 
     if not texts:
         return []

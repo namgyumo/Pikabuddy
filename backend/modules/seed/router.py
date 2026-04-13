@@ -8,7 +8,8 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from common.supabase_client import get_supabase
-from middleware.auth import get_current_user
+from middleware.auth import get_current_user, _is_admin_email
+from config import get_settings
 
 from .seed_data import (
     COURSES, ASSIGNMENTS, NOTES, SUBMISSIONS, AI_ANALYSES,
@@ -20,6 +21,51 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/seed", tags=["시드 데이터"])
 
 TEACHER_EMAIL_SUFFIX = "@pikabuddy.admin"
+
+
+def _require_admin(user: dict):
+    """Raise HTTPException(403) if the user is not an admin."""
+    email = user.get("email", "")
+    if not _is_admin_email(email):
+        raise HTTPException(
+            status_code=403,
+            detail="관리자 권한이 필요합니다. (admin only)",
+        )
+
+
+def _is_test_account(user_record: dict) -> bool:
+    """Check if a user record belongs to a test account."""
+    email = (user_record.get("email") or "").lower()
+    name = (user_record.get("name") or "").lower()
+    user_id = user_record.get("id", "")
+
+    # Check email contains 'test'
+    if "test" in email:
+        return True
+
+    # Check name contains 'test' or '테스트'
+    if "test" in name or "테스트" in name:
+        return True
+
+    # Check against configured test account IDs from settings
+    settings = get_settings()
+    configured_test_ids = {
+        settings.studenttestid,
+        settings.teachertestid,
+    }
+    # Remove empty strings
+    configured_test_ids.discard("")
+
+    if user_id in configured_test_ids:
+        return True
+
+    # Also allow @pikabuddy.admin emails that have 'test' in username
+    if email.endswith("@pikabuddy.admin"):
+        username = email.split("@")[0]
+        if "test" in username:
+            return True
+
+    return False
 
 
 def _get_test_users(
@@ -68,6 +114,18 @@ def _get_test_users(
 
 def _delete_user_data(supabase, teacher: dict | None, student: dict | None):
     """Delete all data belonging to test accounts."""
+    # Verify target users are actually test accounts before deleting
+    if teacher and not _is_test_account(teacher):
+        raise HTTPException(
+            status_code=403,
+            detail=f"대상 교수 계정({teacher.get('email')})은 테스트 계정이 아닙니다.",
+        )
+    if student and not _is_test_account(student):
+        raise HTTPException(
+            status_code=403,
+            detail=f"대상 학생 계정({student.get('email')})은 테스트 계정이 아닙니다.",
+        )
+
     teacher_id = teacher["id"] if teacher else None
     student_id = student["id"] if student else None
 
@@ -389,7 +447,8 @@ def _insert_seed_data(supabase, teacher: dict, student: dict):
 
 @router.get("/users")
 async def list_users(user: dict = Depends(get_current_user)):
-    """관리 대상으로 지정할 수 있는 유저 목록."""
+    """관리 대상으로 지정할 수 있는 유저 목록. (관리자 전용)"""
+    _require_admin(user)
     sb = get_supabase()
     rows = (sb.table("users").select("id, name, email, role").order("created_at").execute()).data or []
     return rows
@@ -401,7 +460,8 @@ async def reset_test_accounts(
     teacher_id: str | None = Query(None),
     student_id: str | None = Query(None),
 ):
-    """테스트 계정의 모든 데이터를 삭제하고 시드 데이터로 초기화합니다."""
+    """테스트 계정의 모든 데이터를 삭제하고 시드 데이터로 초기화합니다. (관리자 전용)"""
+    _require_admin(user)
     supabase = get_supabase()
     teacher, student = _get_test_users(supabase, teacher_id, student_id)
 
@@ -447,6 +507,7 @@ async def seed_status(
     student_id: str | None = Query(None),
 ):
     """테스트 계정 상��� 확인 (상세)"""
+    _require_admin(user)
     sb = get_supabase()
     teacher, student = _get_test_users(sb, teacher_id, student_id)
 
@@ -511,7 +572,8 @@ async def clean_test_accounts(
     teacher_id: str | None = Query(None),
     student_id: str | None = Query(None),
 ):
-    """테스트 계정 데이터를 전부 삭제 (시드 데이터 재삽입 없이 빈 상태로 만듦)."""
+    """테스트 계정 데이터를 전부 삭제 (관리자 전용)."""
+    _require_admin(user)
     sb = get_supabase()
     teacher, student = _get_test_users(sb, teacher_id, student_id)
     if not teacher or not student:
@@ -768,7 +830,8 @@ async def save_snapshot(
     teacher_id: str | None = Query(None),
     student_id: str | None = Query(None),
 ):
-    """현재 테스트 데이터를 스냅샷으로 저장."""
+    """현재 테스트 데이터를 스냅샷으로 저장. (관리자 전용)"""
+    _require_admin(user)
     sb = get_supabase()
     teacher, student = _get_test_users(sb, teacher_id, student_id)
     if not teacher or not student:
@@ -786,9 +849,8 @@ async def save_snapshot(
 
 @router.get("/snapshots")
 async def list_snapshots(user: dict = Depends(get_current_user)):
-    """저장된 스냅샷 목록."""
-    # All authenticated users can manage test accounts
-
+    """저장된 스냅샷 목록. (관리자 전용)"""
+    _require_admin(user)
     sb = get_supabase()
     result = sb.table("note_snapshots").select("id, name, created_at").order("created_at", desc=True).execute()
     return result.data or []
@@ -801,7 +863,8 @@ async def restore_snapshot(
     teacher_id: str | None = Query(None),
     student_id: str | None = Query(None),
 ):
-    """스냅샷으로 복원 (기존 데이터 삭제 후 스냅샷 데이터 삽입)."""
+    """스냅샷으로 복원 (관리자 전용)."""
+    _require_admin(user)
     sb = get_supabase()
     teacher, student = _get_test_users(sb, teacher_id, student_id)
     if not teacher or not student:
@@ -820,9 +883,8 @@ async def restore_snapshot(
 
 @router.delete("/snapshot/{snapshot_id}")
 async def delete_snapshot(snapshot_id: str, user: dict = Depends(get_current_user)):
-    """스냅샷 삭제."""
-    # All authenticated users can manage test accounts
-
+    """스냅샷 삭제. (관리자 전용)"""
+    _require_admin(user)
     sb = get_supabase()
     sb.table("note_snapshots").delete().eq("id", snapshot_id).execute()
     return {"message": "스냅샷이 삭제되었습니다."}
@@ -840,6 +902,7 @@ async def save_default_state(
     student_id: str | None = Query(None),
 ):
     """현재 상태를 '��본 초기화 상태'로 저장."""
+    _require_admin(user)
     sb = get_supabase()
     teacher, student = _get_test_users(sb, teacher_id, student_id)
     if not teacher or not student:
@@ -863,9 +926,8 @@ async def save_default_state(
 
 @router.get("/has-default")
 async def has_default_state(user: dict = Depends(get_current_user)):
-    """기본 초기화 상태가 저장되어 있는지 확인."""
-    # All authenticated users can manage test accounts
-
+    """기본 초기화 상태가 저장되어 있는지 확인. (관리자 전용)"""
+    _require_admin(user)
     sb = get_supabase()
     result = sb.table("note_snapshots").select("id, created_at").eq("name", DEFAULT_SNAPSHOT_NAME).execute()
     exists = len(result.data or []) > 0
@@ -881,7 +943,8 @@ async def reset_to_default(
     teacher_id: str | None = Query(None),
     student_id: str | None = Query(None),
 ):
-    """저장된 기본 상태로 초기화."""
+    """저장된 기본 상태로 초기화. (관리자 전용)"""
+    _require_admin(user)
     sb = get_supabase()
     teacher, student = _get_test_users(sb, teacher_id, student_id)
     if not teacher or not student:
@@ -980,7 +1043,8 @@ async def partial_reset(
     teacher_id: str | None = Query(None),
     student_id: str | None = Query(None),
 ):
-    """선택한 카테고리만 초기화 (삭제)."""
+    """선택한 카테고리만 초기화 (관리자 전용)."""
+    _require_admin(user)
     valid = {"assignments", "submissions", "notes", "messages", "exp", "badges", "enrollments"}
     invalid = set(body.targets) - valid
     if invalid:
@@ -1006,7 +1070,8 @@ async def set_exp(
     teacher_id: str | None = Query(None),
     student_id: str | None = Query(None),
 ):
-    """테스트 계정의 EXP를 직접 설정."""
+    """테스트 계정의 EXP를 직접 설정. (관리자 전용)"""
+    _require_admin(user)
     sb = get_supabase()
     teacher, student = _get_test_users(sb, teacher_id, student_id)
     if not teacher or not student:

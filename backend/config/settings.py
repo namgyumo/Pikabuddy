@@ -34,7 +34,7 @@ class Settings(BaseSettings):
 
     # App
     APP_ENV: str = "development"
-    DEBUG: bool = True
+    DEBUG: bool = False
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

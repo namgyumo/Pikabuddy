@@ -4,9 +4,14 @@
 - 사용자별, 에이전트 타입별 세션 관리
 """
 import uuid
+import time
 from datetime import datetime
 from typing import Literal
 from dataclasses import dataclass, field
+
+MAX_SESSIONS_PER_USER = 5
+MAX_MESSAGES_PER_SESSION = 100
+SESSION_EXPIRY_SECONDS = 3600  # 1시간
 
 
 AgentType = Literal["student", "professor"]
@@ -26,6 +31,7 @@ class Session:
     agent_type: AgentType
     messages: list[Message] = field(default_factory=list)
     created_at: datetime = field(default_factory=datetime.now)
+    last_accessed: float = field(default_factory=time.time)
     context: dict = field(default_factory=dict)  # 추가 컨텍스트 (과목, 과제 등)
 
 
@@ -54,9 +60,22 @@ class SessionManager:
 
         return session
 
+    def _cleanup_expired(self):
+        """만료된 세션을 정리"""
+        now = time.time()
+        expired_ids = [
+            sid for sid, s in self._sessions.items()
+            if now - s.last_accessed > SESSION_EXPIRY_SECONDS
+        ]
+        for sid in expired_ids:
+            self.delete_session(sid)
+
     def get_session(self, session_id: str) -> Session | None:
         """세션 ID로 세션 조회"""
-        return self._sessions.get(session_id)
+        session = self._sessions.get(session_id)
+        if session:
+            session.last_accessed = time.time()
+        return session
 
     def get_user_session(self, user_id: str, agent_type: AgentType) -> Session | None:
         """사용자의 특정 에이전트 타입 세션 조회"""
@@ -67,22 +86,26 @@ class SessionManager:
         return None
 
     def get_or_create_session(self, user_id: str, agent_type: AgentType, context: dict = None) -> Session:
-        """세션이 있으면 반환, 없으면 생성"""
+        """세션이 있으면 반환, 없으면 생성. 만료 세션 정리 포함."""
+        self._cleanup_expired()
         session = self.get_user_session(user_id, agent_type)
         if session:
-            # 컨텍스트 업데이트
+            session.last_accessed = time.time()
             if context:
                 session.context.update(context)
             return session
         return self.create_session(user_id, agent_type, context)
 
     def add_message(self, session_id: str, role: Literal["user", "assistant"], content: str) -> Message | None:
-        """세션에 메시지 추가"""
+        """세션에 메시지 추가. 최대 메시지 수 초과 시 오래된 것부터 제거."""
         session = self._sessions.get(session_id)
         if not session:
             return None
+        session.last_accessed = time.time()
         message = Message(role=role, content=content)
         session.messages.append(message)
+        if len(session.messages) > MAX_MESSAGES_PER_SESSION:
+            session.messages = session.messages[-MAX_MESSAGES_PER_SESSION:]
         return message
 
     def get_history(self, session_id: str, limit: int = 20) -> list[Message]:

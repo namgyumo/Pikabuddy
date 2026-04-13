@@ -123,7 +123,7 @@ async def join_course_by_code(
     course = (
         supabase.table("courses")
         .select("*")
-        .eq("invite_code", body.invite_code)
+        .eq("invite_code", body.invite_code.upper())
         .single()
         .execute()
     )
@@ -233,6 +233,16 @@ async def get_course_info(course_id: str, user: dict = Depends(get_current_user)
     from concurrent.futures import ThreadPoolExecutor
 
     supabase = get_supabase()
+
+    # Enrollment/ownership verification
+    is_admin = user.get("email", "").endswith("@pikabuddy.admin")
+    if not is_admin:
+        uid = user["id"]
+        owned = supabase.table("courses").select("id").eq("id", course_id).eq("professor_id", uid).execute()
+        if not owned.data:
+            enrolled = supabase.table("enrollments").select("id").eq("student_id", uid).eq("course_id", course_id).execute()
+            if not enrolled.data:
+                raise HTTPException(status_code=403, detail="접근 권한이 없습니다.")
 
     def q_course():
         return supabase.table("courses").select("*").eq("id", course_id).single().execute()

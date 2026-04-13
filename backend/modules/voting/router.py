@@ -121,10 +121,23 @@ def _check_and_resolve(supabase, vote_id: str) -> dict:
         new_status = "approved" if approves > rejects else "rejected"
 
     if new_status:
-        supabase.table("team_submission_votes").update({
+        # 낙관적 잠금: status가 여전히 "pending"일 때만 업데이트 (race condition 방지)
+        update_result = supabase.table("team_submission_votes").update({
             "status": new_status,
             "resolved_at": now.isoformat(),
-        }).eq("id", vote_id).execute()
+        }).eq("id", vote_id).eq("status", "pending").execute()
+
+        if not update_result.data:
+            # 다른 스레드가 이미 resolve함 — 최신 상태 반환
+            refreshed = (
+                supabase.table("team_submission_votes")
+                .select("*")
+                .eq("id", vote_id)
+                .single()
+                .execute()
+            ).data
+            return refreshed or vote
+
         vote["status"] = new_status
 
         if new_status == "approved":
@@ -143,13 +156,24 @@ def _execute_team_submission(supabase, vote: dict):
         .execute()
     ).data or []
 
+    problem_index = payload.get("problem_index", 0)
     for member in members:
+        # 이미 해당 학생+과제+문제 인덱스에 제출이 있으면 건너뜀 (중복 방지)
+        existing_sub = supabase.table("submissions").select("id") \
+            .eq("assignment_id", vote["assignment_id"]) \
+            .eq("student_id", member["student_id"]) \
+            .eq("problem_index", problem_index) \
+            .limit(1).execute()
+        if existing_sub.data:
+            logger.info(f"[Vote] 이미 제출 존재, 건너뜀: student={member['student_id']}, problem_index={problem_index}")
+            continue
+
         insert_data = {
             "assignment_id": vote["assignment_id"],
             "student_id": member["student_id"],
             "code": payload.get("code", ""),
             "status": "submitted",
-            "problem_index": payload.get("problem_index", 0),
+            "problem_index": problem_index,
         }
         if payload.get("content"):
             insert_data["content"] = payload["content"]

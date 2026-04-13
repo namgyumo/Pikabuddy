@@ -1,11 +1,12 @@
 import asyncio
 import json
+import logging
 import re
 import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from common.supabase_client import get_supabase
 from common.gemini_client import get_gemini_model, FALLBACK_MODELS, MODEL_LIGHT
 from google.generativeai.types import RequestOptions
@@ -87,7 +88,11 @@ def _generate_with_retry(generate_fn, *args, max_retries: int = 3) -> dict:
 
     raise last_error
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/courses/{course_id}/assignments", tags=["과제"])
+
+_COUNT_FIELD_MAX = 30
 
 
 class AssignmentCreateRequest(BaseModel):
@@ -111,6 +116,20 @@ class AssignmentCreateRequest(BaseModel):
     grading_strictness: str = "normal"  # mild / normal / strict
     grading_note: str | None = None  # 교수 유의사항
     is_team_assignment: bool = False  # 조별과제 여부
+
+    @field_validator(
+        "problem_count", "quiz_count", "mc_count", "sa_count",
+        "essay_count", "baekjoon_count", "programmers_count", "block_count",
+    )
+    @classmethod
+    def validate_count_range(cls, v, info):
+        if info.field_name == "problem_count":
+            if v < 1 or v > _COUNT_FIELD_MAX:
+                raise ValueError(f"problem_count는 1~{_COUNT_FIELD_MAX} 범위여야 합니다.")
+        else:
+            if v < 0 or v > _COUNT_FIELD_MAX:
+                raise ValueError(f"{info.field_name}은(는) 0~{_COUNT_FIELD_MAX} 범위여야 합니다.")
+        return v
 
 
 class PolicyUpdateRequest(BaseModel):
@@ -262,7 +281,7 @@ JSON format:
             except Exception as e:
                 print(f"    ✗ 표준 입출력 랜덤TC 실패: {p.get('title','?')} — {e}")
 
-        with ThreadPoolExecutor(max_workers=len(problems)) as executor:
+        with ThreadPoolExecutor(max_workers=min(len(problems), 10)) as executor:
             list(executor.map(_add_bulk_baekjoon, problems))
         print(f"  ✓ 표준 입출력 랜덤TC 전체 완료 ({time.time()-t0:.1f}초, {len(problems)}개 문제)")
 
@@ -366,7 +385,7 @@ Difficulty level scale: 1 (very easy) ~ 10 (very hard)."""
             except Exception as e:
                 print(f"    ✗ PG 랜덤TC 실패: {p.get('title','?')} — {e}")
 
-        with ThreadPoolExecutor(max_workers=len(problems)) as executor:
+        with ThreadPoolExecutor(max_workers=min(len(problems), 10)) as executor:
             list(executor.map(_add_bulk_programmers, problems))
         print(f"  ✓ PG 랜덤TC 전체 완료 ({time.time()-t0:.1f}초, {len(problems)}개 문제)")
 
@@ -588,7 +607,7 @@ Response format (JSON only):
 async def _generate_problems_progressive(topic: str, difficulty: str, count: int, language: str) -> dict:
     """2단계 점진적 문제 생성: 아웃라인 → 병렬 상세"""
     loop = asyncio.get_running_loop()
-    executor = ThreadPoolExecutor(max_workers=count + 2)
+    executor = ThreadPoolExecutor(max_workers=min(count + 2, 10))
 
     try:
         # Phase 1: 아웃라인
@@ -622,7 +641,7 @@ async def _generate_problems_progressive(topic: str, difficulty: str, count: int
                 executor, _generate_with_retry, _generate_problems, topic, difficulty, count, language
             )
     finally:
-        executor.shutdown(wait=False)
+        executor.shutdown(wait=True)
 
     rubric = {
         "criteria": [
@@ -802,7 +821,7 @@ async def _background_generate_problems(
                 return_exceptions=True,
             )
         finally:
-            executor.shutdown(wait=False)
+            executor.shutdown(wait=True)
 
         for i, result in enumerate(results):
             label = ["일반", "표준 입출력", "함수 구현", "퀴즈", "블록"][i]
@@ -945,8 +964,11 @@ async def create_assignment(
             sa_count=body.sa_count if body.type == "quiz" else 0,
             essay_count=body.essay_count if body.type == "quiz" else 0,
         ))
-        # 백그라운드 태스크 예외가 서버를 죽이지 않도록 방어
-        task.add_done_callback(lambda t: t.exception() if not t.cancelled() and t.exception() else None)
+        # 백그라운드 태스크 예외가 서버를 죽이지 않도록 방어 + 로깅
+        def _on_task_done(t):
+            if not t.cancelled() and t.exception():
+                logger.error(f"[Assignment] 백그라운드 문제 생성 오류: {t.exception()}")
+        task.add_done_callback(_on_task_done)
 
     return assignment
 
@@ -1022,7 +1044,7 @@ async def delete_assignment(
     """과제 삭제 (관련 제출물, 스냅샷, 분석 모두 cascade 삭제)"""
     verify_course_ownership(user, course_id)
     supabase = get_supabase()
-    supabase.table("assignments").delete().eq("id", assignment_id).execute()
+    supabase.table("assignments").delete().eq("id", assignment_id).eq("course_id", course_id).execute()
     return {"message": "과제가 삭제되었습니다."}
 
 
@@ -1036,6 +1058,14 @@ async def delete_submission(
     """제출물 삭제 (관련 AI 분석도 cascade 삭제)"""
     verify_course_ownership(user, course_id)
     supabase = get_supabase()
+    # 제출물이 해당 과제에 속하는지 확인
+    sub = supabase.table("submissions").select("id").eq("id", submission_id).eq("assignment_id", assignment_id).execute()
+    if not sub.data:
+        raise HTTPException(status_code=404, detail="제출물을 찾을 수 없습니다.")
+    # 과제가 해당 코스에 속하는지 확인
+    asgn = supabase.table("assignments").select("id").eq("id", assignment_id).eq("course_id", course_id).execute()
+    if not asgn.data:
+        raise HTTPException(status_code=404, detail="과제를 찾을 수 없습니다.")
     supabase.table("submissions").delete().eq("id", submission_id).execute()
     return {"message": "제출물이 삭제되었습니다."}
 
@@ -1052,6 +1082,24 @@ async def get_assignment(course_id: str, assignment_id: str, user: dict = Depend
         .single()
         .execute()
     )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="과제를 찾을 수 없습니다.")
+
+    # 학생은 수강 등록 확인 + published 과제만 접근
+    is_admin = user.get("email", "").endswith("@pikabuddy.admin")
+    if user.get("role") == "student" and not is_admin:
+        enrollment = (
+            supabase.table("enrollments")
+            .select("id")
+            .eq("student_id", user["id"])
+            .eq("course_id", course_id)
+            .execute()
+        )
+        if not enrollment.data:
+            raise HTTPException(status_code=403, detail="해당 과제에 접근 권한이 없습니다.")
+        if result.data.get("status") != "published":
+            raise HTTPException(status_code=403, detail="아직 공개되지 않은 과제입니다.")
+
     return result.data
 
 
@@ -1069,8 +1117,10 @@ async def update_assignment(
     if not update_data:
         raise HTTPException(status_code=400, detail="변경할 내용이 없습니다.")
 
-    supabase.table("assignments").update(update_data).eq("id", assignment_id).execute()
-    result = supabase.table("assignments").select("*").eq("id", assignment_id).single().execute()
+    supabase.table("assignments").update(update_data).eq("id", assignment_id).eq("course_id", course_id).execute()
+    result = supabase.table("assignments").select("*").eq("id", assignment_id).eq("course_id", course_id).single().execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="과제를 찾을 수 없습니다.")
     return result.data
 
 
@@ -1085,7 +1135,7 @@ async def publish_assignment(
     supabase = get_supabase()
     supabase.table("assignments").update(
         {"status": "published"}
-    ).eq("id", assignment_id).execute()
+    ).eq("id", assignment_id).eq("course_id", course_id).execute()
     return {"message": "과제가 공개되었습니다.", "status": "published"}
 
 
@@ -1100,7 +1150,7 @@ async def unpublish_assignment(
     supabase = get_supabase()
     supabase.table("assignments").update(
         {"status": "draft"}
-    ).eq("id", assignment_id).execute()
+    ).eq("id", assignment_id).eq("course_id", course_id).execute()
     return {"message": "과제가 비공개로 전환되었습니다.", "status": "draft"}
 
 
@@ -1115,19 +1165,24 @@ async def import_problems(
     verify_course_ownership(user, course_id)
     supabase = get_supabase()
 
-    # 소스 과제 가져오기
+    # 소스 과제 가져오기 + 소스 과제의 코스 소유권 확인
     source = supabase.table("assignments").select(
-        "problems"
+        "problems, course_id"
     ).eq("id", body.source_assignment_id).single().execute()
     if not source.data:
         raise HTTPException(status_code=404, detail="소스 과제를 찾을 수 없습니다.")
+    # 소스 과제의 코스도 본인 소유인지 확인
+    source_course_id = source.data.get("course_id")
+    if source_course_id != course_id:
+        # 다른 코스의 과제라면 해당 코스도 소유해야 함
+        verify_course_ownership(user, source_course_id)
 
     source_problems = source.data.get("problems") or []
 
-    # 대상 과제 가져오기
+    # 대상 과제 가져오기 (course_id 검증 포함)
     target = supabase.table("assignments").select(
         "problems"
-    ).eq("id", assignment_id).single().execute()
+    ).eq("id", assignment_id).eq("course_id", course_id).single().execute()
     if not target.data:
         raise HTTPException(status_code=404, detail="대상 과제를 찾을 수 없습니다.")
 
@@ -1145,7 +1200,7 @@ async def import_problems(
 
     supabase.table("assignments").update(
         {"problems": target_problems}
-    ).eq("id", assignment_id).execute()
+    ).eq("id", assignment_id).eq("course_id", course_id).execute()
 
     return {"message": f"{len(imported)}개 문제가 추가되었습니다.", "imported_count": len(imported)}
 
@@ -1165,7 +1220,7 @@ async def update_policy(
     supabase = get_supabase()
     supabase.table("assignments").update(
         {"ai_policy": body.ai_policy}
-    ).eq("id", assignment_id).execute()
+    ).eq("id", assignment_id).eq("course_id", course_id).execute()
 
     return {"message": "AI 정책이 변경되었습니다.", "ai_policy": body.ai_policy}
 
@@ -1182,7 +1237,7 @@ async def update_writing_prompt(
     supabase = get_supabase()
     supabase.table("assignments").update(
         {"writing_prompt": body.writing_prompt}
-    ).eq("id", assignment_id).execute()
+    ).eq("id", assignment_id).eq("course_id", course_id).execute()
     return {"message": "글쓰기 지시문이 수정되었습니다."}
 
 
@@ -1202,9 +1257,12 @@ async def add_problem(
         supabase.table("assignments")
         .select("problems")
         .eq("id", assignment_id)
+        .eq("course_id", course_id)
         .single()
         .execute()
     )
+    if not assignment.data:
+        raise HTTPException(status_code=404, detail="과제를 찾을 수 없습니다.")
     problems = assignment.data.get("problems", []) or []
 
     new_id = max((p.get("id", 0) for p in problems), default=0) + 1
@@ -1248,7 +1306,7 @@ async def add_problem(
 
     supabase.table("assignments").update(
         {"problems": problems}
-    ).eq("id", assignment_id).execute()
+    ).eq("id", assignment_id).eq("course_id", course_id).execute()
 
     return new_problem
 
@@ -1268,9 +1326,12 @@ async def update_problem(
         supabase.table("assignments")
         .select("problems")
         .eq("id", assignment_id)
+        .eq("course_id", course_id)
         .single()
         .execute()
     )
+    if not assignment.data:
+        raise HTTPException(status_code=404, detail="과제를 찾을 수 없습니다.")
     problems = assignment.data.get("problems", []) or []
 
     found = False
@@ -1294,7 +1355,7 @@ async def update_problem(
 
     supabase.table("assignments").update(
         {"problems": problems}
-    ).eq("id", assignment_id).execute()
+    ).eq("id", assignment_id).eq("course_id", course_id).execute()
 
     return {"message": "문제가 수정되었습니다."}
 
@@ -1313,9 +1374,12 @@ async def delete_problem(
         supabase.table("assignments")
         .select("problems")
         .eq("id", assignment_id)
+        .eq("course_id", course_id)
         .single()
         .execute()
     )
+    if not assignment.data:
+        raise HTTPException(status_code=404, detail="과제를 찾을 수 없습니다.")
     problems = assignment.data.get("problems", []) or []
     new_problems = [p for p in problems if p.get("id") != problem_id]
 
@@ -1324,7 +1388,7 @@ async def delete_problem(
 
     supabase.table("assignments").update(
         {"problems": new_problems}
-    ).eq("id", assignment_id).execute()
+    ).eq("id", assignment_id).eq("course_id", course_id).execute()
 
     return {"message": "문제가 삭제되었습니다."}
 
@@ -1410,6 +1474,10 @@ async def set_final_score(
         raise HTTPException(status_code=400, detail="점수는 0~100 사이여야 합니다.")
 
     supabase = get_supabase()
+    # 과제가 해당 코스에 속하는지 확인
+    asgn = supabase.table("assignments").select("id").eq("id", assignment_id).eq("course_id", course_id).execute()
+    if not asgn.data:
+        raise HTTPException(status_code=404, detail="과제를 찾을 수 없습니다.")
     supabase.table("ai_analyses").update(
         {"final_score": body.final_score}
     ).eq("id", analysis_id).execute()
@@ -1433,6 +1501,10 @@ async def qa_reset_paste_logs(
     """[QA] 과제의 모든 복붙 로그 초기화"""
     _require_admin(user)
     supabase = get_supabase()
+    # 과제가 해당 코스에 속하는지 확인
+    asgn = supabase.table("assignments").select("id").eq("id", assignment_id).eq("course_id", course_id).execute()
+    if not asgn.data:
+        raise HTTPException(status_code=404, detail="과제를 찾을 수 없습니다.")
     supabase.table("snapshots").delete().eq("assignment_id", assignment_id).eq("is_paste", True).execute()
     return {"message": "복붙 로그가 초기화되었습니다."}
 
@@ -1445,6 +1517,10 @@ async def qa_reset_snapshots(
     """[QA] 과제의 모든 스냅샷 초기화"""
     _require_admin(user)
     supabase = get_supabase()
+    # 과제가 해당 코스에 속하는지 확인
+    asgn = supabase.table("assignments").select("id").eq("id", assignment_id).eq("course_id", course_id).execute()
+    if not asgn.data:
+        raise HTTPException(status_code=404, detail="과제를 찾을 수 없습니다.")
     supabase.table("snapshots").delete().eq("assignment_id", assignment_id).execute()
     return {"message": "스냅샷이 초기화되었습니다."}
 
@@ -1457,6 +1533,10 @@ async def qa_reset_submissions(
     """[QA] 과제의 모든 제출물 + AI 분석 초기화"""
     _require_admin(user)
     supabase = get_supabase()
+    # 과제가 해당 코스에 속하는지 확인
+    asgn = supabase.table("assignments").select("id").eq("id", assignment_id).eq("course_id", course_id).execute()
+    if not asgn.data:
+        raise HTTPException(status_code=404, detail="과제를 찾을 수 없습니다.")
     supabase.table("submissions").delete().eq("assignment_id", assignment_id).execute()
     return {"message": "제출물이 초기화되었습니다."}
 
@@ -1469,6 +1549,10 @@ async def qa_reset_all(
     """[QA] 과제의 모든 데이터(스냅샷+복붙+제출물) 일괄 초기화"""
     _require_admin(user)
     supabase = get_supabase()
+    # 과제가 해당 코스에 속하는지 확인
+    asgn = supabase.table("assignments").select("id").eq("id", assignment_id).eq("course_id", course_id).execute()
+    if not asgn.data:
+        raise HTTPException(status_code=404, detail="과제를 찾을 수 없습니다.")
     supabase.table("snapshots").delete().eq("assignment_id", assignment_id).execute()
     supabase.table("submissions").delete().eq("assignment_id", assignment_id).execute()
     return {"message": "모든 데이터가 초기화되었습니다."}

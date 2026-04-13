@@ -6,9 +6,9 @@ from middleware.auth import get_current_user
 router = APIRouter(tags=["에디터"])
 
 
-@router.get("/assignments/{assignment_id}")
-async def get_assignment_standalone(assignment_id: str, user: dict = Depends(get_current_user)):
-    """과제 상세 조회 (courseId 없이)"""
+def _verify_assignment_access(user: dict, assignment_id: str) -> dict:
+    """과제에 대한 접근 권한을 검증한다. 수강생 또는 교수만 접근 가능.
+    반환: assignment 데이터"""
     supabase = get_supabase()
     result = (
         supabase.table("assignments")
@@ -19,6 +19,45 @@ async def get_assignment_standalone(assignment_id: str, user: dict = Depends(get
     if not result.data:
         raise HTTPException(status_code=404, detail="과제를 찾을 수 없습니다.")
     assignment = result.data[0]
+    course_id = assignment.get("course_id")
+
+    # 어드민은 통과
+    is_admin = user.get("email", "").endswith("@pikabuddy.admin")
+    if is_admin:
+        return assignment
+
+    # 교수: 과제 소유 코스의 교수인지 확인
+    if user.get("role") in ("professor", "personal"):
+        course = (
+            supabase.table("courses")
+            .select("professor_id")
+            .eq("id", course_id)
+            .single()
+            .execute()
+        )
+        if course.data and course.data["professor_id"] == user["id"]:
+            return assignment
+        # 교수지만 이 코스의 교수가 아니면 거부
+        raise HTTPException(status_code=403, detail="해당 과제에 접근 권한이 없습니다.")
+
+    # 학생: 해당 코스에 수강 등록되어 있는지 확인
+    enrollment = (
+        supabase.table("enrollments")
+        .select("id")
+        .eq("student_id", user["id"])
+        .eq("course_id", course_id)
+        .execute()
+    )
+    if not enrollment.data:
+        raise HTTPException(status_code=403, detail="해당 과제에 접근 권한이 없습니다.")
+
+    return assignment
+
+
+@router.get("/assignments/{assignment_id}")
+async def get_assignment_standalone(assignment_id: str, user: dict = Depends(get_current_user)):
+    """과제 상세 조회 (courseId 없이)"""
+    assignment = _verify_assignment_access(user, assignment_id)
     # 학생은 공개된 과제만 접근 가능
     if user.get("role") == "student" and assignment.get("status") != "published":
         raise HTTPException(status_code=403, detail="아직 공개되지 않은 과제입니다.")
@@ -54,6 +93,7 @@ async def save_snapshot(
     user: dict = Depends(get_current_user),
 ):
     """코드 스냅샷 저장 (디바운싱 2~3초)"""
+    _verify_assignment_access(user, assignment_id)
     supabase = get_supabase()
 
     result = (
@@ -78,6 +118,7 @@ async def save_snapshot(
 @router.get("/assignments/{assignment_id}/snapshots")
 async def get_snapshots(assignment_id: str, user: dict = Depends(get_current_user)):
     """스냅샷 히스토리 조회"""
+    _verify_assignment_access(user, assignment_id)
     supabase = get_supabase()
     result = (
         supabase.table("snapshots")
@@ -97,6 +138,7 @@ async def log_paste(
     user: dict = Depends(get_current_user),
 ):
     """복붙 이벤트 기록"""
+    _verify_assignment_access(user, assignment_id)
     supabase = get_supabase()
 
     result = (
@@ -120,6 +162,7 @@ async def log_paste(
 @router.get("/assignments/{assignment_id}/my-submission")
 async def get_my_submission(assignment_id: str, user: dict = Depends(get_current_user)):
     """내 최신 제출물 + AI 분석 조회"""
+    _verify_assignment_access(user, assignment_id)
     supabase = get_supabase()
     result = (
         supabase.table("submissions")
@@ -142,6 +185,7 @@ async def submit_assignment(
     user: dict = Depends(get_current_user),
 ):
     """과제 제출"""
+    _verify_assignment_access(user, assignment_id)
     supabase = get_supabase()
 
     insert_data = {
@@ -194,6 +238,7 @@ async def submit_all(
     user: dict = Depends(get_current_user),
 ):
     """전체 문제 일괄 제출 + 비동기 AI 분석"""
+    _verify_assignment_access(user, assignment_id)
     supabase = get_supabase()
 
     submissions = []
@@ -245,18 +290,8 @@ async def grade_quiz(
     user: dict = Depends(get_current_user),
 ):
     """퀴즈 자동 채점 — 객관식/주관식은 즉시, 서술형은 모범답안 비교"""
+    assignment = _verify_assignment_access(user, assignment_id)
     supabase = get_supabase()
-
-    # 과제에서 문제 가져오기
-    assignment = (
-        supabase.table("assignments")
-        .select("problems")
-        .eq("id", assignment_id)
-        .single()
-        .execute()
-    ).data
-    if not assignment:
-        raise HTTPException(status_code=404, detail="과제를 찾을 수 없습니다.")
 
     problems = assignment.get("problems", [])
     quiz_problems = {p["id"]: p for p in problems if p.get("format") == "quiz"}

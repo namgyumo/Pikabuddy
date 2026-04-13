@@ -66,33 +66,93 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
-// ── 로그인 만료 감지 (401/403 응답) ──
+// ── 로그인 만료 감지 (401/403 응답) — request queue for token refresh ──
 let sessionExpiredShown = false;
+let sessionExpiredTimer: ReturnType<typeof setTimeout> | null = null;
+let isRefreshing = false;
+let refreshSubscribers: Array<(token: string | null) => void> = [];
+
+function subscribeTokenRefresh(cb: (token: string | null) => void) {
+  refreshSubscribers.push(cb);
+}
+
+function onTokenRefreshed(token: string | null) {
+  refreshSubscribers.forEach((cb) => cb(token));
+  refreshSubscribers = [];
+}
+
+function resetSessionExpiredFlag() {
+  sessionExpiredShown = false;
+  if (sessionExpiredTimer) {
+    clearTimeout(sessionExpiredTimer);
+    sessionExpiredTimer = null;
+  }
+}
+
+// Reset sessionExpiredShown on successful login
+supabase.auth.onAuthStateChange((event) => {
+  if (event === "SIGNED_IN") {
+    resetSessionExpiredFlag();
+  }
+});
+
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const status = error.response?.status;
-    if ((status === 401 || status === 403) && !sessionExpiredShown) {
-      sessionExpiredShown = true;
+    const originalRequest = error.config;
+
+    if ((status === 401 || status === 403) && !originalRequest._retry) {
+      // If already refreshing, queue this request to replay after refresh
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          subscribeTokenRefresh((token) => {
+            if (token) {
+              originalRequest.headers.Authorization = `Bearer ${token}`;
+              originalRequest._retry = true;
+              resolve(api(originalRequest));
+            } else {
+              reject(error);
+            }
+          });
+        });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
       // Clear cache
       cachedToken = null;
       tokenExpiresAt = 0;
-      // Try to refresh session
+
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
           // Session truly expired — notify user (once)
-          window.dispatchEvent(new CustomEvent("session-expired"));
+          onTokenRefreshed(null);
+          if (!sessionExpiredShown) {
+            sessionExpiredShown = true;
+            // Auto-reset after 30 seconds so user can retry
+            sessionExpiredTimer = setTimeout(resetSessionExpiredFlag, 30_000);
+            window.dispatchEvent(new CustomEvent("session-expired"));
+          }
         } else {
-          // Session refreshed successfully — retry silently
-          sessionExpiredShown = false;
+          // Session refreshed successfully — retry original + queued requests
           cachedToken = session.access_token;
           tokenExpiresAt = (session.expires_at ?? 0) * 1000;
-          error.config.headers.Authorization = `Bearer ${session.access_token}`;
-          return api(error.config);
+          onTokenRefreshed(session.access_token);
+          originalRequest.headers.Authorization = `Bearer ${session.access_token}`;
+          return api(originalRequest);
         }
       } catch {
-        window.dispatchEvent(new CustomEvent("session-expired"));
+        onTokenRefreshed(null);
+        if (!sessionExpiredShown) {
+          sessionExpiredShown = true;
+          sessionExpiredTimer = setTimeout(resetSessionExpiredFlag, 30_000);
+          window.dispatchEvent(new CustomEvent("session-expired"));
+        }
+      } finally {
+        isRefreshing = false;
       }
     }
     return Promise.reject(error);
