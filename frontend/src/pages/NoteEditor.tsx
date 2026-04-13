@@ -269,8 +269,8 @@ export default function NoteEditor() {
       TaskList,
       TaskItem.configure({ nested: true }),
       Link.configure({
-        openOnClick: false,
-        HTMLAttributes: { class: "note-link" },
+        openOnClick: isReviewMode,
+        HTMLAttributes: { class: "note-link", target: "_blank", rel: "noopener noreferrer" },
       }),
       Image.configure({ inline: false, HTMLAttributes: { class: "note-image" } }),
       Table.configure({ resizable: true }),

@@ -983,6 +983,36 @@ async def list_assignments(course_id: str, user: dict = Depends(get_current_user
     return assignments
 
 
+@router.get("/problem-bank")
+async def get_problem_bank(
+    course_id: str,
+    user: dict = Depends(require_professor_or_personal),
+):
+    """교수의 모든 과제에서 문제를 검색 (문제 은행)"""
+    verify_course_ownership(user, course_id)
+    supabase = get_supabase()
+    result = supabase.table("assignments").select(
+        "id, title, topic, type, problems, created_at"
+    ).eq("course_id", course_id).order("created_at", desc=True).execute()
+
+    bank = []
+    for a in result.data or []:
+        problems = a.get("problems") or []
+        for idx, p in enumerate(problems):
+            bank.append({
+                "assignment_id": a["id"],
+                "assignment_title": a["title"],
+                "problem_index": idx,
+                "problem": p,
+            })
+    return bank
+
+
+class ProblemImportRequest(BaseModel):
+    source_assignment_id: str
+    problem_indices: list[int]
+
+
 @router.delete("/{assignment_id}")
 async def delete_assignment(
     course_id: str,
@@ -1072,36 +1102,6 @@ async def unpublish_assignment(
         {"status": "draft"}
     ).eq("id", assignment_id).execute()
     return {"message": "과제가 비공개로 전환되었습니다.", "status": "draft"}
-
-
-@router.get("/problem-bank")
-async def get_problem_bank(
-    course_id: str,
-    user: dict = Depends(require_professor_or_personal),
-):
-    """교수의 모든 과제에서 문제를 검색 (문제 은행)"""
-    verify_course_ownership(user, course_id)
-    supabase = get_supabase()
-    result = supabase.table("assignments").select(
-        "id, title, topic, type, problems, created_at"
-    ).eq("course_id", course_id).order("created_at", desc=True).execute()
-
-    bank = []
-    for a in result.data or []:
-        problems = a.get("problems") or []
-        for idx, p in enumerate(problems):
-            bank.append({
-                "assignment_id": a["id"],
-                "assignment_title": a["title"],
-                "problem_index": idx,
-                "problem": p,
-            })
-    return bank
-
-
-class ProblemImportRequest(BaseModel):
-    source_assignment_id: str
-    problem_indices: list[int]
 
 
 @router.post("/{assignment_id}/import-problems", status_code=201)
