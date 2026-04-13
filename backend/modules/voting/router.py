@@ -209,7 +209,7 @@ async def initiate_vote(
     if body.content:
         payload["content"] = body.content
 
-    # 이미 pending 투표가 있는지 확인 → 만료된 건 자동 resolve
+    # 이미 pending 투표가 있는지 확인 → 만료/완료 가능한 건 자동 resolve
     existing = (
         supabase.table("team_submission_votes")
         .select("*")
@@ -219,11 +219,20 @@ async def initiate_vote(
         .execute()
     )
     for stale_vote in (existing.data or []):
-        stale_deadline = datetime.fromisoformat(stale_vote["deadline"].replace("Z", "+00:00"))
-        if datetime.now(timezone.utc) >= stale_deadline:
-            _check_and_resolve(supabase, stale_vote["id"])
-        else:
-            raise HTTPException(status_code=409, detail="이미 진행 중인 투표가 있습니다.")
+        # 만료 여부와 무관하게 resolve 시도 (전원 투표 완료 등)
+        _check_and_resolve(supabase, stale_vote["id"])
+
+    # resolve 후 아직 pending이 남아있는지 재확인
+    still_pending = (
+        supabase.table("team_submission_votes")
+        .select("id")
+        .eq("assignment_id", assignment_id)
+        .eq("team_id", team_id)
+        .eq("status", "pending")
+        .execute()
+    )
+    if still_pending.data:
+        raise HTTPException(status_code=409, detail="이미 진행 중인 투표가 있습니다.")
 
     # 투표 생성
     try:

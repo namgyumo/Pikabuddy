@@ -153,8 +153,7 @@ export default function CodeEditor() {
     window.history.pushState({ codeEditor: true }, "");
     const handlePopState = () => {
       if (isLeaving) return;
-      // Re-push to stay on page
-      window.history.pushState({ codeEditor: true }, "");
+      // Show confirm — don't re-push yet (back already popped the extra entry)
       customConfirm("작성 중인 코드가 저장되지 않을 수 있습니다. 나가시겠습니까?", {
         confirmText: "나가기",
         cancelText: "계속 작성",
@@ -165,6 +164,9 @@ export default function CodeEditor() {
           window.removeEventListener("popstate", handlePopState);
           window.removeEventListener("beforeunload", handleBeforeUnload);
           navigate(-1);
+        } else {
+          // User wants to stay — re-push extra entry
+          window.history.pushState({ codeEditor: true }, "");
         }
       });
     };
