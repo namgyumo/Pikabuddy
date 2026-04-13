@@ -28,68 +28,7 @@ export default function Settings() {
   const [roleConfirm, setRoleConfirm] = useState<"professor" | "student" | "personal" | null>(null);
   const [recoverMsg, setRecoverMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // Test account management (accessible to all roles)
-  const [resetting, setResetting] = useState(false);
-  const [resetResult, setResetResult] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [testStatus, setTestStatus] = useState<any>(null);
-  const [snapshots, setSnapshots] = useState<any[]>([]);
-  const [snapshotName, setSnapshotName] = useState("");
-  const [snapshotLoading, setSnapshotLoading] = useState(false);
-  const [hasDefault, setHasDefault] = useState<{ exists: boolean; saved_at: string | null }>({ exists: false, saved_at: null });
-  const [partialTargets, setPartialTargets] = useState<Set<string>>(new Set());
-  const [teacherExp, setTeacherExp] = useState("");
-  const [studentExp, setStudentExp] = useState("");
-
-  // Target user selection
-  const [allUsers, setAllUsers] = useState<{ id: string; name: string; email: string; role: string }[]>([]);
-  const [selectedTeacherId, setSelectedTeacherId] = useState(() => localStorage.getItem("seed_teacher_id") || "");
-  const [selectedStudentId, setSelectedStudentId] = useState(() => localStorage.getItem("seed_student_id") || "");
-
-  const seedParams = () => {
-    const p = new URLSearchParams();
-    if (selectedTeacherId) p.set("teacher_id", selectedTeacherId);
-    if (selectedStudentId) p.set("student_id", selectedStudentId);
-    const q = p.toString();
-    return q ? `?${q}` : "";
-  };
-
-  const refreshStatus = () => {
-    api.get(`/seed/status${seedParams()}`).then(r => {
-      setTestStatus(r.data);
-      setResetResult(null);
-    }).catch((err: any) => {
-      setTestStatus(null);
-      const msg = err?.response?.data?.detail || "상태 조회 실패";
-      setResetResult({ type: "error", text: `${msg} — 대상 계정 선택을 확인해주세요.` });
-    });
-  };
-
-  useEffect(() => {
-    api.get("/seed/users").then(r => {
-      setAllUsers(r.data);
-      // Validate stored IDs — clear if they no longer exist
-      const ids = new Set((r.data as any[]).map((u: any) => u.id));
-      if (selectedTeacherId && !ids.has(selectedTeacherId)) {
-        setSelectedTeacherId("");
-        localStorage.removeItem("seed_teacher_id");
-      }
-      if (selectedStudentId && !ids.has(selectedStudentId)) {
-        setSelectedStudentId("");
-        localStorage.removeItem("seed_student_id");
-      }
-    }).catch(() => {});
-    api.get("/seed/snapshots").then(r => setSnapshots(r.data)).catch(() => {});
-    api.get("/seed/has-default").then(r => setHasDefault(r.data)).catch(() => {});
-  }, []);
-
-  // Refresh status when target changes
-  useEffect(() => {
-    if (selectedTeacherId) localStorage.setItem("seed_teacher_id", selectedTeacherId);
-    else localStorage.removeItem("seed_teacher_id");
-    if (selectedStudentId) localStorage.setItem("seed_student_id", selectedStudentId);
-    else localStorage.removeItem("seed_student_id");
-    refreshStatus();
-  }, [selectedTeacherId, selectedStudentId]);
+  // (test account management removed)
 
   // Avatar crop state
   const [cropSrc, setCropSrc] = useState<string | null>(null);
@@ -448,16 +387,9 @@ export default function Settings() {
         </button>
       </div>
 
-      {/* ── 테스트 계정 관리 ── */}
-        <div style={{ marginTop: 32, paddingTop: 24, borderTop: "2px solid var(--outline-variant)" }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12, color: "var(--error)", display: "flex", alignItems: "center", gap: 8 }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-              <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
-            </svg>
-            테스트 계정 관리
-          </h2>
-
+      {/* 테스트 계정 관리 섹션 제거됨 */}
+      {false && (
+        <div>
           {/* 대상 계정 선택 */}
           <div style={{ marginBottom: 16, padding: 14, borderRadius: "var(--radius-sm)", background: "var(--surface-container-lowest)", border: "1px solid var(--outline-variant)" }}>
             <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>관리 대상 계정 지정</div>
@@ -863,6 +795,7 @@ export default function Settings() {
             )}
           </div>
         </div>
+      )}
 
       {/* 아바타 크롭 모달 */}
       {cropSrc && (

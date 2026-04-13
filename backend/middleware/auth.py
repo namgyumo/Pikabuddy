@@ -7,6 +7,14 @@ logger = logging.getLogger(__name__)
 security = HTTPBearer()
 
 
+def _is_admin_email(email: str) -> bool:
+    """어드민 계정만 True. 테스트 계정은 제외."""
+    if not email.endswith("@pikabuddy.admin"):
+        return False
+    username = email.split("@")[0].lower()
+    return "admin" in username and "test" not in username
+
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> dict:
@@ -52,7 +60,7 @@ async def get_current_user(
 
 async def require_professor(user: dict = Depends(get_current_user)) -> dict:
     """교수 권한을 요구한다. 어드민은 통과."""
-    is_admin = user.get("email", "").endswith("@pikabuddy.admin")
+    is_admin = _is_admin_email(user.get("email", ""))
     if user.get("role") != "professor" and not is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -63,7 +71,7 @@ async def require_professor(user: dict = Depends(get_current_user)) -> dict:
 
 async def require_professor_or_personal(user: dict = Depends(get_current_user)) -> dict:
     """교수 또는 개인 권한을 요구한다. 어드민은 통과."""
-    is_admin = user.get("email", "").endswith("@pikabuddy.admin")
+    is_admin = _is_admin_email(user.get("email", ""))
     if user.get("role") not in ("professor", "personal") and not is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -94,7 +102,7 @@ async def require_student_or_personal(user: dict = Depends(get_current_user)) ->
 
 def verify_course_ownership(user: dict, course_id: str) -> None:
     """교수/개인이 해당 강의의 소유자���지 검증한다. 어드민은 통과."""
-    is_admin = user.get("email", "").endswith("@pikabuddy.admin")
+    is_admin = _is_admin_email(user.get("email", ""))
     if is_admin:
         return
     from common.supabase_client import get_supabase
