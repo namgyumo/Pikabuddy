@@ -66,29 +66,33 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
-// ── 로그인 만료 감지 (401 응답) ──
+// ── 로그인 만료 감지 (401/403 응답) ──
 let sessionExpiredShown = false;
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
-    if (error.response?.status === 401 && !sessionExpiredShown) {
+    const status = error.response?.status;
+    if ((status === 401 || status === 403) && !sessionExpiredShown) {
       sessionExpiredShown = true;
       // Clear cache
       cachedToken = null;
       tokenExpiresAt = 0;
       // Try to refresh session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        // Session truly expired — notify user
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          // Session truly expired — notify user (once)
+          window.dispatchEvent(new CustomEvent("session-expired"));
+        } else {
+          // Session refreshed successfully — retry silently
+          sessionExpiredShown = false;
+          cachedToken = session.access_token;
+          tokenExpiresAt = (session.expires_at ?? 0) * 1000;
+          error.config.headers.Authorization = `Bearer ${session.access_token}`;
+          return api(error.config);
+        }
+      } catch {
         window.dispatchEvent(new CustomEvent("session-expired"));
-        setTimeout(() => { sessionExpiredShown = false; }, 5000);
-      } else {
-        // Session refreshed successfully — retry silently
-        sessionExpiredShown = false;
-        cachedToken = session.access_token;
-        tokenExpiresAt = (session.expires_at ?? 0) * 1000;
-        error.config.headers.Authorization = `Bearer ${session.access_token}`;
-        return api(error.config);
       }
     }
     return Promise.reject(error);
