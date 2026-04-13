@@ -242,7 +242,18 @@
     <li><a href="#student-notes">학생 노트 리뷰 (교수)</a></li>
     <li><a href="#comments">코멘트 시스템</a></li>
     <li><a href="#ai-agents">AI 에이전트</a></li>
-    <li><a href="#gamification">게이미피케이션</a></li>
+    <li><a href="#gamification">게이미피케이션</a>
+      <ul class="sub">
+        <li><a href="#gami-exp">EXP 획득</a></li>
+        <li><a href="#gami-tier">티어 시스템</a></li>
+        <li><a href="#gami-streak">출석 스트릭</a></li>
+        <li><a href="#gami-leaderboard">리더보드</a></li>
+        <li><a href="#gami-missions">주간 미션</a></li>
+        <li><a href="#gami-heatmap">활동 히트맵</a></li>
+        <li><a href="#gami-badges">도전과제 &amp; 배지</a></li>
+        <li><a href="#gami-reward">교수 보상</a></li>
+      </ul>
+    </li>
     <li><a href="#profile">프로필</a></li>
     <li><a href="#themes">테마 &amp; 이펙트 커스텀</a></li>
     <li><a href="#settings">설정</a></li>
@@ -313,7 +324,7 @@
   <div class="feature-item">
     <div class="icon">&#x1F3AE;</div>
     <h5>게이미피케이션</h5>
-    <p>EXP 시스템, 6단계 티어(씨앗~숲), 과제/챌린지 제출·노트 작성으로 경험치 획득</p>
+    <p>EXP, 24단계 티어, 출석 스트릭, 리더보드, 주간 미션, 활동 히트맵, 도전과제 배지, 교수 보상</p>
   </div>
   <div class="feature-item">
     <div class="icon">&#x1F6E1;&#xFE0F;</div>
@@ -1170,30 +1181,104 @@
 
 <!-- ═══════════ 19. 게이미피케이션 ═══════════ -->
 <h2 id="gamification">19. &#x1F3AE; 게이미피케이션</h2>
-<p><span class="badge student">학생</span> <span class="badge personal">개인</span> PikaBuddy는 학습 동기 부여를 위한 EXP/티어 시스템을 갖추고 있습니다.</p>
+<p><span class="badge student">학생</span> <span class="badge personal">개인</span> PikaBuddy는 학습 동기 부여를 위한 종합 게이미피케이션 시스템을 갖추고 있습니다. EXP를 모아 티어를 올리고, 스트릭을 유지하고, 미션을 클리어하며, 도전과제 배지를 수집하세요!</p>
 
-<h4>경험치(EXP) 획득</h4>
-<ul>
-  <li>과제/챌린지 제출 시 EXP 획득</li>
-  <li>노트 작성 및 AI 분석 시 EXP 획득</li>
-  <li>활동량에 따라 누적됩니다.</li>
-</ul>
-
-<h4>티어 시스템</h4>
+<h3 id="gami-exp">경험치(EXP) 획득</h3>
+<p>다양한 학습 활동을 통해 EXP를 획득할 수 있습니다.</p>
 <table>
-  <tr><th>티어</th><th>아이콘</th><th>의미</th></tr>
-  <tr><td><strong>씨앗 (Seed)</strong></td><td>&#x1F331;</td><td>학습을 시작하는 단계</td></tr>
-  <tr><td><strong>새싹 (Sprout)</strong></td><td>&#x1F33F;</td><td>기초를 다지는 단계</td></tr>
-  <tr><td><strong>나무 (Tree)</strong></td><td>&#x1F333;</td><td>실력이 자라는 단계</td></tr>
-  <tr><td><strong>꽃 (Bloom)</strong></td><td>&#x1F338;</td><td>실력이 개화하는 단계</td></tr>
-  <tr><td><strong>열매 (Fruit)</strong></td><td>&#x1F34E;</td><td>성과를 맺는 단계</td></tr>
-  <tr><td><strong>숲 (Forest)</strong></td><td>&#x1F332;</td><td>최고 경지에 도달한 단계</td></tr>
+  <tr><th>활동</th><th>EXP</th><th>설명</th></tr>
+  <tr><td>코딩 과제 제출</td><td>+30</td><td>코드 에디터에서 과제 제출 시</td></tr>
+  <tr><td>글쓰기 과제 제출</td><td>+25</td><td>글쓰기 에디터에서 제출 시</td></tr>
+  <tr><td>퀴즈 제출</td><td>+15</td><td>퀴즈 풀이 완료 시</td></tr>
+  <tr><td>노트 작성</td><td>+10</td><td>노트 저장 시</td></tr>
+  <tr><td>AI 분석 요청</td><td>+5</td><td>코드/노트 AI 분석 시</td></tr>
+  <tr><td>스트릭 보너스</td><td>+7~50</td><td>7일마다 자동 지급 (최대 50)</td></tr>
+  <tr><td>미션 완료</td><td>+15~50</td><td>주간 미션 클리어 시</td></tr>
+  <tr><td>교수 보상</td><td>+1~500</td><td>교수가 직접 지급</td></tr>
 </table>
-<p>사이드바 하단에 현재 티어와 EXP 진행률이 표시됩니다. 각 티어에는 I~IV 세부 등급이 있어 총 24단계입니다.</p>
 
+<h3 id="gami-tier">티어 시스템</h3>
+<p>EXP가 누적되면 티어가 자동으로 올라갑니다. 각 티어에는 IV &rarr; III &rarr; II &rarr; I 세부 등급이 있어 총 <strong>24단계</strong>입니다.</p>
+<table>
+  <tr><th>티어</th><th>아이콘</th><th>의미</th><th>EXP 범위</th></tr>
+  <tr><td><strong>씨앗 (Seed)</strong></td><td>&#x1F331;</td><td>학습을 시작하는 단계</td><td>0 ~ 499</td></tr>
+  <tr><td><strong>새싹 (Sprout)</strong></td><td>&#x1F33F;</td><td>기초를 다지는 단계</td><td>500 ~ 1,499</td></tr>
+  <tr><td><strong>나무 (Tree)</strong></td><td>&#x1F333;</td><td>실력이 자라는 단계</td><td>1,500 ~ 3,499</td></tr>
+  <tr><td><strong>꽃 (Bloom)</strong></td><td>&#x1F338;</td><td>실력이 개화하는 단계</td><td>3,500 ~ 6,999</td></tr>
+  <tr><td><strong>열매 (Fruit)</strong></td><td>&#x1F34E;</td><td>성과를 맺는 단계</td><td>7,000 ~ 14,999</td></tr>
+  <tr><td><strong>숲 (Forest)</strong></td><td>&#x1F332;</td><td>최고 경지에 도달한 단계</td><td>15,000+</td></tr>
+</table>
+<p>사이드바 하단에 현재 티어 아이콘, 등급, EXP, 그리고 다음 등급까지의 <strong>진행률 바</strong>가 표시됩니다. 클릭하면 상세 모달이 열립니다.</p>
+
+<h3 id="gami-streak">출석 스트릭 &#x1F525;</h3>
+<p>매일 PikaBuddy에서 활동(과제 제출, 노트 작성 등)하면 <strong>연속 출석 스트릭</strong>이 쌓입니다.</p>
+<ul>
+  <li>사이드바 티어 옆에 &#x1F525; 아이콘과 현재 스트릭 일수가 표시됩니다.</li>
+  <li><strong>7일마다</strong> 스트릭 보너스 EXP가 자동 지급됩니다 (스트릭 일수만큼, 최대 50 EXP).</li>
+  <li>하루라도 활동이 없으면 스트릭이 0으로 초기화됩니다.</li>
+</ul>
 <div class="card tip">
   <div class="card-label">&#x1F4A1; Tip</div>
-  특정 테마에서는 레벨업 시 <strong>컨페티(confetti) 이펙트</strong>가 발동됩니다!
+  스트릭을 길게 유지할수록 보너스 EXP가 커집니다! 7일 = +7 EXP, 14일 = +14 EXP, 21일 = +21 EXP ...
+</div>
+
+<h3 id="gami-leaderboard">리더보드 &#x1F3C6;</h3>
+<p>각 강의의 상세 페이지에 <strong>EXP 리더보드</strong>가 표시됩니다.</p>
+<ul>
+  <li><strong>주간 / 월간 / 전체</strong> 기간 필터로 순위를 확인할 수 있습니다.</li>
+  <li>1등 &#x1F947;, 2등 &#x1F948;, 3등 &#x1F949; 메달 아이콘이 표시됩니다.</li>
+  <li>자신의 순위는 하이라이트(파란 테두리)되며 "(나)" 표시가 붙습니다.</li>
+  <li>아바타, 이름, 티어 아이콘, 총 EXP가 함께 표시됩니다.</li>
+</ul>
+
+<h3 id="gami-missions">주간 미션 &#x1F3AF;</h3>
+<p>매주 월요일에 <strong>4개의 미션</strong>이 자동으로 생성됩니다. 티어 상세 모달의 "미션" 탭에서 확인할 수 있습니다.</p>
+<ul>
+  <li>미션 예시: "이번 주 과제 3개 제출", "노트 5개 작성", "AI 분석 2회 요청" 등</li>
+  <li>각 미션에 진행률 바가 표시됩니다 (예: 2/3).</li>
+  <li>미션 완료 후 <strong>"보상 받기"</strong> 버튼을 눌러 EXP를 수령합니다 (15~50 EXP).</li>
+  <li>미션은 매주 갱신되며, 같은 주에는 항상 같은 미션이 표시됩니다.</li>
+</ul>
+<div class="card warn">
+  <div class="card-label">&#x26A0; 주의</div>
+  주간 미션 보상은 해당 주에만 수령 가능합니다. 월요일이 되면 미수령 보상은 사라집니다.
+</div>
+
+<h3 id="gami-heatmap">활동 히트맵 &#x1F33F;</h3>
+<p>티어 상세 모달의 "활동" 탭에서 <strong>GitHub 잔디 스타일</strong>의 활동 히트맵을 확인할 수 있습니다.</p>
+<ul>
+  <li>최근 <strong>180일</strong>의 일별 EXP 획득량이 색상 농도로 표시됩니다.</li>
+  <li>색상이 진할수록 해당 날의 활동량이 많습니다 (4단계 농도).</li>
+  <li>상단에 총 EXP, 활동 일수, 최근 30일 EXP 통계가 표시됩니다.</li>
+</ul>
+
+<h3 id="gami-badges">도전과제 &amp; 배지</h3>
+<p>특정 조건을 달성하면 <strong>도전과제 배지</strong>를 획득합니다. 티어 상세 모달의 "도전과제" 탭에서 보유 배지를 확인할 수 있습니다.</p>
+<table>
+  <tr><th>희귀도</th><th>색상</th><th>예시</th></tr>
+  <tr><td>일반 (Common)</td><td style="color:#9CA3AF">회색</td><td>첫 과제 제출, 첫 노트 작성</td></tr>
+  <tr><td>희귀 (Rare)</td><td style="color:#3B82F6">파랑</td><td>10개 과제 달성, 연속 7일 활동</td></tr>
+  <tr><td>전설 (Legendary)</td><td style="color:#F59E0B">금색</td><td>50개 과제 달성, 다양한 활동 마스터</td></tr>
+  <tr><td>숨김 (Hidden)</td><td style="color:#8B5CF6">보라</td><td>특별한 조건으로만 획득 가능</td></tr>
+</table>
+<p>배지를 획득하면 화면 상단에 <strong>토스트 알림</strong>이 표시됩니다. 전설/숨김 배지 획득 시에는 <strong>컨페티(confetti) 이펙트</strong>가 함께 발동됩니다!</p>
+<div class="card tip">
+  <div class="card-label">&#x1F4A1; Tip</div>
+  배지 알림은 설정 &gt; 알림에서 켜고 끌 수 있습니다. 15초마다 자동으로 새 배지를 확인합니다.
+</div>
+
+<h3 id="gami-reward">교수 보상 &#x1F381;</h3>
+<p><span class="badge prof">교수</span> 교수는 대시보드에서 학생에게 직접 <strong>보너스 EXP</strong>를 지급할 수 있습니다.</p>
+<div class="steps">
+  <div class="step">
+    <div class="step-content"><strong>대시보드 &gt; 학생 목록</strong>에서 보상할 학생의 <strong>"EXP"</strong> 버튼을 클릭합니다.</div>
+  </div>
+  <div class="step">
+    <div class="step-content">EXP 양(1~500)과 사유(선택)를 입력합니다. 예: "우수 활동", "발표 참여" 등.</div>
+  </div>
+  <div class="step">
+    <div class="step-content"><strong>"EXP 부여"</strong> 버튼을 클릭하면 즉시 해당 학생에게 EXP가 지급됩니다.</div>
+  </div>
 </div>
 
 
