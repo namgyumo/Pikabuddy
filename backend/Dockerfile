@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config \
     libfreetype6-dev \
     libpng-dev \
+    libncurses6 \
     && rm -rf /var/lib/apt/lists/*
 
 # Node.js LTS (v20) — apt 기본 버전이 너무 낮으므로 NodeSource 사용
