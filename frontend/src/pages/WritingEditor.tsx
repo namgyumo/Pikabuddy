@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useEditor, EditorContent } from "@tiptap/react";
+import { BubbleMenu } from "@tiptap/react/menus";
 import { Extension } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -741,6 +742,40 @@ export default function WritingEditor() {
                 <button className="btn btn-primary" style={{ fontSize: 12, padding: "4px 12px" }} onClick={insertCitation}>삽입</button>
               </div>
             </div>
+          )}
+          {/* ── 표 전용 버블 메뉴 ── */}
+          {editor && (
+            <BubbleMenu editor={editor} tippyOptions={{ duration: 150, placement: "top" }}
+              shouldShow={({ editor }) => editor.isActive("table") || editor.isActive("tableCell") || editor.isActive("tableHeader")}
+            >
+              <div className="bubble-menu table-bubble">
+                <button className="bubble-btn" onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().addColumnBefore().run(); }} title="왼쪽에 열 추가">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="3" width="15" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="1" y1="12" x2="5" y2="12"/><line x1="3" y1="10" x2="3" y2="14"/></svg>
+                </button>
+                <button className="bubble-btn" onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().addColumnAfter().run(); }} title="오른쪽에 열 추가">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="15" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="19" y1="12" x2="23" y2="12"/><line x1="21" y1="10" x2="21" y2="14"/></svg>
+                </button>
+                <button className="bubble-btn" onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().addRowBefore().run(); }} title="위에 행 추가">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="6" width="18" height="15" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="1" x2="12" y2="5"/><line x1="10" y1="3" x2="14" y2="3"/></svg>
+                </button>
+                <button className="bubble-btn" onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().addRowAfter().run(); }} title="아래에 행 추가">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="15" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="10" y1="21" x2="14" y2="21"/></svg>
+                </button>
+                <div className="bubble-divider" />
+                <button className="bubble-btn" onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().deleteColumn().run(); }} title="열 삭제" style={{ color: "var(--error, #ef4444)" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="3" width="15" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="1" y1="12" x2="5" y2="12"/></svg>
+                </button>
+                <button className="bubble-btn" onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().deleteRow().run(); }} title="행 삭제" style={{ color: "var(--error, #ef4444)" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="6" width="18" height="15" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="1" x2="12" y2="5"/></svg>
+                </button>
+                <button className="bubble-btn" onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().mergeOrSplit().run(); }} title="셀 병합/분리">
+                  <span style={{ fontSize: 12, fontWeight: 600 }}>M</span>
+                </button>
+                <button className="bubble-btn" onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().deleteTable().run(); }} title="표 삭제" style={{ color: "var(--error, #ef4444)" }}>
+                  <span style={{ fontSize: 12 }}>🗑</span>
+                </button>
+              </div>
+            </BubbleMenu>
           )}
           <EditorContent editor={editor} />
         </div>
