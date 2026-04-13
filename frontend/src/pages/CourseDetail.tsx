@@ -9,36 +9,7 @@ import { getBannerStyle, getEffectiveBanner } from "../lib/bannerPresets";
 import BannerPicker from "../components/common/BannerPicker";
 import { useCourseStore } from "../store/courseStore";
 import type { Course, Assignment, CourseMaterial } from "../types";
-
-function getKoreanHolidays(year: number): { date: string; title: string }[] {
-  const fixed = [
-    { m: 1, d: 1, title: "신정" },
-    { m: 3, d: 1, title: "삼일절" },
-    { m: 5, d: 5, title: "어린이날" },
-    { m: 6, d: 6, title: "현충일" },
-    { m: 8, d: 15, title: "광복절" },
-    { m: 10, d: 3, title: "개천절" },
-    { m: 10, d: 9, title: "한글날" },
-    { m: 12, d: 25, title: "크리스마스" },
-  ];
-  const lunar: Record<number, { m: number; d: number; title: string }[]> = {
-    2025: [
-      { m: 1, d: 28, title: "설날 연휴" }, { m: 1, d: 29, title: "설날" }, { m: 1, d: 30, title: "설날 연휴" },
-      { m: 5, d: 5, title: "석가탄신일" },
-      { m: 9, d: 5, title: "추석 연휴" }, { m: 9, d: 6, title: "추석" }, { m: 9, d: 7, title: "추석 연휴" },
-    ],
-    2026: [
-      { m: 2, d: 16, title: "설날 연휴" }, { m: 2, d: 17, title: "설날" }, { m: 2, d: 18, title: "설날 연휴" },
-      { m: 5, d: 24, title: "석가탄신일" },
-      { m: 9, d: 24, title: "추석 연휴" }, { m: 9, d: 25, title: "추석" }, { m: 9, d: 26, title: "추석 연휴" },
-    ],
-  };
-  const all = [...fixed, ...(lunar[year] || [])];
-  return all.map((h) => ({
-    date: `${year}-${String(h.m).padStart(2, "0")}-${String(h.d).padStart(2, "0")}T00:00:00`,
-    title: h.title,
-  }));
-}
+import { getKoreanHolidays } from "../lib/holidays";
 
 export default function CourseDetail() {
   const { courseId } = useParams<{ courseId: string }>();
@@ -649,10 +620,11 @@ export default function CourseDetail() {
             for (let d = 1; d <= daysInMonth; d++) {
               const isToday = `${year}-${month}-${d}` === todayStr;
               const isHoliday = holidayDates.has(d);
+              const dayOfWeek = (firstDay + d - 1) % 7;
               const items = byDate[d.toString()] || [];
               const hols = holidayByDate[d.toString()] || [];
               cells.push(
-                <div key={d} className={`cal-cell${isToday ? " cal-today" : ""}${items.length > 0 ? " cal-has-items" : ""}${isHoliday ? " cal-holiday" : ""}`}>
+                <div key={d} className={`cal-cell${isToday ? " cal-today" : ""}${items.length > 0 ? " cal-has-items" : ""}${isHoliday ? " cal-holiday" : ""}${dayOfWeek === 0 ? " cal-sunday" : ""}${dayOfWeek === 6 ? " cal-saturday" : ""}`}>
                   <div className={`cal-date${isHoliday ? " cal-date-holiday" : ""}`}>{d}</div>
                   <div className="cal-items">
                     {hols.map((name, hi) => (
@@ -695,8 +667,8 @@ export default function CourseDetail() {
                   <button className="btn btn-ghost" onClick={() => setCalMonth(new Date(year, month + 1, 1))}>&gt;</button>
                 </div>
                 <div className="cal-header">
-                  {["일", "월", "화", "수", "목", "금", "토"].map((d) => (
-                    <div key={d} className="cal-header-cell">{d}</div>
+                  {["일", "월", "화", "수", "목", "금", "토"].map((d, i) => (
+                    <div key={d} className={`cal-header-cell${i === 0 ? " cal-header-sun" : ""}${i === 6 ? " cal-header-sat" : ""}`}>{d}</div>
                   ))}
                 </div>
                 <div className="cal-grid">{cells}</div>

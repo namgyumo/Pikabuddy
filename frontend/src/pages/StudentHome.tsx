@@ -8,6 +8,7 @@ import { toast } from "../lib/toast";
 import { SkeletonList } from "../components/common/Skeleton";
 import { getBannerStyle, getEffectiveBanner } from "../lib/bannerPresets";
 import BannerPicker from "../components/common/BannerPicker";
+import { getKoreanHolidays } from "../lib/holidays";
 
 interface CalendarItem {
   id: string;
@@ -34,38 +35,6 @@ interface TodoItem {
   language?: string;
   ai_policy?: string;
   problem_count?: number;
-}
-
-// 한국 공휴일 (고정)
-function getKoreanHolidays(year: number): { date: string; title: string }[] {
-  const fixed = [
-    { m: 1, d: 1, title: "신정" },
-    { m: 3, d: 1, title: "삼일절" },
-    { m: 5, d: 5, title: "어린이날" },
-    { m: 6, d: 6, title: "현충일" },
-    { m: 8, d: 15, title: "광복절" },
-    { m: 10, d: 3, title: "개천절" },
-    { m: 10, d: 9, title: "한글날" },
-    { m: 12, d: 25, title: "크리스마스" },
-  ];
-  // 석가탄신일, 추석, 설날 등 음력 공휴일은 연도별 고정
-  const lunar: Record<number, { m: number; d: number; title: string }[]> = {
-    2025: [
-      { m: 1, d: 28, title: "설날 연휴" }, { m: 1, d: 29, title: "설날" }, { m: 1, d: 30, title: "설날 연휴" },
-      { m: 5, d: 5, title: "석가탄신일" },
-      { m: 9, d: 5, title: "추석 연휴" }, { m: 9, d: 6, title: "추석" }, { m: 9, d: 7, title: "추석 연휴" },
-    ],
-    2026: [
-      { m: 2, d: 16, title: "설날 연휴" }, { m: 2, d: 17, title: "설날" }, { m: 2, d: 18, title: "설날 연휴" },
-      { m: 5, d: 24, title: "석가탄신일" },
-      { m: 9, d: 24, title: "추석 연휴" }, { m: 9, d: 25, title: "추석" }, { m: 9, d: 26, title: "추석 연휴" },
-    ],
-  };
-  const all = [...fixed, ...(lunar[year] || [])];
-  return all.map((h) => ({
-    date: `${year}-${String(h.m).padStart(2, "0")}-${String(h.d).padStart(2, "0")}T00:00:00`,
-    title: h.title,
-  }));
 }
 
 export default function StudentHome() {
@@ -408,9 +377,10 @@ export default function StudentHome() {
             for (let d = 1; d <= daysInMonth; d++) {
               const isToday = `${year}-${month}-${d}` === todayStr;
               const isHoliday = holidayDates.has(d);
+              const dayOfWeek = (firstDay + d - 1) % 7;
               const items = byDate[d.toString()] || [];
               cells.push(
-                <div key={d} className={`cal-cell${isToday ? " cal-today" : ""}${items.length > 0 ? " cal-has-items" : ""}${isHoliday ? " cal-holiday" : ""}`}>
+                <div key={d} className={`cal-cell${isToday ? " cal-today" : ""}${items.length > 0 ? " cal-has-items" : ""}${isHoliday ? " cal-holiday" : ""}${dayOfWeek === 0 ? " cal-sunday" : ""}${dayOfWeek === 6 ? " cal-saturday" : ""}`}>
                   <div className={`cal-date${isHoliday ? " cal-date-holiday" : ""}`}>{d}</div>
                   <div className="cal-items">
                     {items.map((item) => {
@@ -465,8 +435,8 @@ export default function StudentHome() {
                   <button className="btn btn-ghost" onClick={() => setCalMonth(new Date(year, month + 1, 1))}>&gt;</button>
                 </div>
                 <div className="cal-header">
-                  {["일", "월", "화", "수", "목", "금", "토"].map((d) => (
-                    <div key={d} className="cal-header-cell">{d}</div>
+                  {["일", "월", "화", "수", "목", "금", "토"].map((d, i) => (
+                    <div key={d} className={`cal-header-cell${i === 0 ? " cal-header-sun" : ""}${i === 6 ? " cal-header-sat" : ""}`}>{d}</div>
                   ))}
                 </div>
                 <div className="cal-grid">{cells}</div>

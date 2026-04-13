@@ -149,11 +149,21 @@ async def get_todos(user: dict = Depends(get_current_user)):
     todos = []
 
     # 미제출 과제
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
     for cid in course_map:
         result = supabase.table("assignments").select(
             "id, title, type, due_date, course_id, language, ai_policy, problems"
         ).eq("course_id", cid).eq("status", "published").execute()
         for a in (result.data or []):
+            # 마감된 과제 제외
+            if a.get("due_date"):
+                try:
+                    due = datetime.fromisoformat(a["due_date"].replace("Z", "+00:00"))
+                    if due < now:
+                        continue
+                except (ValueError, TypeError):
+                    pass
             # 제출 여부 확인
             sub = supabase.table("submissions").select("id").eq(
                 "assignment_id", a["id"]
