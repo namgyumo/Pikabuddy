@@ -19,6 +19,7 @@ import { TableRow } from "@tiptap/extension-table/row";
 import { TableHeader } from "@tiptap/extension-table/header";
 import { TableCell } from "@tiptap/extension-table/cell";
 import { MathInline, MathBlock } from "../lib/MathExtension";
+import { CodeBlockExtension } from "../lib/CodeBlockExtension";
 import api from "../lib/api";
 import type { Note, CourseMaterial, Course } from "../types";
 
@@ -166,7 +167,8 @@ function MaterialViewer({ material }: { material: CourseMaterial | undefined }) 
 
 /* ── Inline Note Editor (editable in workspace) ── */
 const wsEditorExtensions = [
-  StarterKit.configure({ heading: { levels: [1, 2, 3] }, codeBlock: { HTMLAttributes: { class: "code-block" } } }),
+  StarterKit.configure({ heading: { levels: [1, 2, 3] }, codeBlock: false }),
+  CodeBlockExtension,
   Placeholder.configure({ placeholder: "노트를 작성하세요..." }),
   Underline,
   TextStyle,

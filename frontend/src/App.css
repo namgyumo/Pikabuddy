@@ -1990,7 +1990,80 @@ textarea.input {
   border-radius: 4px;
   color: var(--tertiary);
 }
-.note-editor .tiptap pre {
+.note-editor .tiptap .code-block-wrapper {
+  background: #1e1e2e;
+  border-radius: var(--radius-md);
+  margin: 12px 0;
+  overflow: hidden;
+}
+.note-editor .tiptap .code-block-header {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  background: #181825;
+  border-bottom: 1px solid #313244;
+}
+.note-editor .tiptap .code-block-lang-select {
+  appearance: none;
+  background: #313244;
+  color: #cdd6f4;
+  border: 1px solid #45475a;
+  border-radius: 4px;
+  padding: 2px 24px 2px 8px;
+  font-size: 0.75rem;
+  font-family: var(--font-code);
+  cursor: pointer;
+  outline: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23cdd6f4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+}
+.note-editor .tiptap .code-block-lang-select:hover {
+  border-color: #585b70;
+}
+.note-editor .tiptap .code-block-wrapper pre {
+  background: #1e1e2e;
+  color: #cdd6f4;
+  padding: 18px 22px;
+  font-family: var(--font-code);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  margin: 0;
+  overflow-x: auto;
+  border-radius: 0;
+}
+.note-editor .tiptap .code-block-wrapper pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+}
+/* lowlight / highlight.js 문법 강조 테마 (Catppuccin Mocha) */
+.note-editor .tiptap .hljs-keyword,
+.note-editor .tiptap .hljs-selector-tag { color: #cba6f7; }
+.note-editor .tiptap .hljs-string,
+.note-editor .tiptap .hljs-addition { color: #a6e3a1; }
+.note-editor .tiptap .hljs-number,
+.note-editor .tiptap .hljs-literal { color: #fab387; }
+.note-editor .tiptap .hljs-comment,
+.note-editor .tiptap .hljs-quote { color: #6c7086; font-style: italic; }
+.note-editor .tiptap .hljs-built_in { color: #89dceb; }
+.note-editor .tiptap .hljs-type,
+.note-editor .tiptap .hljs-title,
+.note-editor .tiptap .hljs-class .hljs-title { color: #f9e2af; }
+.note-editor .tiptap .hljs-function { color: #89b4fa; }
+.note-editor .tiptap .hljs-variable,
+.note-editor .tiptap .hljs-attr { color: #f38ba8; }
+.note-editor .tiptap .hljs-meta { color: #fab387; }
+.note-editor .tiptap .hljs-deletion { color: #f38ba8; }
+.note-editor .tiptap .hljs-symbol,
+.note-editor .tiptap .hljs-bullet { color: #f5c2e7; }
+.note-editor .tiptap .hljs-params { color: #cdd6f4; }
+.note-editor .tiptap .hljs-tag { color: #89b4fa; }
+.note-editor .tiptap .hljs-name { color: #cba6f7; }
+.note-editor .tiptap .hljs-attribute { color: #f9e2af; }
+/* 기존 pre 스타일 (코드블록 외부 pre 용 fallback) */
+.note-editor .tiptap pre:not(.code-block-wrapper pre) {
   background: #1e1e2e;
   color: #cdd6f4;
   padding: 18px 22px;
@@ -2001,7 +2074,7 @@ textarea.input {
   margin: 12px 0;
   overflow-x: auto;
 }
-.note-editor .tiptap pre code {
+.note-editor .tiptap pre:not(.code-block-wrapper pre) code {
   background: none;
   padding: 0;
   color: inherit;

@@ -38,6 +38,8 @@ import { BlockHandleExtension } from "../lib/BlockHandleExtension";
 import { ToggleExtension } from "../lib/ToggleExtension";
 import { CalloutExtension } from "../lib/CalloutExtension";
 import { CitationExtension } from "../lib/CitationExtension";
+import { CodeBlockExtension } from "../lib/CodeBlockExtension";
+import GlobalContextMenu from "../components/common/GlobalContextMenu";
 import * as Y from "yjs";
 import { ySyncPlugin, ySyncPluginKey, yCursorPlugin, yCursorPluginKey, yUndoPlugin, yUndoPluginKey, prosemirrorJSONToYXmlFragment } from "y-prosemirror";
 import { SupabaseYjsProvider, getCollabColor } from "../lib/SupabaseYjsProvider";
@@ -255,8 +257,9 @@ export default function NoteEditor() {
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
-        codeBlock: { HTMLAttributes: { class: "code-block" } },
+        codeBlock: false,
       }),
+      CodeBlockExtension,
       Placeholder.configure({ placeholder: "여기에 노트를 작성하세요... ( / 로 블록 삽입)" }),
       Typography,
       Markdown,
@@ -785,6 +788,7 @@ export default function NoteEditor() {
 
   return (
     <div className="editor-page">
+      <GlobalContextMenu />
       {/* ── 상단 헤더 — 깔끔한 한 줄 ── */}
       <header className="editor-topbar">
         <div className="topbar-left">

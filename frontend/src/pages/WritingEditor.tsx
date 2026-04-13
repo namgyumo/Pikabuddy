@@ -26,6 +26,7 @@ import { MathInline, MathBlock } from "../lib/MathExtension";
 import { CitationExtension } from "../lib/CitationExtension";
 import { ExcalidrawExtension } from "../lib/ExcalidrawExtension";
 import { SlashCommandExtension } from "../lib/SlashCommandExtension";
+import { CodeBlockExtension } from "../lib/CodeBlockExtension";
 import { BlockHandleExtension } from "../lib/BlockHandleExtension";
 import { ToggleExtension } from "../lib/ToggleExtension";
 import { CalloutExtension } from "../lib/CalloutExtension";
@@ -148,8 +149,9 @@ export default function WritingEditor() {
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
-        codeBlock: { HTMLAttributes: { class: "code-block" } },
+        codeBlock: false,
       }),
+      CodeBlockExtension,
       Placeholder.configure({ placeholder: "여기에 글을 작성하세요... ( / 로 블록 삽입)" }),
       Typography,
       Markdown,
