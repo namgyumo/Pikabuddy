@@ -191,7 +191,7 @@ function TierDetailModal({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     api.get("/gamification/me/detail")
       .then(({ data }) => setDetail(data))
-      .catch(() => {})
+      .catch((err) => console.error("[TierBadge] detail fetch failed:", err))
       .finally(() => setLoading(false));
   }, []);
 
